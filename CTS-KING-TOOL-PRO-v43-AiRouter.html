@@ -25416,34 +25416,36 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
 
 
 <script id="cts-addon-43-airouter">
-// === ADD-ON #43: AI TRANSLATION ROUTER STUDIO (SETTINGS TAB ONLY, 10 SKINS, REAL KEY ROUTING) ===
+// === ADD-ON #43: ALIEN AI TRANSLATION ROUTER STUDIO (10 DISTINCT ALIEN GEOMETRIES & ANIMATIONS, SETTINGS ONLY) ===
 (function() {
   const CFG_KEY = 'cts_ai_router_cfg_v1';
   const STATS_KEY = 'cts_ai_router_stats_v1';
 
   const SKINS = {
-    violet:   { name: '🟣 Cyber Violet',   bg: '#090916', card: 'rgba(20,18,44,0.92)',    border: 'rgba(139,92,246,0.45)',  acc: '#8b5cf6', acc2: '#38bdf8', text: '#f1f5f9', muted: '#94a3b8', orb: 'radial-gradient(circle at 35% 35%, #a78bfa, #6d28d9 60%, #1e1b4b)' },
-    crimson:  { name: '🔴 CTS Crimson',    bg: '#110407', card: 'rgba(28,8,13,0.93)',     border: 'rgba(239,68,68,0.48)',   acc: '#ef4444', acc2: '#f59e0b', text: '#fef2f2', muted: '#fca5a5', orb: 'radial-gradient(circle at 35% 35%, #f87171, #b91c1c 60%, #450a0a)' },
-    cyan:     { name: '🔵 Quantum Cyan',   bg: '#040d16', card: 'rgba(8,25,42,0.92)',     border: 'rgba(6,182,212,0.48)',   acc: '#06b6d4', acc2: '#3b82f6', text: '#ecfeff', muted: '#7dd3fc', orb: 'radial-gradient(circle at 35% 35%, #67e8f9, #0284c7 60%, #082f49)' },
-    matrix:   { name: '🟢 Emerald Matrix', bg: '#031109', card: 'rgba(6,28,16,0.93)',     border: 'rgba(16,185,129,0.48)',  acc: '#10b981', acc2: '#84cc16', text: '#ecfdf5', muted: '#6ee7b7', orb: 'radial-gradient(circle at 35% 35%, #6ee7b7, #059669 60%, #022c22)' },
-    gold:     { name: '🟡 Royal Gold',     bg: '#0d0a04', card: 'rgba(28,21,8,0.94)',     border: 'rgba(245,158,11,0.52)',  acc: '#f59e0b', acc2: '#fde047', text: '#fffbeb', muted: '#fcd34d', orb: 'radial-gradient(circle at 35% 35%, #fde047, #b45309 60%, #451a03)' },
-    synth:    { name: '🩷 Synthwave',      bg: '#13061f', card: 'rgba(34,11,52,0.92)',    border: 'rgba(236,72,153,0.52)',  acc: '#ec4899', acc2: '#22d3ee', text: '#fdf2f8', muted: '#f9a8d4', orb: 'radial-gradient(circle at 35% 35%, #f472b6, #be185d 60%, #500724)' },
-    solar:    { name: '🟠 Solar Inferno',  bg: '#140804', card: 'rgba(34,14,7,0.93)',     border: 'rgba(249,115,22,0.52)',  acc: '#f97316', acc2: '#facc15', text: '#fff7ed', muted: '#fdba74', orb: 'radial-gradient(circle at 35% 35%, #fb923c, #c2410c 60%, #431407)' },
-    frost:    { name: '⚪ Frosted Glass',  bg: '#0f172a', card: 'rgba(30,41,59,0.88)',    border: 'rgba(148,163,184,0.42)', acc: '#38bdf8', acc2: '#e2e8f0', text: '#f8fafc', muted: '#cbd5e1', orb: 'radial-gradient(circle at 35% 35%, #e2e8f0, #475569 60%, #0f172a)' },
-    aurora:   { name: '🌌 Deep Aurora',    bg: '#041214', card: 'rgba(9,31,34,0.92)',     border: 'rgba(45,212,191,0.48)',  acc: '#2dd4bf', acc2: '#a855f7', text: '#f0fdfa', muted: '#99f6e4', orb: 'radial-gradient(circle at 35% 35%, #5eead4, #0f766e 60%, #134e4a)' },
-    contrast: { name: '⚡ High-Contrast',  bg: '#000000', card: 'rgba(14,14,16,0.98)',    border: 'rgba(255,255,255,0.38)', acc: '#facc15', acc2: '#22c55e', text: '#ffffff', muted: '#d4d4d8', orb: 'radial-gradient(circle at 35% 35%, #ffffff, #52525b 60%, #09090b)' }
+    mothership: { name: '🛸 1. Mothership',   bg: '#050814', card: 'rgba(10,18,40,0.9)',    border: 'rgba(56,189,248,0.55)',  acc: '#0284c7', acc2: '#38bdf8', text: '#e0f2fe', muted: '#7dd3fc', orb: 'radial-gradient(circle at 35% 35%, #7dd3fc, #0369a1 60%, #082f49)', glyph: '🛸', shape: 'bevel' },
+    biohive:    { name: '🧬 2. Bio-Hive',     bg: '#04120c', card: 'rgba(9,32,20,0.9)',     border: 'rgba(52,211,153,0.55)',  acc: '#059669', acc2: '#a3e635', text: '#ecfdf5', muted: '#6ee7b7', orb: 'radial-gradient(circle at 35% 35%, #a3e635, #047857 60%, #022c22)', glyph: '🧬', shape: 'organic' },
+    hexgrid:    { name: '⬡ 3. Hex-Matrix',    bg: '#070a12', card: 'rgba(14,20,34,0.92)',   border: 'rgba(34,211,238,0.55)',  acc: '#0891b2', acc2: '#22d3ee', text: '#ecfeff', muted: '#67e8f9', orb: 'radial-gradient(circle at 35% 35%, #22d3ee, #0e7490 60%, #083344)', glyph: '⬡', shape: 'hex' },
+    blackhole:  { name: '🕳️ 4. Singularity',  bg: '#04020a', card: 'rgba(18,10,32,0.92)',   border: 'rgba(168,85,247,0.58)',  acc: '#7e22ce', acc2: '#f472b6', text: '#faf5ff', muted: '#d8b4fe', orb: 'radial-gradient(circle, #000000 38%, #7e22ce 68%, #f472b6 100%)', glyph: '🕳️', shape: 'capsule' },
+    predator:   { name: '👁️ 5. Predator HUD', bg: '#110305', card: 'rgba(32,6,10,0.92)',    border: 'rgba(244,63,94,0.62)',   acc: '#e11d48', acc2: '#fbbf24', text: '#fff1f2', muted: '#fda4af', orb: 'radial-gradient(circle at 35% 35%, #fb7185, #be123c 60%, #4c0519)', glyph: '◬', shape: 'visor' },
+    tesseract:  { name: '⚡ 6. Tesseract',    bg: '#06071a', card: 'rgba(16,18,52,0.92)',   border: 'rgba(129,140,248,0.6)',  acc: '#4f46e5', acc2: '#22d3ee', text: '#eef2ff', muted: '#a5b4fc', orb: 'linear-gradient(135deg, #4f46e5, #06b6d4)', glyph: '❖', shape: 'shard' },
+    monolith:   { name: '🔮 7. Monolith',     bg: '#0d0718', card: 'rgba(26,14,48,0.9)',    border: 'rgba(232,121,249,0.55)', acc: '#c026d3', acc2: '#f0abfc', text: '#fdf4ff', muted: '#f5d0fe', orb: 'linear-gradient(160deg, #f0abfc, #86198f 55%, #3b0764)', glyph: '◆', shape: 'crystal' },
+    stargate:   { name: '🛰️ 8. Star-Gate',    bg: '#080b12', card: 'rgba(18,22,36,0.92)',   border: 'rgba(251,191,36,0.58)',  acc: '#d97706', acc2: '#38bdf8', text: '#fffbeb', muted: '#fde68a', orb: 'radial-gradient(circle, #38bdf8 25%, #0284c7 55%, #b45309 88%)', glyph: '❂', shape: 'gate' },
+    swarm:      { name: '🦠 9. Nano-Swarm',   bg: '#031012', card: 'rgba(6,28,32,0.92)',    border: 'rgba(45,212,191,0.55)',  acc: '#0d9488', acc2: '#5eead4', text: '#f0fdfa', muted: '#99f6e4', orb: 'radial-gradient(circle at 35% 35%, #5eead4, #0f766e 60%, #042f2e)', glyph: '✺', shape: 'radar' },
+    warpdrive:  { name: '🌌 10. Warp Drive',  bg: '#09040e', card: 'rgba(22,10,32,0.92)',   border: 'rgba(251,146,60,0.58)',  acc: '#ea580c', acc2: '#38bdf8', text: '#fff7ed', muted: '#fed7aa', orb: 'radial-gradient(circle at 35% 35%, #fdba74, #c2410c 55%, #1e1b4b)', glyph: '✦', shape: 'wing' }
   };
 
   let cfg = {
-    skin: 'violet',
+    skin: 'mothership',
     splitAccounts: true,
     autoFallback: true,
     concurrency: 2,
-    nodeMeta: {} // keyId -> { name, model, enabled }
+    freeEnabled: true,
+    nodeMeta: {}
   };
   try {
     const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
     if (saved && typeof saved === 'object') cfg = Object.assign(cfg, saved);
+    if (!SKINS[cfg.skin]) cfg.skin = 'mothership';
   } catch (e) {}
 
   function todayStr() {
@@ -25465,6 +25467,12 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)); } catch (e) {}
   }
 
+  function detectProviderFromKey(k) {
+    const s = String(k || '').trim();
+    if (s.startsWith('AIza') || s.startsWith('AQ.')) return 'gemini';
+    return 'openai';
+  }
+
   function keyIdOf(prov, rawKey) {
     const k = String(rawKey || '').trim();
     if (!k) return prov + '_empty';
@@ -25472,14 +25480,14 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
   }
 
   function maskKey(k) {
-    if (!k) return 'Free';
+    if (!k) return 'Zero-Key';
     if (k.length <= 10) return k;
     return k.slice(0, 5) + '•••' + k.slice(-4);
   }
 
-  const runtimeState = {}; // id -> { status: 'ready'|'running'|'cooldown'|'error', until: ts, latency: ms }
-  const activityLog = [];  // { ts, text, ok }
-  let activeJob = { name: 'Idle • Waiting for job', done: 0, total: 0, state: 'idle' };
+  const runtimeState = {};
+  const activityLog = [];
+  let activeJob = { name: 'Standby • Neural Uplink Ready', done: 0, total: 0, state: 'idle' };
   let isSplitting = false;
   let isPinging = false;
   let showAddBox = false;
@@ -25509,7 +25517,7 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
       if (st.status === 'cooldown' && st.until && Date.now() > st.until) st.status = 'ready';
       nodes.push({
         id, provider: 'gemini', rawKey: k,
-        name: meta.name || `Gemini Account ${idx + 1}`,
+        name: meta.name || `Unit-0${idx + 1} (Gemini)`,
         model: meta.model || curGemModel,
         enabled: meta.enabled !== false,
         status: meta.enabled === false ? 'paused' : st.status,
@@ -25523,6 +25531,22 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     oaiKeys.forEach((k, idx) => {
       if (!k || seen.has(k)) return;
       seen.add(k);
+      if (k.startsWith('AQ.') || k.startsWith('AIza')) {
+        const id = keyIdOf('gemini', k);
+        const meta = cfg.nodeMeta[id] || cfg.nodeMeta[keyIdOf('openai', k)] || {};
+        const st = runtimeState[id] || { status: 'ready' };
+        nodes.push({
+          id, provider: 'gemini', rawKey: k,
+          name: meta.name || `Unit (${k.slice(0, 5)})`,
+          model: meta.model || curGemModel,
+          enabled: meta.enabled !== false,
+          status: meta.enabled === false ? 'paused' : st.status,
+          latency: st.latency || 0,
+          linesToday: (stats.perNode[id] && stats.perNode[id].lines) || 0,
+          reqsToday: (stats.perNode[id] && stats.perNode[id].reqs) || 0
+        });
+        return;
+      }
       const id = keyIdOf('openai', k);
       const meta = cfg.nodeMeta[id] || {};
       const st = runtimeState[id] || { status: 'ready' };
@@ -25530,7 +25554,7 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
       const provLabel = k.startsWith('gsk_') ? 'Groq' : (k.startsWith('sk-or-') ? 'OpenRouter' : 'OpenAI');
       nodes.push({
         id, provider: 'openai', rawKey: k,
-        name: meta.name || `${provLabel} Node ${idx + 1}`,
+        name: meta.name || `${provLabel} Unit ${idx + 1}`,
         model: meta.model || curOaiModel,
         enabled: meta.enabled !== false,
         status: meta.enabled === false ? 'paused' : st.status,
@@ -25538,6 +25562,18 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
         linesToday: (stats.perNode[id] && stats.perNode[id].lines) || 0,
         reqsToday: (stats.perNode[id] && stats.perNode[id].reqs) || 0
       });
+    });
+
+    const fSt = runtimeState['free_cloud'] || { status: 'ready' };
+    nodes.push({
+      id: 'free_cloud', provider: 'free', rawKey: '',
+      name: '🆓 Free Cloud Relay',
+      model: 'Auto-GTX (Zero Key)',
+      enabled: cfg.freeEnabled !== false,
+      status: cfg.freeEnabled === false ? 'paused' : fSt.status,
+      latency: fSt.latency || 0,
+      linesToday: (stats.perNode['free_cloud'] && stats.perNode['free_cloud'].lines) || 0,
+      reqsToday: (stats.perNode['free_cloud'] && stats.perNode['free_cloud'].reqs) || 0
     });
 
     return nodes;
@@ -25551,18 +25587,17 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
       stats.totalLines += Math.max(1, linesDelta || 1);
       runtimeState[id] = { status: 'ready', latency: latMs || 0 };
       saveStats();
-      addLog(`${name} • OK (${latMs || 0}ms)`, true);
+      addLog(`${name} • SYNC OK (${latMs || 0}ms)`, true);
     } else if (statusCode === 429) {
       runtimeState[id] = { status: 'cooldown', until: Date.now() + 45000, latency: latMs || 0 };
-      addLog(`${name} • Quota 429 (Cooldown 45s)`, false);
+      addLog(`${name} • QUOTA 429 (Shield 45s)`, false);
     } else {
       runtimeState[id] = { status: 'error', latency: latMs || 0 };
-      addLog(`${name} • Error ${statusCode || ''}`, false);
+      addLog(`${name} • ERR ${statusCode || 'NET'}`, false);
     }
     scheduleRefresh();
   }
 
-  // Real-time fetch monitor (observes Gemini & OpenAI/Groq calls without breaking TTS or anything else!)
   const _prevFetchRT = window.fetch.bind(window);
   window.fetch = async function(input, init) {
     const url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
@@ -25570,7 +25605,7 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     const isOai = /api\.groq\.com|openrouter\.ai|api\.openai\.com/i.test(url);
     if (!isGem && !isOai) return _prevFetchRT(input, init);
 
-    let matchedId = null, matchedName = 'AI Node';
+    let matchedId = null, matchedName = 'AI Unit';
     const nodes = collectNodes();
     if (isGem) {
       const m = url.match(/[?&]key=([^&]+)/);
@@ -25600,15 +25635,11 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     try {
       const resp = await _prevFetchRT(input, init);
       const lat = Math.round(performance.now() - t0);
-      if (matchedId) {
-        recordNodeHit(matchedId, matchedName, estLines, resp.ok, resp.status, lat);
-      }
+      if (matchedId) recordNodeHit(matchedId, matchedName, estLines, resp.ok, resp.status, lat);
       return resp;
     } catch (err) {
       const lat = Math.round(performance.now() - t0);
-      if (matchedId) {
-        recordNodeHit(matchedId, matchedName, 0, false, 0, lat);
-      }
+      if (matchedId) recordNodeHit(matchedId, matchedName, 0, false, 0, lat);
       throw err;
     }
   };
@@ -25618,15 +25649,19 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     runtimeState[node.id] = { status: 'running' };
     refreshUI();
     try {
-      if (node.provider === 'gemini') {
+      if (node.provider === 'free') {
+        if (typeof freeTranslate === 'function') await freeTranslate('Hello', 'en', 'km');
+        else await _prevFetchRT('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=km&dt=t&q=Hello');
+        recordNodeHit(node.id, node.name, 1, true, 200, Math.round(performance.now() - t0));
+        return true;
+      } else if (node.provider === 'gemini') {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(node.model || 'gemini-2.5-flash')}:generateContent?key=${encodeURIComponent(node.rawKey)}`;
         const r = await _prevFetchRT(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'OK' }] }], generationConfig: { maxOutputTokens: 4 } })
         });
-        const lat = Math.round(performance.now() - t0);
-        recordNodeHit(node.id, node.name, 1, r.ok, r.status, lat);
+        recordNodeHit(node.id, node.name, 1, r.ok, r.status, Math.round(performance.now() - t0));
         return r.ok;
       } else {
         const ep = node.rawKey.startsWith('gsk_') ? 'https://api.groq.com/openai/v1/chat/completions'
@@ -25637,8 +25672,7 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + node.rawKey },
           body: JSON.stringify({ model: node.model || 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'OK' }], max_tokens: 4 })
         });
-        const lat = Math.round(performance.now() - t0);
-        recordNodeHit(node.id, node.name, 1, r.ok, r.status, lat);
+        recordNodeHit(node.id, node.name, 1, r.ok, r.status, Math.round(performance.now() - t0));
         return r.ok;
       }
     } catch (e) {
@@ -25650,22 +25684,39 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
   async function pingAllNodes() {
     if (isPinging) return;
     const nodes = collectNodes().filter(n => n.enabled);
-    if (!nodes.length) {
-      if (typeof toast === 'function') toast('⚠️ មិនទាន់មាន API Key ទេ! សូមចុច + Add Account');
-      return;
-    }
+    if (!nodes.length) return;
     isPinging = true;
     refreshUI();
     await Promise.all(nodes.map(n => pingNode(n)));
     isPinging = false;
     refreshUI();
-    if (typeof toast === 'function') toast('🔄 តេស្តស្ថានភាព Account Pool រួចរាល់!');
+    if (typeof toast === 'function') toast('🛸 Alien Telemetry Scan Complete!');
   }
 
   async function translateBatchWithNode(node, batch) {
-    const tgtName = (typeof getLangObj === 'function')
-      ? (getLangObj(document.getElementById('recapTargetLang')?.value || document.getElementById('vidTargetLang')?.value || 'km')?.name || 'Khmer')
-      : 'Khmer';
+    const tgtCode = document.getElementById('recapTargetLang')?.value || document.getElementById('vidTargetLang')?.value || 'km';
+    const tgtName = (typeof getLangObj === 'function') ? (getLangObj(tgtCode)?.name || 'Khmer') : 'Khmer';
+
+    if (node.provider === 'free') {
+      const t0 = performance.now();
+      runtimeState[node.id] = { status: 'running' };
+      scheduleRefresh();
+      const out = [];
+      for (const c of batch) {
+        const src = (c.src || c.km || '').replace(/\n/g, ' ').trim();
+        if (!src) { out.push(''); continue; }
+        if (typeof freeTranslate === 'function') {
+          out.push(await freeTranslate(src, 'auto', tgtCode));
+        } else {
+          const r = await _prevFetchRT(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(tgtCode)}&dt=t&q=${encodeURIComponent(src)}`);
+          const j = await r.json();
+          out.push((j?.[0] || []).map(x => x?.[0] || '').join(''));
+        }
+      }
+      recordNodeHit(node.id, node.name, batch.length, true, 200, Math.round(performance.now() - t0));
+      return out;
+    }
+
     const payload = batch.map((c, idx) => `${idx}: ${(c.src || c.km || '').replace(/\n/g, ' ').trim()}`).join('\n');
     const sys = `Translate each numbered subtitle line naturally into ${tgtName}. Return ONLY a JSON array of strings of length ${batch.length}. No markdown.`;
 
@@ -25733,9 +25784,11 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
       if (typeof toast === 'function') toast('⚠️ មិនទាន់មាន Subtitle Cues ដើម្បីបកប្រែទេ!');
       return;
     }
-    const readyNodes = collectNodes().filter(n => n.enabled && n.status !== 'cooldown');
+    const allNodes = collectNodes().filter(n => n.enabled && n.status !== 'cooldown');
+    const apiFirst = allNodes.filter(n => n.provider !== 'free');
+    const readyNodes = apiFirst.length ? apiFirst : allNodes;
     if (!readyNodes.length) {
-      if (typeof toast === 'function') toast('⚠️ មិនមាន Account Ready ទេ! សូមបន្ថែម Key ឬ Refresh');
+      if (typeof toast === 'function') toast('⚠️ មិនមាន Node Ready ទេ!');
       return;
     }
 
@@ -25746,19 +25799,19 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     for (let i = 0; i < workList.length; i += B) batches.push(workList.slice(i, i + B));
 
     isSplitting = true;
-    activeJob = { name: `Cues Batch (${workList.length} lines)`, done: 0, total: workList.length, state: 'running' };
-    addLog(`Started Split Route: ${workList.length} lines across ${cfg.splitAccounts ? readyNodes.length : 1} node(s)`, true);
+    activeJob = { name: `Hyper-Beam (${workList.length} lines)`, done: 0, total: workList.length, state: 'running' };
+    addLog(`Hyper-Route Engaged: ${workList.length} lines -> ${cfg.splitAccounts ? readyNodes.length : 1} unit(s)`, true);
     refreshUI();
 
     let nextIdx = 0;
     let rr = 0;
     const workers = cfg.splitAccounts ? Math.min(cfg.concurrency || 2, Math.max(1, readyNodes.length)) : 1;
 
-    async function workerLoop(wIdx) {
+    async function workerLoop() {
       while (nextIdx < batches.length) {
         const myBIdx = nextIdx++;
         const batch = batches[myBIdx];
-        const pool = cfg.splitAccounts ? readyNodes : [readyNodes[0]];
+        const pool = cfg.splitAccounts ? allNodes : [readyNodes[0]];
         let ok = false;
         const maxTry = cfg.autoFallback ? pool.length : 1;
         for (let t = 0; t < maxTry; t++) {
@@ -25776,17 +25829,17 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
             if (!cfg.autoFallback) break;
           }
         }
-        if (!ok) addLog(`Batch #${myBIdx + 1} skipped (all nodes busy)`, false);
+        if (!ok) addLog(`Sector #${myBIdx + 1} delayed`, false);
         refreshUI();
       }
     }
 
     try {
-      await Promise.all(Array.from({ length: workers }, (_, i) => workerLoop(i)));
+      await Promise.all(Array.from({ length: workers }, () => workerLoop()));
       activeJob.state = 'done';
-      addLog(`Translation complete (${activeJob.done}/${activeJob.total} lines)`, true);
+      addLog(`Transmission Complete (${activeJob.done}/${activeJob.total} lines)`, true);
       if (typeof renderAll === 'function') { try { renderAll(); } catch (e) {} }
-      if (typeof toast === 'function') toast(`🛰️ Router បកប្រែរួចរាល់ ${activeJob.done}/${activeJob.total} បន្ទាត់!`);
+      if (typeof toast === 'function') toast(`🛸 Alien Router បកប្រែរួចរាល់ ${activeJob.done}/${activeJob.total} បន្ទាត់!`);
     } finally {
       isSplitting = false;
       refreshUI();
@@ -25796,20 +25849,25 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
   function addAccountToRealPool(name, keyVal, modelVal) {
     const k = String(keyVal || '').trim();
     if (!k) {
-      if (typeof toast === 'function') toast('⚠️ សូមបញ្ចូល API Key!');
+      if (typeof toast === 'function') toast('⚠️ សូម Paste API Key (AQ... ឬ AIza...)');
       return false;
     }
-    const prov = k.startsWith('AIza') ? 'gemini' : 'openai';
+    const prov = detectProviderFromKey(k);
     const id = keyIdOf(prov, k);
+    const defModel = prov === 'gemini' ? (document.getElementById('geminiModel')?.value || 'gemini-2.5-flash') : 'llama-3.3-70b-versatile';
     cfg.nodeMeta[id] = {
-      name: String(name || '').trim() || (prov === 'gemini' ? 'Gemini Account' : 'OpenAI/Groq Node'),
-      model: String(modelVal || '').trim() || (prov === 'gemini' ? 'gemini-2.5-flash' : 'llama-3.3-70b-versatile'),
+      name: String(name || '').trim() || (prov === 'gemini' ? 'Alien Gemini Unit' : 'Alien OAI Unit'),
+      model: String(modelVal || '').trim() || defModel,
       enabled: true
     };
     saveCfg();
 
     if (typeof apiKeyPool !== 'undefined' && Array.isArray(apiKeyPool)) {
-      if (!apiKeyPool.some(x => x.key === k)) {
+      const existing = apiKeyPool.find(x => x.key === k);
+      if (existing) {
+        existing.provider = prov;
+        existing.model = cfg.nodeMeta[id].model;
+      } else {
         const ep = k.startsWith('gsk_') ? 'https://api.groq.com/openai/v1/chat/completions'
           : (k.startsWith('sk-or-') ? 'https://openrouter.ai/api/v1/chat/completions' : '');
         apiKeyPool.push({
@@ -25820,12 +25878,12 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
           model: cfg.nodeMeta[id].model,
           active: apiKeyPool.length === 0
         });
-        if (typeof safeSet === 'function') safeSet('cts_king_key_pool', apiKeyPool);
-        if (typeof renderKeyPool === 'function') { try { renderKeyPool(); } catch (e) {} }
-        if (typeof updateEngineBadge === 'function') { try { updateEngineBadge(); } catch (e) {} }
       }
+      if (typeof safeSet === 'function') safeSet('cts_king_key_pool', apiKeyPool);
+      if (typeof renderKeyPool === 'function') { try { renderKeyPool(); } catch (e) {} }
+      if (typeof updateEngineBadge === 'function') { try { updateEngineBadge(); } catch (e) {} }
     }
-    addLog(`Added Account: ${cfg.nodeMeta[id].name}`, true);
+    addLog(`Docked ${prov.toUpperCase()}: ${cfg.nodeMeta[id].name}`, true);
     showAddBox = false;
     refreshUI();
     const added = collectNodes().find(n => n.id === id);
@@ -25833,35 +25891,115 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     return true;
   }
 
-  // Scoped CSS (ONLY inside #ctsRouterModal — zero leak to CTS KING TOOL PRO!)
+  function removeNodeFromPool(nodeId, rawKey) {
+    if (nodeId === 'free_cloud') {
+      cfg.freeEnabled = !cfg.freeEnabled;
+      saveCfg();
+      refreshUI();
+      return;
+    }
+    if (rawKey && typeof apiKeyPool !== 'undefined' && Array.isArray(apiKeyPool)) {
+      for (let i = apiKeyPool.length - 1; i >= 0; i--) {
+        if (apiKeyPool[i].key === rawKey) apiKeyPool.splice(i, 1);
+      }
+      if (typeof safeSet === 'function') safeSet('cts_king_key_pool', apiKeyPool);
+    }
+    if (typeof settings !== 'undefined') {
+      if (settings.geminiKey === rawKey) {
+        settings.geminiKey = '';
+        const gk = document.getElementById('geminiKey'); if (gk) gk.value = '';
+      }
+      if (settings.openaiKey === rawKey) {
+        settings.openaiKey = '';
+        const ok = document.getElementById('openaiKey'); if (ok) ok.value = '';
+      }
+      if (typeof saveSettings === 'function') { try { saveSettings(true); } catch (e) {} }
+    }
+    if (typeof renderKeyPool === 'function') { try { renderKeyPool(); } catch (e) {} }
+    if (typeof updateEngineBadge === 'function') { try { updateEngineBadge(); } catch (e) {} }
+    delete runtimeState[nodeId];
+    addLog('Ejected Node', true);
+    refreshUI();
+  }
+
+  // Strictly Scoped Alien CSS (NEVER leaks outside #ctsRouterModal & #ctsAiRouterCard!)
   const styleEl = document.createElement('style');
   styleEl.textContent = `
-    #ctsRouterModal{position:fixed;inset:0;z-index:99998;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.78);backdrop-filter:blur(6px);padding:8px}
+    #ctsAiRouterCard{position:relative;overflow:hidden;border:1.5px solid rgba(56,189,248,0.45)!important;background:linear-gradient(145deg,rgba(6,12,28,0.95),rgba(16,8,36,0.95))!important}
+    #ctsAiRouterCard::before{content:'';position:absolute;inset:-50%;background:conic-gradient(from 0deg,transparent 0 280deg,rgba(56,189,248,0.22) 320deg,transparent 360deg);animation:ctsAlienSpin 6s linear infinite;pointer-events:none}
+    #ctsAiRouterCard>*{position:relative;z-index:1}
+    #cts-rt-open{position:relative;overflow:hidden;clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);letter-spacing:.4px;animation:ctsAlienGlow 2.4s ease-in-out infinite}
+
+    #ctsRouterModal{position:fixed;inset:0;z-index:99998;display:none;align-items:center;justify-content:center;background:rgba(2,4,12,0.84);backdrop-filter:blur(8px);padding:8px}
     #ctsRouterModal.open{display:flex}
-    #ctsRouterShell{width:100%;max-width:1040px;max-height:94vh;display:flex;flex-direction:column;border-radius:16px;background:var(--rt-bg);color:var(--rt-text);border:1.5px solid var(--rt-border);box-shadow:0 20px 60px rgba(0,0,0,0.75);overflow:hidden;font-family:inherit}
-    .cts-rt-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--rt-border);background:rgba(0,0,0,0.28)}
-    .cts-rt-stats{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:7px 14px;font-size:11.5px;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.18)}
-    .cts-rt-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;background:var(--rt-card);border:1px solid var(--rt-border);font-weight:700}
-    .cts-rt-body{position:relative;flex:1;overflow-y:auto;padding:12px 14px;background-image:radial-gradient(rgba(255,255,255,0.06) 1px,transparent 1px);background-size:18px 18px}
+    #ctsRouterShell{position:relative;width:100%;max-width:1050px;max-height:94vh;display:flex;flex-direction:column;background:var(--rt-bg);color:var(--rt-text);border:1.5px solid var(--rt-border);box-shadow:0 0 45px var(--rt-acc),inset 0 0 25px rgba(0,0,0,0.65);overflow:hidden;font-family:inherit;border-radius:16px}
+    #ctsRouterShell::after{content:'';position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--rt-acc2),transparent);opacity:.45;animation:ctsAlienScan 3.8s linear infinite;pointer-events:none;z-index:20}
+
+    .cts-rt-head{display:flex;flex-direction:column;gap:8px;padding:10px 14px;border-bottom:1px solid var(--rt-border);background:rgba(0,0,0,0.38);position:relative;z-index:5}
+    .cts-rt-stats{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:7px 14px;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.22);z-index:5}
+    .cts-rt-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:var(--rt-card);border:1px solid var(--rt-border);font-weight:700;clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%)}
+    .cts-rt-skins{display:flex;gap:6px;overflow-x:auto;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,0.07);background:rgba(0,0,0,0.28);z-index:5}
+    .cts-rt-skin-btn{flex-shrink:0;padding:5px 10px;border:1px solid var(--rt-border);background:rgba(255,255,255,0.04);color:var(--rt-text);font-size:11px;font-weight:800;cursor:pointer;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);transition:transform .15s,box-shadow .2s}
+    .cts-rt-skin-btn.act{background:linear-gradient(135deg,var(--rt-acc),var(--rt-acc2));color:#020617;box-shadow:0 0 14px var(--rt-acc2);transform:scale(1.04)}
+
+    .cts-rt-body{position:relative;flex:1;overflow-y:auto;padding:14px 14px 28px;overflow-x:hidden}
+    .cts-rt-bgfx{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:0.55}
     .cts-rt-grid{position:relative;display:grid;grid-template-columns:1fr;gap:14px;align-items:center;z-index:2}
-    @media(min-width:760px){.cts-rt-grid{grid-template-columns:1.05fr 0.7fr 0.95fr;gap:18px;min-height:330px}}
-    .cts-rt-col{display:flex;flex-direction:column;gap:8px}
-    .cts-rt-node{padding:9px 11px;border-radius:11px;background:var(--rt-card);border:1.5px solid var(--rt-border);display:flex;align-items:center;justify-content:space-between;gap:8px;transition:transform .15s,box-shadow .2s}
-    .cts-rt-node.running{border-color:var(--rt-acc2);box-shadow:0 0 18px var(--rt-acc);transform:scale(1.015)}
-    .cts-rt-orb-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0}
-    .cts-rt-orb{width:92px;height:92px;border-radius:50%;background:var(--rt-orb);border:2px solid var(--rt-acc2);box-shadow:0 0 30px var(--rt-acc),inset 0 0 18px rgba(255,255,255,0.22);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;font-size:13px;letter-spacing:.3px}
-    .cts-rt-orb.active{animation:ctsRtPulse 1s infinite ease-in-out}
-    @keyframes ctsRtPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
-    .cts-rt-job{padding:11px 12px;border-radius:12px;background:var(--rt-card);border:1.5px solid var(--rt-border)}
+    @media(min-width:760px){.cts-rt-grid{grid-template-columns:1.05fr 0.72fr 0.95fr;gap:18px;min-height:330px}}
+    .cts-rt-col{display:flex;flex-direction:column;gap:9px}
+
+    /* Alien Node & Button Geometries per Shape */
+    .cts-rt-node{position:relative;padding:10px 12px;background:var(--rt-card);border:1.5px solid var(--rt-border);display:flex;align-items:center;justify-content:space-between;gap:8px;transition:transform .2s,box-shadow .2s}
+    .cts-rt-node.running{border-color:var(--rt-acc2);box-shadow:0 0 22px var(--rt-acc2);animation:ctsAlienFloat 1.2s ease-in-out infinite}
+    .cts-rt-job{position:relative;padding:12px 13px;background:var(--rt-card);border:1.5px solid var(--rt-border)}
+    .cts-rt-btn{padding:6px 10px;border:1px solid var(--rt-border);background:var(--rt-card);color:var(--rt-text);font-size:11.5px;font-weight:800;cursor:pointer;transition:transform .12s,box-shadow .18s}
+    .cts-rt-btn:active{transform:scale(0.95)}
+    .cts-rt-btn.pri{background:linear-gradient(135deg,var(--rt-acc),var(--rt-acc2));border-color:var(--rt-acc2);color:#020617;box-shadow:0 0 14px var(--rt-acc)}
+
+    /* 10 Distinct Alien Shape Classes */
+    .rt-shape-bevel .cts-rt-node,.rt-shape-bevel .cts-rt-job,.rt-shape-bevel .cts-rt-btn{clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);border-radius:0}
+    .rt-shape-organic .cts-rt-node,.rt-shape-organic .cts-rt-job{border-radius:22px 6px 22px 6px;animation:ctsAlienBreathe 3.6s ease-in-out infinite}
+    .rt-shape-organic .cts-rt-btn{border-radius:14px 4px 14px 4px}
+    .rt-shape-hex .cts-rt-node,.rt-shape-hex .cts-rt-job{clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,14px 100%,0 50%);padding:10px 18px;border-radius:0}
+    .rt-shape-hex .cts-rt-btn{clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%);padding:6px 13px}
+    .rt-shape-capsule .cts-rt-node,.rt-shape-capsule .cts-rt-job,.rt-shape-capsule .cts-rt-btn{border-radius:999px}
+    .rt-shape-visor .cts-rt-node,.rt-shape-visor .cts-rt-job{border-radius:4px;border-left:4px solid var(--rt-acc2);border-right:4px solid var(--rt-acc2);box-shadow:inset 0 0 16px rgba(244,63,94,0.18)}
+    .rt-shape-visor .cts-rt-btn{clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
+    .rt-shape-shard .cts-rt-node,.rt-shape-shard .cts-rt-job,.rt-shape-shard .cts-rt-btn{clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));border-radius:0}
+    .rt-shape-crystal .cts-rt-node,.rt-shape-crystal .cts-rt-job{clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 14px,calc(100% - 10px) 100%,10px 100%,0 calc(100% - 14px));animation:ctsAlienFloat 4s ease-in-out infinite}
+    .rt-shape-crystal .cts-rt-btn{clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);padding:7px 14px}
+    .rt-shape-gate .cts-rt-node,.rt-shape-gate .cts-rt-job{border-radius:16px;border-top:2px solid var(--rt-acc2);border-bottom:2px solid var(--rt-acc2)}
+    .rt-shape-gate .cts-rt-btn{border-radius:12px;border-top:2px solid var(--rt-acc2)}
+    .rt-shape-radar .cts-rt-node,.rt-shape-radar .cts-rt-job{border-radius:14px;border-style:dashed}
+    .rt-shape-radar .cts-rt-btn{border-radius:99px;border-style:dashed}
+    .rt-shape-wing .cts-rt-node,.rt-shape-wing .cts-rt-job,.rt-shape-wing .cts-rt-btn{clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 100%,0 100%);border-radius:0}
+
+    /* Alien Central Reactor Core + Multi-Ring Animations */
+    .cts-rt-orb-wrap{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 0}
+    .cts-rt-core-stage{position:relative;width:136px;height:136px;display:flex;align-items:center;justify-content:center}
+    .cts-rt-ring1,.cts-rt-ring2,.cts-rt-ring3{position:absolute;border-radius:50%;pointer-events:none}
+    .cts-rt-ring1{inset:2px;border:2px dashed var(--rt-acc2);opacity:.75;animation:ctsAlienSpin 7s linear infinite}
+    .cts-rt-ring2{inset:12px;border:2px dotted var(--rt-acc);opacity:.85;animation:ctsAlienSpinRev 4.5s linear infinite}
+    .cts-rt-ring3{inset:0;background:conic-gradient(from 0deg,transparent 0 260deg,var(--rt-acc2) 320deg,transparent 360deg);opacity:.38;animation:ctsAlienSpin 2.6s linear infinite}
+    .cts-rt-orb{position:relative;z-index:3;width:86px;height:86px;border-radius:50%;background:var(--rt-orb);border:2px solid var(--rt-acc2);box-shadow:0 0 32px var(--rt-acc2),inset 0 0 18px rgba(255,255,255,0.28);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;font-size:12px;text-shadow:0 0 8px #000}
+    .cts-rt-orb.active{animation:ctsAlienPulse .75s infinite ease-in-out}
+    .rt-shape-hex .cts-rt-orb{clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);border-radius:0}
+    .rt-shape-crystal .cts-rt-orb{clip-path:polygon(50% 0,95% 35%,75% 100%,25% 100%,5% 35%);border-radius:0}
+    .rt-shape-shard .cts-rt-orb{border-radius:14px;animation:ctsAlienSpin 8s linear infinite}
+    .rt-shape-blackhole .cts-rt-ring1,.rt-shape-capsule .cts-rt-ring1{transform:rotateX(65deg);border-style:solid}
+
     .cts-rt-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
-    .cts-rt-flow{stroke-dasharray:6 6;animation:ctsRtFlow 1s linear infinite}
-    @keyframes ctsRtFlow{to{stroke-dashoffset:-24}}
-    .cts-rt-skins{display:flex;gap:5px;overflow-x:auto;padding:6px 14px;border-bottom:1px solid rgba(255,255,255,0.07);background:rgba(0,0,0,0.2)}
-    .cts-rt-skin-btn{flex-shrink:0;padding:4px 9px;border-radius:99px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.05);color:var(--rt-text);font-size:11px;font-weight:700;cursor:pointer}
-    .cts-rt-skin-btn.act{border-color:var(--rt-acc2);background:var(--rt-acc);color:#fff}
-    .cts-rt-btn{padding:6px 10px;border-radius:8px;border:1px solid var(--rt-border);background:var(--rt-card);color:var(--rt-text);font-size:11.5px;font-weight:700;cursor:pointer}
-    .cts-rt-btn.pri{background:var(--rt-acc);border-color:var(--rt-acc2);color:#fff}
-    .cts-rt-log{border-top:1px solid var(--rt-border);padding:8px 14px;background:rgba(0,0,0,0.34);max-height:110px;overflow-y:auto;font-size:11px}
+    .cts-rt-flow{stroke-dasharray:7 6;animation:ctsRtFlow .7s linear infinite}
+    .cts-rt-log{border-top:1px solid var(--rt-border);padding:8px 14px;background:rgba(0,0,0,0.42);max-height:105px;overflow-y:auto;font-size:11px;z-index:5}
+
+    @keyframes ctsAlienSpin{to{transform:rotate(360deg)}}
+    @keyframes ctsAlienSpinRev{to{transform:rotate(-360deg)}}
+    @keyframes ctsAlienScan{0%{top:-2%}100%{top:102%}}
+    @keyframes ctsAlienPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+    @keyframes ctsAlienFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+    @keyframes ctsAlienBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.014)}}
+    @keyframes ctsAlienGlow{0%,100%{box-shadow:0 0 12px rgba(56,189,248,0.45)}50%{box-shadow:0 0 24px rgba(168,85,247,0.85)}}
+    @keyframes ctsRtFlow{to{stroke-dashoffset:-26}}
   `;
   document.head.appendChild(styleEl);
 
@@ -25869,11 +26007,23 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
   function scheduleRefresh() {
     if (rafQueued) return;
     rafQueued = true;
-    setTimeout(() => { rafQueued = false; refreshUI(); }, 60);
+    setTimeout(() => {
+      rafQueued = false;
+      const ae = document.activeElement;
+      if (ae && ae.closest && ae.closest('#cts-rt-addform')) return;
+      refreshUI();
+    }, 65);
   }
 
   function escHtml(s) {
     return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
+
+  function getShapeBgSvg(sk) {
+    if (sk.shape === 'hex') return `<svg width="100%" height="100%"><defs><pattern id="ctsHexP" width="40" height="35" patternUnits="userSpaceOnUse"><polygon points="20,1 39,10 39,26 20,34 1,26 1,10" fill="none" stroke="${sk.acc}" stroke-opacity="0.16" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(#ctsHexP)"/></svg>`;
+    if (sk.shape === 'radar') return `<div style="position:absolute;inset:0;background:radial-gradient(circle,transparent 20%,${sk.acc}18 21%,transparent 22%,transparent 45%,${sk.acc}18 46%,transparent 47%),conic-gradient(from 0deg,transparent 0 300deg,${sk.acc2}33 360deg);animation:ctsAlienSpin 4s linear infinite"></div>`;
+    if (sk.shape === 'wing') return `<div style="position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 36px,${sk.acc2}18 37px,transparent 38px),radial-gradient(ellipse at center,${sk.acc}22,transparent 70%)"></div>`;
+    return `<div style="position:absolute;inset:0;background-image:radial-gradient(${sk.acc2}33 1.2px,transparent 1.2px);background-size:20px 20px"></div>`;
   }
 
   function drawSvgLines() {
@@ -25891,10 +26041,10 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     svg.setAttribute('width', String(body.clientWidth));
     svg.setAttribute('height', String(body.scrollHeight));
 
-    const sk = SKINS[cfg.skin] || SKINS.violet;
+    const sk = SKINS[cfg.skin] || SKINS.mothership;
     let paths = '';
 
-    body.querySelectorAll('.cts-rt-node').forEach(el => {
+    body.querySelectorAll('.cts-rt-node').forEach((el, idx) => {
       const r = el.getBoundingClientRect();
       const x1 = r.right - br.left;
       const y1 = r.top - br.top + r.height / 2 + body.scrollTop;
@@ -25903,8 +26053,7 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
       const sy = isDesktop ? y1 : (r.bottom - br.top + body.scrollTop);
       const tx = isDesktop ? (ox - or.width / 2) : ox;
       const ty = isDesktop ? oy : (oy - or.height / 2);
-      const mx = (sx + tx) / 2;
-      const my = (sy + ty) / 2;
+      const mx = (sx + tx) / 2, my = (sy + ty) / 2;
       const d = isDesktop
         ? `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`
         : `M ${sx} ${sy} C ${sx} ${my}, ${tx} ${my}, ${tx} ${ty}`;
@@ -25912,9 +26061,12 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
       const isRun = el.classList.contains('running');
       const isPaused = el.getAttribute('data-st') === 'paused' || el.getAttribute('data-st') === 'cooldown';
       const stroke = isRun ? sk.acc2 : (isPaused ? 'rgba(148,163,184,0.22)' : sk.acc);
-      const op = isRun ? '0.95' : (isPaused ? '0.35' : '0.45');
-      const cls = isRun ? ' class="cts-rt-flow"' : '';
-      paths += `<path d="${d}" fill="none" stroke="${stroke}" stroke-opacity="${op}" stroke-width="${isRun ? 2.6 : 1.5}"${cls}/>`;
+      const op = isRun ? '0.98' : (isPaused ? '0.32' : '0.52');
+      const pid = `cts-p-${idx}`;
+      paths += `<path id="${pid}" d="${d}" fill="none" stroke="${stroke}" stroke-opacity="${op}" stroke-width="${isRun ? 2.8 : 1.6}" class="${isRun || !isPaused ? 'cts-rt-flow' : ''}"/>`;
+      if (!isPaused) {
+        paths += `<circle r="${isRun ? 4.2 : 2.6}" fill="${sk.acc2}"><animateMotion dur="${isRun ? '0.7s' : '2.2s'}" repeatCount="indefinite"><mpath href="#${pid}"/></animateMotion></circle>`;
+      }
     });
 
     if (job) {
@@ -25929,90 +26081,90 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
         ? `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`
         : `M ${sx} ${sy} C ${sx} ${my}, ${tx} ${my}, ${tx} ${ty}`;
       const act = activeJob.state === 'running';
-      paths += `<path d="${d}" fill="none" stroke="${act ? sk.acc2 : sk.acc}" stroke-opacity="${act ? 0.95 : 0.45}" stroke-width="${act ? 2.6 : 1.6}"${act ? ' class="cts-rt-flow"' : ''}/>`;
+      paths += `<path id="cts-p-job" d="${d}" fill="none" stroke="${act ? sk.acc2 : sk.acc}" stroke-opacity="${act ? 0.98 : 0.52}" stroke-width="${act ? 2.8 : 1.8}" class="cts-rt-flow"/>`;
+      paths += `<circle r="${act ? 4.5 : 2.8}" fill="${sk.acc2}"><animateMotion dur="${act ? '0.65s' : '2s'}" repeatCount="indefinite"><mpath href="#cts-p-job"/></animateMotion></circle>`;
     }
     svg.innerHTML = paths;
   }
 
-  // Multi-language UI (6 languages, NO Thai!)
   const T = {
     km: {
-      cardTitle: '🛰️ AI Translation Router Studio (គ្រប់គ្រង Key & បែងចែកការងារ)',
-      cardDesc: 'មើលស្ថានភាព Account/Key ទាំងអស់, បំបែក Batch បកប្រែព្រមគ្នា និងប្តូរ Style Dashboard ១០ ម៉ូដ។',
-      openBtn: '🛰️ បើកផ្ទាំង AI Router Studio (១០ Styles)',
-      hdrTitle: '🛰️ AI Translation Router',
-      ready: 'Ready', running: 'កំពុងរត់', linesToday: 'បន្ទាត់ថ្ងៃនេះ', needAtt: 'ត្រូវពិនិត្យ',
-      allGood: 'ដំណើរការល្អ', conc: 'ព្រមគ្នា', autoFb: 'Auto Fallback', split: 'Split across accounts',
-      ping: '🔄 Ping / Refresh', addAcc: '+ បន្ថែម Account', splitRun: '⚡ Split Translate Cues ឥឡូវ',
-      accHdr: 'ACCOUNTS / API KEYS POOL', jobHdr: 'ACTIVE JOB & ROUTING', logHdr: 'Activity Log',
-      addTitle: 'បន្ថែម Account / API Key ថ្មីចូល Pool', namePh: 'ឈ្មោះ Account (ឧ. Gemini PRO 2)',
-      keyPh: 'Paste Key (AIza..., gsk_..., sk-or-...)', saveAcc: '✅ រក្សាទុក & តេស្ត', cancel: 'បោះបង់',
-      noAcc: 'មិនទាន់មាន API Key ទេ — ចុច "+ បន្ថែម Account" ខាងលើ'
+      cardTitle: '🛸 Alien AI Translation Router (គ្រប់គ្រង Key & បែងចែកការងារ)',
+      cardDesc: 'ផ្ទាំងបញ្ជាមនុស្សក្រៅភព ១០ Styles ៖ តាមដាន Key ទាំងអស់, បំបែក Batch បកប្រែព្រមគ្នា និង Free Relay។',
+      openBtn: '🛸 បើកផ្ទាំង Alien AI Router (១០ Styles)',
+      hdrTitle: '🛸 ALIEN AI ROUTER',
+      ready: 'Ready', running: 'កំពុងបញ្ជូន', linesToday: 'បន្ទាត់ថ្ងៃនេះ', needAtt: 'ត្រូវពិនិត្យ',
+      allGood: 'ប្រព័ន្ធស្ថិរភាព', conc: 'ព្រមគ្នា', autoFb: 'Auto Fallback', split: 'Split across nodes',
+      ping: '📡 Scan', addAcc: '+ Dock Key', splitRun: '⚡ HYPER-SPLIT TRANSLATE CUES',
+      accHdr: '◈ ALIEN NEURAL NODES', jobHdr: '◈ TRANSMISSION TARGET', logHdr: 'TELEMETRY LOG',
+      addTitle: 'ភ្ជាប់ Key ថ្មីចូលប្រព័ន្ធ Router', namePh: 'ឈ្មោះសម្គាល់ (ឧ. mymail@gmail.com)',
+      keyPh: 'Paste Key (AQ..., AIza..., gsk_...)', saveAcc: '🛸 Dock & Scan', cancel: 'បិទ',
+      getKey: '🔑 យក Key ១ ចុច', pasteKey: '📋 Paste'
     },
     en: {
-      cardTitle: '🛰️ AI Translation Router Studio (Multi-Key Hub)',
-      cardDesc: 'Monitor live API account nodes, split cue translation across keys, auto-failover, and switch 10 dashboard themes.',
-      openBtn: '🛰️ Open AI Router Studio (10 Styles)',
-      hdrTitle: '🛰️ AI Translation Router',
-      ready: 'ready', running: 'running', linesToday: 'lines today', needAtt: 'need attention',
-      allGood: 'all good', conc: 'Jobs at once', autoFb: 'Auto fallback', split: 'Split across accounts',
-      ping: '🔄 Refresh', addAcc: '+ Add account', splitRun: '⚡ Split Translate Cues Now',
-      accHdr: 'ACCOUNTS / API KEYS', jobHdr: 'JOBS & QUEUE', logHdr: 'Activity',
-      addTitle: 'Add Account / API Key to Real Pool', namePh: 'Account Label (e.g. Studio PRO)',
-      keyPh: 'Paste API Key (AIza..., gsk_..., sk-...)', saveAcc: '✅ Save & Ping', cancel: 'Cancel',
-      noAcc: 'No API keys yet — tap "+ Add account" above'
+      cardTitle: '🛸 Alien AI Translation Router (Multi-Key Nexus)',
+      cardDesc: 'Extraterrestrial command console with 10 animated alien geometries, live key telemetry, Free Relay & parallel split routing.',
+      openBtn: '🛸 Open Alien AI Router (10 Styles)',
+      hdrTitle: '🛸 ALIEN AI ROUTER',
+      ready: 'ready', running: 'active', linesToday: 'lines today', needAtt: 'alert',
+      allGood: 'all systems nominal', conc: 'Beams', autoFb: 'Auto fallback', split: 'Split across nodes',
+      ping: '📡 Scan', addAcc: '+ Dock Key', splitRun: '⚡ HYPER-SPLIT TRANSLATE CUES',
+      accHdr: '◈ ALIEN NEURAL NODES', jobHdr: '◈ TRANSMISSION TARGET', logHdr: 'TELEMETRY LOG',
+      addTitle: 'Dock New API Key Node', namePh: 'Label (e.g. mymail@gmail.com)',
+      keyPh: 'Paste Key (AQ..., AIza..., gsk_...)', saveAcc: '🛸 Dock & Scan', cancel: 'Cancel',
+      getKey: '🔑 Get Key', pasteKey: '📋 Paste'
     },
     zh: {
-      cardTitle: '🛰️ AI 翻译路由工作室 (多账号/多Key分发)',
-      cardDesc: '实时监控 API 节点状态、多账号并发拆分翻译、自动故障转移及 10 款界面风格切换。',
-      openBtn: '🛰️ 打开 AI Router 控制台 (10 种风格)',
-      hdrTitle: '🛰️ AI 翻译路由器',
-      ready: '就绪', running: '运行中', linesToday: '今日行数', needAtt: '需关注',
-      allGood: '一切正常', conc: '并发数', autoFb: '自动容灾', split: '多账号分流',
-      ping: '🔄 刷新检测', addAcc: '+ 添加账号/Key', splitRun: '⚡ 立即并发拆分翻译',
-      accHdr: '账号 / API KEY 节点', jobHdr: '任务与队列', logHdr: '实时日志',
-      addTitle: '添加新账号 / API Key 到真实密钥池', namePh: '账号名称 (如 Gemini PRO)',
-      keyPh: '粘贴 Key (AIza..., gsk_..., sk-...)', saveAcc: '✅ 保存并测试', cancel: '取消',
-      noAcc: '暂无 Key — 请点击上方 "+ 添加账号/Key"'
+      cardTitle: '🛸 外星 AI 翻译路由中枢 (10 种科幻形态)',
+      cardDesc: '外星科技动态控制台：实时节点监测、内置免费中继、多账号并发分流与 10 种外星 UI 形态。',
+      openBtn: '🛸 打开外星 AI 路由器 (10 种形态)',
+      hdrTitle: '🛸 ALIEN AI ROUTER',
+      ready: '就绪', running: '传输中', linesToday: '今日行数', needAtt: '警报',
+      allGood: '系统稳定', conc: '并发束', autoFb: '自动容灾', split: '多节点分流',
+      ping: '📡 扫描', addAcc: '+ 接入密钥', splitRun: '⚡ 超光速并发翻译',
+      accHdr: '◈ 外星神经节点', jobHdr: '◈ 传输目标队列', logHdr: '遥测日志',
+      addTitle: '接入新 API 密钥节点', namePh: '备注名称 (如 Gmail)',
+      keyPh: '粘贴 Key (AQ..., AIza..., gsk_...)', saveAcc: '🛸 接入并扫描', cancel: '取消',
+      getKey: '🔑 获取 Key', pasteKey: '📋 粘贴'
     },
     vi: {
-      cardTitle: '🛰️ AI Translation Router Studio (Định tuyến Đa Key)',
-      cardDesc: 'Theo dõi node API trực tiếp, chia nhỏ dịch song song, tự chuyển dự phòng khi lỗi 429 và 10 giao diện.',
-      openBtn: '🛰️ Mở AI Router Studio (10 Giao diện)',
-      hdrTitle: '🛰️ AI Translation Router',
-      ready: 'sẵn sàng', running: 'đang chạy', linesToday: 'dòng hôm nay', needAtt: 'cần chú ý',
-      allGood: 'ổn định', conc: 'Luồng song song', autoFb: 'Auto fallback', split: 'Chia đều các tài khoản',
-      ping: '🔄 Kiểm tra', addAcc: '+ Thêm tài khoản', splitRun: '⚡ Chia luồng dịch ngay',
-      accHdr: 'DANH SÁCH TÀI KHOẢN / KEY', jobHdr: 'TIẾN TRÌNH DỊCH', logHdr: 'Nhật ký',
-      addTitle: 'Thêm Tài khoản / API Key mới', namePh: 'Tên tài khoản (VD: Gemini PRO)',
-      keyPh: 'Dán Key (AIza..., gsk_..., sk-...)', saveAcc: '✅ Lưu & Test', cancel: 'Hủy',
-      noAcc: 'Chưa có Key — bấm "+ Thêm tài khoản" ở trên'
+      cardTitle: '🛸 Alien AI Translation Router (10 Giao Diện Ngoài Hành Tinh)',
+      cardDesc: 'Bảng điều khiển công nghệ ngoài hành tinh với 10 hình thái chuyển động, quét key thực & chia luồng dịch.',
+      openBtn: '🛸 Mở Alien AI Router (10 Styles)',
+      hdrTitle: '🛸 ALIEN AI ROUTER',
+      ready: 'sẵn sàng', running: 'đang chạy', linesToday: 'dòng hôm nay', needAtt: 'cảnh báo',
+      allGood: 'ổn định', conc: 'Luồng', autoFb: 'Auto fallback', split: 'Chia đều các node',
+      ping: '📡 Quét', addAcc: '+ Gắn Key', splitRun: '⚡ CHIA LUỒNG DỊCH NGAY',
+      accHdr: '◈ CÁC NODE NGOÀI HÀNH TINH', jobHdr: '◈ MỤC TIÊU TRUYỀN TẢI', logHdr: 'NHẬT KÝ TÍN HIỆU',
+      addTitle: 'Gắn API Key mới vào Trạm', namePh: 'Tên ghi chú (VD: Gmail)',
+      keyPh: 'Dán Key (AQ..., AIza..., gsk_...)', saveAcc: '🛸 Lưu & Quét', cancel: 'Hủy',
+      getKey: '🔑 Lấy Key', pasteKey: '📋 Dán'
     },
     ko: {
-      cardTitle: '🛰️ AI 번역 라우터 스튜디오 (멀티 키 허브)',
-      cardDesc: '실시간 API 계정 상태 모니터링, 다중 계정 병렬 분할 번역, 자동 장애 복구 및 10가지 테마 지원.',
-      openBtn: '🛰️ AI 라우터 스튜디오 열기 (10종 테마)',
-      hdrTitle: '🛰️ AI 번역 라우터',
-      ready: '준비됨', running: '실행중', linesToday: '오늘 번역 줄', needAtt: '주의 필요',
-      allGood: '모두 정상', conc: '동시 작업', autoFb: '자동 페일오버', split: '계정 분할 실행',
-      ping: '🔄 새로고침', addAcc: '+ 계정 추가', splitRun: '⚡ 지금 분할 번역 실행',
-      accHdr: '계정 / API 키 풀', jobHdr: '작업 상태', logHdr: '활동 로그',
-      addTitle: '실제 풀에 계정 / API 키 추가', namePh: '계정 이름',
-      keyPh: 'API 키 붙여넣기 (AIza..., gsk_...)', saveAcc: '✅ 저장 및 테스트', cancel: '취소',
-      noAcc: 'API 키가 없습니다 — "+ 계정 추가"를 눌러주세요'
+      cardTitle: '🛸 외계 AI 번역 라우터 (10종 에일리언 UI)',
+      cardDesc: '10가지 외계 테크 모션 UI, 실시간 API 노드 텔레메트리, 무료 릴레이 및 병렬 분할 번역.',
+      openBtn: '🛸 외계 AI 라우터 열기 (10 스타일)',
+      hdrTitle: '🛸 ALIEN AI ROUTER',
+      ready: '대기', running: '전송중', linesToday: '오늘 줄 수', needAtt: '주의',
+      allGood: '모든 시스템 정상', conc: '빔 수', autoFb: '자동 전환', split: '노드 분할',
+      ping: '📡 스캔', addAcc: '+ 키 연결', splitRun: '⚡ 하이퍼 분할 번역 실행',
+      accHdr: '◈ 에일리언 뉴럴 노드', jobHdr: '◈ 전송 타겟', logHdr: '텔레메트리 로그',
+      addTitle: '새 API 키 노드 연결', namePh: '라벨 (예: Gmail)',
+      keyPh: '키 붙여넣기 (AQ..., AIza...)', saveAcc: '🛸 연결 및 스캔', cancel: '취소',
+      getKey: '🔑 키 발급', pasteKey: '📋 붙여넣기'
     },
     ja: {
-      cardTitle: '🛰️ AI 翻訳ルータースタジオ (マルチキー管理)',
-      cardDesc: 'APIノード監視、複数アカウント並列分割翻訳、自動フェイルオーバー、10種類のテーマ切替。',
-      openBtn: '🛰️ AI ルーターを開く (10スタイル)',
-      hdrTitle: '🛰️ AI 翻訳ルーター',
-      ready: '待機中', running: '実行中', linesToday: '本日の行数', needAtt: '要注意',
-      allGood: 'すべて正常', conc: '同時数', autoFb: '自動切替', split: 'アカウント分散',
-      ping: '🔄 更新', addAcc: '+ アカウント追加', splitRun: '⚡ 分割翻訳を実行',
-      accHdr: 'アカウント / API キー', jobHdr: 'ジョブ状況', logHdr: 'アクティビティ',
-      addTitle: 'アカウント / API キーを追加', namePh: 'アカウント名',
-      keyPh: 'API キー (AIza..., gsk_...)', saveAcc: '✅ 保存してテスト', cancel: 'キャンセル',
-      noAcc: 'キーがありません — 上の "+ アカウント追加" を押してください'
+      cardTitle: '🛸 エイリアン AI 翻訳ルーター (10種エイリアンUI)',
+      cardDesc: '10種類のエイリアン動態UI、リアルタイムノード監視、無料リレー、並列分割翻訳。',
+      openBtn: '🛸 エイリアン AI ルーターを開く (10種)',
+      hdrTitle: '🛸 ALIEN AI ROUTER',
+      ready: '待機', running: '通信中', linesToday: '本日の行数', needAtt: '警告',
+      allGood: '全システム正常', conc: 'ビーム', autoFb: '自動切替', split: 'ノード分散',
+      ping: '📡 スキャン', addAcc: '+ キー接続', splitRun: '⚡ ハイパー分割翻訳を実行',
+      accHdr: '◈ エイリアン・ニューラルノード', jobHdr: '◈ 送信ターゲット', logHdr: 'テレメトリログ',
+      addTitle: '新しい API キーノードを接続', namePh: 'ラベル名',
+      keyPh: 'API キー (AQ..., AIza...)', saveAcc: '🛸 接続してスキャン', cancel: 'キャンセル',
+      getKey: '🔑 キー取得', pasteKey: '📋 貼付'
     }
   };
 
@@ -26059,13 +26211,14 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     if (openBtn) openBtn.textContent = t.openBtn;
     const miniStat = document.getElementById('cts-rt-mini');
     if (miniStat) {
-      miniStat.innerHTML = `🟢 <b>${readyCnt}/${nodes.length}</b> ${t.ready} &nbsp;|&nbsp; ⚡ <b>${runCnt}</b> ${t.running} &nbsp;|&nbsp; 📊 <b>${stats.totalLines}</b> ${t.linesToday}`;
+      miniStat.innerHTML = `◈ 🟢 <b>${readyCnt}/${nodes.length}</b> ${t.ready} &nbsp;|&nbsp; ⚡ <b>${runCnt}</b> ${t.running} &nbsp;|&nbsp; 🛸 <b>${stats.totalLines}</b> ${t.linesToday}`;
     }
 
     const shell = document.getElementById('ctsRouterShell');
     if (!shell || !modalOpen) return;
 
-    const sk = SKINS[cfg.skin] || SKINS.violet;
+    const sk = SKINS[cfg.skin] || SKINS.mothership;
+    shell.className = 'rt-shape-' + sk.shape;
     shell.style.setProperty('--rt-bg', sk.bg);
     shell.style.setProperty('--rt-card', sk.card);
     shell.style.setProperty('--rt-border', sk.border);
@@ -26076,15 +26229,19 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     shell.style.setProperty('--rt-orb', sk.orb);
 
     const anyRun = runCnt > 0 || isSplitting || isPinging;
+    const curGemModel = document.getElementById('geminiModel')?.value || 'gemini-2.5-flash';
 
     shell.innerHTML = `
       <div class="cts-rt-head">
-        <div style="display:flex;align-items:center;gap:8px;font-weight:900;font-size:14px">
-          <span>${t.hdrTitle}</span>
-          <span style="font-size:10.5px;padding:2px 7px;border-radius:99px;background:rgba(255,255,255,0.08);color:${anyRun ? sk.acc2 : sk.muted}">${anyRun ? '⚡ Active' : '● Ready'}</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+          <div style="display:flex;align-items:center;gap:8px;font-weight:900;font-size:14px;letter-spacing:.6px">
+            <span>${t.hdrTitle}</span>
+            <span style="font-size:10px;padding:2px 8px;border:1px solid ${sk.acc2};color:${anyRun ? sk.acc2 : sk.muted}">${anyRun ? '⚡ HYPER-LINK' : '◈ ONLINE'}</span>
+          </div>
+          <button type="button" id="cts-rt-close" class="cts-rt-btn" style="padding:4px 10px">✕</button>
         </div>
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
-          <div style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 7px;border-radius:8px;background:rgba(255,255,255,0.05)">
+          <div style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 7px;background:rgba(255,255,255,0.05);border:1px solid var(--rt-border)">
             <span>${t.conc}:</span>
             <button type="button" id="cts-rt-cminus" class="cts-rt-btn" style="padding:2px 7px">-</button>
             <b>${cfg.concurrency}</b>
@@ -26094,15 +26251,14 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
           <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cts-rt-sp" ${cfg.splitAccounts ? 'checked' : ''}><span>${t.split}</span></label>
           <button type="button" id="cts-rt-ping" class="cts-rt-btn">${isPinging ? '⏳...' : t.ping}</button>
           <button type="button" id="cts-rt-addbtn" class="cts-rt-btn pri">${t.addAcc}</button>
-          <button type="button" id="cts-rt-close" class="cts-rt-btn" style="padding:5px 9px">✕</button>
         </div>
       </div>
 
       <div class="cts-rt-stats">
-        <span class="cts-rt-pill">👥 ${nodes.length} • 🟢 ${readyCnt} ${t.ready}</span>
+        <span class="cts-rt-pill">👽 ${nodes.length} • 🟢 ${readyCnt} ${t.ready}</span>
         <span class="cts-rt-pill">⚡ ${runCnt} ${t.running}</span>
-        <span class="cts-rt-pill">✓ ${stats.totalLines} ${t.linesToday}</span>
-        <span class="cts-rt-pill">${attCnt ? `⚠️ ${attCnt} ${t.needAtt}` : `✅ 0 ${t.needAtt} • ${t.allGood}`}</span>
+        <span class="cts-rt-pill">◈ ${stats.totalLines} ${t.linesToday}</span>
+        <span class="cts-rt-pill">${attCnt ? `⚠️ ${attCnt} ${t.needAtt}` : `✅ ${t.allGood}`}</span>
       </div>
 
       <div class="cts-rt-skins">
@@ -26110,12 +26266,18 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
       </div>
 
       ${showAddBox ? `
-      <div style="padding:10px 14px;background:rgba(0,0,0,0.42);border-bottom:1px solid var(--rt-border);display:grid;gap:6px">
-        <div style="font-size:12px;font-weight:800">${t.addTitle}</div>
-        <div style="display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:6px">
-          <input type="text" id="cts-rt-aname" placeholder="${t.namePh}" style="padding:6px 8px;border-radius:8px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.4);color:var(--rt-text);font-size:11.5px">
-          <input type="password" id="cts-rt-akey" placeholder="${t.keyPh}" style="padding:6px 8px;border-radius:8px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.4);color:var(--rt-text);font-size:11.5px">
-          <input type="text" id="cts-rt-amodel" value="gemini-2.5-flash" style="padding:6px 8px;border-radius:8px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.4);color:var(--rt-text);font-size:11.5px">
+      <div id="cts-rt-addform" style="padding:10px 14px;background:rgba(0,0,0,0.52);border-bottom:1px solid var(--rt-border);display:grid;gap:6px;z-index:6">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+          <span style="font-size:12px;font-weight:800">🛸 ${t.addTitle}</span>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="cts-rt-btn" style="text-decoration:none;font-size:10.5px;padding:4px 8px">${t.getKey}</a>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr;gap:6px">
+          <input type="text" id="cts-rt-aname" placeholder="${t.namePh}" style="padding:7px 9px;border-radius:8px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.45);color:var(--rt-text);font-size:11.5px">
+          <div style="display:flex;gap:5px">
+            <input type="password" id="cts-rt-akey" placeholder="${t.keyPh}" style="flex:1;padding:7px 9px;border-radius:8px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.45);color:var(--rt-text);font-size:11.5px">
+            <button type="button" id="cts-rt-apaste" class="cts-rt-btn" style="white-space:nowrap">${t.pasteKey}</button>
+          </div>
+          <input type="text" id="cts-rt-amodel" value="${escHtml(curGemModel)}" style="padding:7px 9px;border-radius:8px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.45);color:var(--rt-text);font-size:11.5px">
         </div>
         <div style="display:flex;gap:6px">
           <button type="button" id="cts-rt-asave" class="cts-rt-btn pri">${t.saveAcc}</button>
@@ -26124,64 +26286,72 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
       </div>` : ''}
 
       <div class="cts-rt-body" id="cts-rt-body">
+        <div class="cts-rt-bgfx">${getShapeBgSvg(sk)}</div>
         <svg class="cts-rt-svg" id="cts-rt-svg"></svg>
         <div class="cts-rt-grid">
           <div class="cts-rt-col">
-            <div style="font-size:10.5px;font-weight:800;color:var(--rt-muted);letter-spacing:.7px">${t.accHdr}</div>
-            ${nodes.length ? nodes.map(n => {
+            <div style="font-size:10.5px;font-weight:900;color:var(--rt-muted);letter-spacing:1px">${t.accHdr}</div>
+            ${nodes.map(n => {
               const stCol = n.status === 'running' ? sk.acc2 : (n.status === 'ready' ? '#4ade80' : (n.status === 'cooldown' ? '#fbbf24' : '#94a3b8'));
-              const stTxt = n.status === 'running' ? 'Running ⚡' : (n.status === 'ready' ? 'Ready' : (n.status === 'cooldown' ? 'Cooldown 429' : (n.status === 'paused' ? 'Paused' : 'Error')));
+              const stTxt = n.status === 'running' ? 'BEAMING ⚡' : (n.status === 'ready' ? 'ONLINE' : (n.status === 'cooldown' ? 'SHIELD 429' : (n.status === 'paused' ? 'DORMANT' : 'FAULT')));
               return `
               <div class="cts-rt-node ${n.status === 'running' ? 'running' : ''}" data-st="${n.status}">
                 <div style="min-width:0">
                   <div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:800">
-                    <span style="color:${stCol}">●</span>
+                    <span style="color:${stCol}">◈</span>
                     <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(n.name)}</span>
-                    <span style="font-size:9.5px;padding:1px 5px;border-radius:5px;background:rgba(255,255,255,0.09);color:var(--rt-acc2)">${escHtml(n.provider.toUpperCase())}</span>
+                    <span style="font-size:9px;padding:1px 5px;border:1px solid var(--rt-border);color:var(--rt-acc2)">${escHtml(n.provider.toUpperCase())}</span>
                   </div>
                   <div style="font-size:10.5px;color:var(--rt-muted);margin-top:2px">
-                    <span style="color:${stCol};font-weight:700">${stTxt}</span> • ${escHtml(n.model)} • ${maskKey(n.rawKey)}
+                    <span style="color:${stCol};font-weight:800">${stTxt}</span> • ${escHtml(n.model)} • ${maskKey(n.rawKey)}
                   </div>
-                  <div style="font-size:10px;opacity:0.78;margin-top:1px">📊 ${n.linesToday} lines (${n.reqsToday} req)${n.latency ? ` • ${n.latency}ms` : ''}</div>
+                  <div style="font-size:10px;opacity:0.8;margin-top:1px">🛸 ${n.linesToday} lines (${n.reqsToday} tx)${n.latency ? ` • ${n.latency}ms` : ''}</div>
                 </div>
-                <button type="button" data-toggle="${escHtml(n.id)}" class="cts-rt-btn" style="padding:4px 7px;font-size:10.5px">${n.enabled ? '⏸️' : '▶️'}</button>
+                <div style="display:flex;gap:4px;flex-shrink:0">
+                  <button type="button" data-toggle="${escHtml(n.id)}" class="cts-rt-btn" style="padding:4px 7px;font-size:10.5px">${n.enabled ? '⏸️' : '▶️'}</button>
+                  ${n.provider !== 'free' ? `<button type="button" data-del="${escHtml(n.id)}" data-rkey="${escHtml(n.rawKey)}" class="cts-rt-btn" style="padding:4px 7px;font-size:10.5px">🗑️</button>` : ''}
+                </div>
               </div>`;
-            }).join('') : `<div class="cts-rt-node" style="opacity:0.75;font-size:11.5px">${t.noAcc}</div>`}
+            }).join('')}
           </div>
 
           <div class="cts-rt-orb-wrap">
-            <div class="cts-rt-orb ${anyRun ? 'active' : ''}" id="cts-rt-orb">
-              <div style="font-size:18px">🛰️</div>
-              <div>AI Router</div>
+            <div class="cts-rt-core-stage">
+              <div class="cts-rt-ring1"></div>
+              <div class="cts-rt-ring2"></div>
+              <div class="cts-rt-ring3"></div>
+              <div class="cts-rt-orb ${anyRun ? 'active' : ''}" id="cts-rt-orb">
+                <div style="font-size:22px">${sk.glyph}</div>
+                <div style="font-size:10.5px;letter-spacing:.8px">NEXUS</div>
+              </div>
             </div>
-            <div style="font-size:10.5px;color:var(--rt-muted);margin-top:6px;text-align:center">
-              ${cfg.splitAccounts ? 'Split Routing' : 'Single Node'} • ${cfg.autoFallback ? 'Failover ON' : 'Failover OFF'}
+            <div style="font-size:10.5px;color:var(--rt-muted);margin-top:6px;text-align:center;font-weight:700">
+              ${escHtml(sk.name.replace(/^[^\s]+\s+\d+\.\s*/, ''))} • ${cfg.splitAccounts ? 'MULTI-BEAM' : 'SINGLE'}
             </div>
           </div>
 
           <div class="cts-rt-col">
-            <div style="font-size:10.5px;font-weight:800;color:var(--rt-muted);letter-spacing:.7px">${t.jobHdr}</div>
+            <div style="font-size:10.5px;font-weight:900;color:var(--rt-muted);letter-spacing:1px">${t.jobHdr}</div>
             <div class="cts-rt-job" id="cts-rt-job-card">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px;font-weight:800">
-                <span>🎬 ${escHtml(activeJob.name)}</span>
-                <span style="color:${activeJob.state === 'done' ? '#4ade80' : (activeJob.state === 'running' ? sk.acc2 : sk.muted)}">${activeJob.total ? `${activeJob.done}/${activeJob.total}` : 'Idle'}</span>
+                <span>◬ ${escHtml(activeJob.name)}</span>
+                <span style="color:${activeJob.state === 'done' ? '#4ade80' : (activeJob.state === 'running' ? sk.acc2 : sk.muted)}">${activeJob.total ? `${activeJob.done}/${activeJob.total}` : 'STANDBY'}</span>
               </div>
-              <div style="height:7px;border-radius:99px;background:rgba(255,255,255,0.09);overflow:hidden;margin:8px 0">
+              <div style="height:8px;background:rgba(255,255,255,0.09);overflow:hidden;margin:9px 0;border:1px solid var(--rt-border)">
                 <div style="height:100%;width:${activeJob.total ? Math.round((activeJob.done / activeJob.total) * 100) : 0}%;background:linear-gradient(90deg,var(--rt-acc),var(--rt-acc2));transition:width .2s"></div>
               </div>
-              <button type="button" id="cts-rt-runsplit" class="cts-rt-btn pri" style="width:100%;padding:8px">${isSplitting ? '⏳ Splitting & Translating...' : t.splitRun}</button>
+              <button type="button" id="cts-rt-runsplit" class="cts-rt-btn pri" style="width:100%;padding:9px;letter-spacing:.5px">${isSplitting ? '🛸 HYPER-ROUTING...' : t.splitRun}</button>
             </div>
           </div>
         </div>
       </div>
 
       <div class="cts-rt-log">
-        <div style="font-weight:800;color:var(--rt-muted);margin-bottom:3px">📋 ${t.logHdr}</div>
-        ${activityLog.length ? activityLog.map(l => `<div><span style="opacity:0.6">[${l.ts}]</span> <span style="color:${l.ok ? '#86efac' : '#fca5a5'}">${escHtml(l.text)}</span></div>`).join('') : '<div style="opacity:0.6">Ready — waiting for translation activity...</div>'}
+        <div style="font-weight:900;color:var(--rt-muted);margin-bottom:3px;letter-spacing:.6px">◈ ${t.logHdr}</div>
+        ${activityLog.length ? activityLog.map(l => `<div><span style="opacity:0.6">[${l.ts}]</span> <span style="color:${l.ok ? '#86efac' : '#fca5a5'}">${escHtml(l.text)}</span></div>`).join('') : '<div style="opacity:0.65">◈ Alien Nexus standing by — awaiting neural transmission...</div>'}
       </div>
     `;
 
-    // Bind Modal events
     document.getElementById('cts-rt-close').onclick = closeModal;
     document.getElementById('cts-rt-cminus').onclick = () => { cfg.concurrency = Math.max(1, cfg.concurrency - 1); saveCfg(); refreshUI(); };
     document.getElementById('cts-rt-cplus').onclick = () => { cfg.concurrency = Math.min(6, cfg.concurrency + 1); saveCfg(); refreshUI(); };
@@ -26197,14 +26367,24 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     shell.querySelectorAll('[data-toggle]').forEach(btn => {
       btn.onclick = () => {
         const id = btn.getAttribute('data-toggle');
+        if (id === 'free_cloud') { cfg.freeEnabled = !cfg.freeEnabled; saveCfg(); refreshUI(); return; }
         if (!cfg.nodeMeta[id]) cfg.nodeMeta[id] = {};
         cfg.nodeMeta[id].enabled = cfg.nodeMeta[id].enabled === false ? true : false;
         saveCfg();
         refreshUI();
       };
     });
+    shell.querySelectorAll('[data-del]').forEach(btn => {
+      btn.onclick = () => removeNodeFromPool(btn.getAttribute('data-del'), btn.getAttribute('data-rkey'));
+    });
 
     if (showAddBox) {
+      document.getElementById('cts-rt-apaste').onclick = async () => {
+        try {
+          const txt = await navigator.clipboard.readText();
+          if (txt) document.getElementById('cts-rt-akey').value = txt.trim();
+        } catch (e) {}
+      };
       document.getElementById('cts-rt-asave').onclick = () => {
         addAccountToRealPool(
           document.getElementById('cts-rt-aname').value,
@@ -26218,7 +26398,6 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     requestAnimationFrame(drawSvgLines);
   }
 
-  // Mount ONLY inside #tab-settings (AI & Export)
   function mountSettingsCard() {
     const tabSet = document.getElementById('tab-settings');
     if (!tabSet || document.getElementById('ctsAiRouterCard')) return;
@@ -26229,9 +26408,9 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     card.setAttribute('data-no-i18n', '1');
     card.innerHTML = `
       <div class="panel-title"><span id="cts-rt-card-title"></span></div>
-      <div id="cts-rt-card-desc" style="font-size:11.5px;opacity:0.8;margin-bottom:8px;line-height:1.45"></div>
-      <div id="cts-rt-mini" style="padding:7px 10px;border-radius:9px;background:rgba(0,0,0,0.32);border:1px solid rgba(139,92,246,0.35);font-size:11.5px;margin-bottom:8px"></div>
-      <button type="button" id="cts-rt-open" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(167,139,250,0.6);background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#f5f3ff;font-size:12.5px;font-weight:800;cursor:pointer"></button>`;
+      <div id="cts-rt-card-desc" style="font-size:11.5px;opacity:0.85;margin-bottom:8px;line-height:1.45"></div>
+      <div id="cts-rt-mini" style="padding:7px 10px;border-radius:9px;background:rgba(0,0,0,0.42);border:1px solid rgba(56,189,248,0.38);font-size:11.5px;margin-bottom:8px"></div>
+      <button type="button" id="cts-rt-open" style="width:100%;padding:10px;border:1px solid rgba(56,189,248,0.7);background:linear-gradient(135deg,#0c4a6e,#6d28d9);color:#f0f9ff;font-size:12.5px;font-weight:900;cursor:pointer"></button>`;
 
     const firstCard = tabSet.querySelector('.panel-card');
     if (firstCard) firstCard.insertAdjacentElement('afterend', card);
