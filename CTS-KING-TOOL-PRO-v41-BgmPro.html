@@ -8714,6 +8714,7 @@
               if (lt >= 0) { const sIdx = Math.floor(lt * spd * bSr); if (sIdx >= 0 && sIdx < c0.length) mono[i] += c0[sIdx]; }
             }
           }
+          if (window.__ctsBgmMasterProcess) window.__ctsBgmMasterProcess(mono, frames, t0, sr, partStart, partEnd);
           let data;
           if (ch === 2) {
             data = new Float32Array(frames * 2);
@@ -9166,13 +9167,18 @@
                         __duckArr[i] = __curD;
                     }
                 }
-                const mixCompact = (comp, vol) => {
-                    if (!comp || vol <= 0) return;
-                    const d = comp.data, len = d.length, bSr = comp.sr;
-                    for (let i = 0; i < frames; i++) mono[i] += d[Math.floor(((t0 + i / sr) * bSr) % len)] * vol * (__duckArr ? __duckArr[i] : 1);
-                };
-                mixCompact(bgmCompact, bgmVol);
-                mixCompact(vidCompact, vidVol);
+                const mixCompact = (comp, vol, isBgm) => {
+                if (!comp || vol <= 0) return;
+                const d = comp.data, len = d.length, bSr = comp.sr;
+                const __bgFn = isBgm && window.__ctsBgmExportGain ? window.__ctsBgmExportGain : null;
+                for (let i = 0; i < frames; i++) {
+                    const __tAbs = t0 + i / sr;
+                    const __fg = __bgFn ? __bgFn(__tAbs, partStart, partEnd) : 1;
+                    mono[i] += d[Math.floor((__tAbs * bSr) % len)] * vol * (__duckArr ? __duckArr[i] : 1) * __fg;
+                }
+            };
+            mixCompact(bgmCompact, bgmVol, true);
+            mixCompact(vidCompact, vidVol, false);
 
                 for (const it of winItems) {
                     const c0 = it.buf.getChannelData(0), bSr = it.buf.sampleRate;
@@ -13465,7 +13471,7 @@
     if (bgmAudio && !bgmAudio.paused) {
       const baseVol = parseFloat(document.getElementById('bgmVol')?.value || '0.35');
       const speaking = isPlaying && cues.some(c => currentTime >= c.start - 0.1 && currentTime <= c.end + 0.15);
-      const targetV = (pro.autoDuckBgm && speaking) ? baseVol * 0.25 : baseVol;
+      const targetV = ((pro.autoDuckBgm && speaking) ? baseVol * 0.25 : baseVol) * (window.__ctsBgmPreviewMult ? window.__ctsBgmPreviewMult() : 1);
       bgmAudio.volume += (targetV - bgmAudio.volume) * 0.18;
     }
     requestAnimationFrame(animateTickerLoop);
@@ -24575,6 +24581,313 @@ Return ONLY valid JSON (no markdown fences):
   setTimeout(mountCard, 800);
   setTimeout(mountCard, 2100);
   setTimeout(mountCard, 3800);
+
+  if (typeof window.setCtsAppUiLang === 'function') {
+    const _prevLangFn = window.setCtsAppUiLang;
+    window.setCtsAppUiLang = function(code) {
+      _prevLangFn(code);
+      setTimeout(refreshUI, 70);
+    };
+  }
+})();
+</script>
+
+
+<script id="cts-addon-41-bgmpro">
+// === ADD-ON #41: SMOOTH BGM FADE-IN/OUT & STUDIO AUDIO MASTERING ===
+(function() {
+  const CFG_KEY = 'cts_bgm_pro_cfg';
+  const PRESETS = {
+    recap:     { fadeIn: 2.0, fadeOut: 3.5, curve: 'scurve', softLimiter: true,  masterOut: 1.5, bgmTarget: 0.25 },
+    tiktok:    { fadeIn: 0.8, fadeOut: 1.5, curve: 'scurve', softLimiter: true,  masterOut: 0.8, bgmTarget: 0.35 },
+    emotional: { fadeIn: 3.5, fadeOut: 5.0, curve: 'exp',    softLimiter: true,  masterOut: 2.0, bgmTarget: 0.30 },
+    off:       { fadeIn: 0.0, fadeOut: 0.0, curve: 'linear', softLimiter: false, masterOut: 0.0, bgmTarget: null }
+  };
+
+  let cfg = {
+    preset: 'recap',
+    fadeIn: 2.0,
+    fadeOut: 3.5,
+    curve: 'scurve',
+    softLimiter: true,
+    masterOut: 1.5
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    if (saved && typeof saved === 'object') cfg = Object.assign(cfg, saved);
+  } catch (e) {}
+
+  function saveCfg() {
+    try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {}
+    window.__ctsBgmProCfg = cfg;
+  }
+  window.__ctsBgmProCfg = cfg;
+
+  function applyCurve(p) {
+    p = Math.max(0, Math.min(1, p));
+    if (cfg.curve === 'scurve') return 0.5 - 0.5 * Math.cos(Math.PI * p);
+    if (cfg.curve === 'exp') return p * p;
+    return p;
+  }
+
+  function calcFadeGain(tAbs, startT, endT) {
+    let g = 1.0;
+    const fi = cfg.fadeIn || 0;
+    const fo = cfg.fadeOut || 0;
+    if (fi > 0.05 && tAbs >= startT && tAbs < startT + fi) {
+      g *= applyCurve((tAbs - startT) / fi);
+    }
+    if (fo > 0.05 && endT > startT && tAbs > endT - fo) {
+      g *= applyCurve((endT - tAbs) / fo);
+    }
+    return Math.max(0, Math.min(1, g));
+  }
+
+  window.__ctsBgmExportGain = function(tAbs, partStart, partEnd) {
+    return calcFadeGain(tAbs, partStart || 0, partEnd || 0);
+  };
+
+  window.__ctsBgmPreviewMult = function() {
+    try {
+      const vid = document.getElementById('videoPlayer');
+      if (!vid) return 1;
+      const t = vid.currentTime || 0;
+      const dur = (isFinite(vid.duration) && vid.duration > 0) ? vid.duration : 0;
+      return calcFadeGain(t, 0, dur);
+    } catch (e) { return 1; }
+  };
+
+  window.__ctsBgmMasterProcess = function(mono, frames, t0, sr, partStart, partEnd) {
+    const mo = cfg.masterOut || 0;
+    if (mo > 0.05 && partEnd > (partStart || 0)) {
+      for (let i = 0; i < frames; i++) {
+        const tAbs = t0 + i / sr;
+        if (tAbs > partEnd - mo) {
+          const p = Math.max(0, Math.min(1, (partEnd - tAbs) / mo));
+          mono[i] *= (0.5 - 0.5 * Math.cos(Math.PI * p));
+        }
+      }
+    }
+    if (cfg.softLimiter) {
+      for (let i = 0; i < frames; i++) {
+        const x = mono[i];
+        if (x > 0.68 || x < -0.68) {
+          mono[i] = Math.tanh(x * 1.12) * 0.95;
+        }
+      }
+    }
+  };
+
+  // Multi-language UI (6 languages, NO Thai!)
+  const T = {
+    km: {
+      title: '🎵 Smooth BGM Fade & Audio Mastering',
+      preLbl: '🎛️ ម៉ូដភ្លេងរហ័ស (Presets)',
+      p_recap: '🎬 រឿងកុន', p_tiktok: '⚡ TikTok', p_emotional: '🎭 មនោសញ្ចេតនា', p_off: '🚫 បិទ',
+      curLbl: '📈 ប្រភេទ Fade',
+      c_scurve: '🌊 S-Curve', c_linear: '📐 Linear', c_exp: '⚡ Smooth Exp',
+      fiLbl: '🌅 BGM Fade-In (ចូល)', foLbl: '🌇 BGM Fade-Out (ចប់)',
+      moLbl: '🎬 Master Ending Fade',
+      limChk: '🛡️ Studio Soft Limiter (ការពារសំឡេងបែកពេល Export MP4)'
+    },
+    en: {
+      title: '🎵 Smooth BGM Fade & Audio Mastering',
+      preLbl: '🎛️ Quick BGM Presets',
+      p_recap: '🎬 Recap', p_tiktok: '⚡ TikTok', p_emotional: '🎭 Emotional', p_off: '🚫 Off',
+      curLbl: '📈 Fade Curve',
+      c_scurve: '🌊 S-Curve', c_linear: '📐 Linear', c_exp: '⚡ Smooth Exp',
+      fiLbl: '🌅 BGM Fade-In', foLbl: '🌇 BGM Fade-Out',
+      moLbl: '🎬 Master Ending Fade',
+      limChk: '🛡️ Studio Soft Limiter (Anti-Clip Protection on MP4 Export)'
+    },
+    zh: {
+      title: '🎵 平滑背景音乐淡入淡出 & 母带防爆音',
+      preLbl: '🎛️ 一键音频预设',
+      p_recap: '🎬 电影解说', p_tiktok: '⚡ 短视频', p_emotional: '🎭 情感剧情', p_off: '🚫 关闭',
+      curLbl: '📈 淡入淡出曲线',
+      c_scurve: '🌊 S型平滑', c_linear: '📐 线性', c_exp: '⚡ 柔和指数',
+      fiLbl: '🌅 BGM 淡入', foLbl: '🌇 BGM 淡出',
+      moLbl: '🎬 片尾总音量淡出',
+      limChk: '🛡️ 广播级防爆音限制器 (导出 MP4 不破音)'
+    },
+    vi: {
+      title: '🎵 BGM Fade-In/Out Mượt & Mastering Âm Thanh',
+      preLbl: '🎛️ Cấu hình nhanh (Presets)',
+      p_recap: '🎬 Kể phim', p_tiktok: '⚡ TikTok', p_emotional: '🎭 Cảm xúc', p_off: '🚫 Tắt',
+      curLbl: '📈 Đường cong Fade',
+      c_scurve: '🌊 S-Curve', c_linear: '📐 Thẳng', c_exp: '⚡ Mượt Exp',
+      fiLbl: '🌅 Nhạc vào (Fade-In)', foLbl: '🌇 Nhạc ra (Fade-Out)',
+      moLbl: '🎬 Giảm âm tổng kết thúc',
+      limChk: '🛡️ Studio Soft Limiter (Chống rè/vỡ tiếng khi xuất MP4)'
+    },
+    ko: {
+      title: '🎵 부드러운 BGM 페이드 & 오디오 마스터링',
+      preLbl: '🎛️ 빠른 오디오 프리셋',
+      p_recap: '🎬 영화 해설', p_tiktok: '⚡ 틱톡', p_emotional: '🎭 감성', p_off: '🚫 끄기',
+      curLbl: '📈 페이드 커브',
+      c_scurve: '🌊 S-커브', c_linear: '📐 직선', c_exp: '⚡ 부드러운 Exp',
+      fiLbl: '🌅 BGM 페이드 인', foLbl: '🌇 BGM 페이드 아웃',
+      moLbl: '🎬 엔딩 마스터 페이드',
+      limChk: '🛡️ 스튜디오 소프트 리미터 (MP4 내보내기 찢어짐 방지)'
+    },
+    ja: {
+      title: '🎵 スムーズ BGM フェード & 音質マスタリング',
+      preLbl: '🎛️ クイックプリセット',
+      p_recap: '🎬 映画解説', p_tiktok: '⚡ TikTok', p_emotional: '🎭 エモい', p_off: '🚫 オフ',
+      curLbl: '📈 フェードカーブ',
+      c_scurve: '🌊 Sカーブ', c_linear: '📐 リニア', c_exp: '⚡ スムーズExp',
+      fiLbl: '🌅 BGM フェードイン', foLbl: '🌇 BGM フェードアウト',
+      moLbl: '🎬 終盤マスターフェード',
+      limChk: '🛡️ ソフトリミッター (MP4書き出しの音割れ防止)'
+    }
+  };
+
+  const PRESET_KEYS = ['recap', 'tiktok', 'emotional', 'off'];
+  const CURVE_KEYS = ['scurve', 'linear', 'exp'];
+  const PREFIXES = ['cts-bp', 'cts-bpb'];
+
+  function getLang() {
+    try { return localStorage.getItem('cts_tool_ui_lang') || 'km'; } catch (e) { return 'km'; }
+  }
+
+  function styleBtn(b, active) {
+    if (!b) return;
+    b.style.borderColor = active ? '#fbbf24' : 'rgba(255,255,255,0.16)';
+    b.style.background = active ? 'linear-gradient(135deg,#78350f,#b45309)' : 'rgba(255,255,255,0.04)';
+    b.style.color = active ? '#fffbeb' : 'inherit';
+  }
+
+  function buildHtml(p) {
+    return `
+      <div class="panel-title"><span id="${p}-title"></span></div>
+      <div class="field">
+        <label id="${p}-pre-lbl"></label>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+          ${PRESET_KEYS.map(k => `<button type="button" id="${p}-p-${k}" style="padding:6px 3px;border-radius:8px;border:1.5px solid;font-size:11px;font-weight:700;cursor:pointer"></button>`).join('')}
+        </div>
+      </div>
+      <div class="field">
+        <label id="${p}-cur-lbl"></label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+          ${CURVE_KEYS.map(k => `<button type="button" id="${p}-c-${k}" style="padding:6px 3px;border-radius:8px;border:1.5px solid;font-size:11px;font-weight:700;cursor:pointer"></button>`).join('')}
+        </div>
+      </div>
+      <div class="range-row">
+        <span id="${p}-fi-lbl" style="min-width:112px"></span>
+        <input type="range" id="${p}-fi" min="0" max="6" step="0.2">
+        <b id="${p}-fi-val" style="min-width:40px;text-align:right;font-size:11.5px"></b>
+      </div>
+      <div class="range-row">
+        <span id="${p}-fo-lbl" style="min-width:112px"></span>
+        <input type="range" id="${p}-fo" min="0" max="8" step="0.2">
+        <b id="${p}-fo-val" style="min-width:40px;text-align:right;font-size:11.5px"></b>
+      </div>
+      <div class="range-row">
+        <span id="${p}-mo-lbl" style="min-width:112px"></span>
+        <input type="range" id="${p}-mo" min="0" max="4" step="0.2">
+        <b id="${p}-mo-val" style="min-width:40px;text-align:right;font-size:11.5px"></b>
+      </div>
+      <label class="chk-row"><input type="checkbox" id="${p}-lim"><span id="${p}-lim-lbl"></span></label>`;
+  }
+
+  function refreshUI() {
+    const t = T[getLang()] || T.km;
+    PREFIXES.forEach(p => {
+      const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      setTxt(p + '-title', t.title);
+      setTxt(p + '-pre-lbl', t.preLbl);
+      setTxt(p + '-cur-lbl', t.curLbl);
+      setTxt(p + '-fi-lbl', t.fiLbl);
+      setTxt(p + '-fo-lbl', t.foLbl);
+      setTxt(p + '-mo-lbl', t.moLbl);
+      setTxt(p + '-lim-lbl', t.limChk);
+
+      PRESET_KEYS.forEach(k => {
+        const b = document.getElementById(p + '-p-' + k);
+        if (b) { b.textContent = t['p_' + k]; styleBtn(b, cfg.preset === k); }
+      });
+      CURVE_KEYS.forEach(k => {
+        const b = document.getElementById(p + '-c-' + k);
+        if (b) { b.textContent = t['c_' + k]; styleBtn(b, cfg.curve === k); }
+      });
+
+      const fiEl = document.getElementById(p + '-fi'); if (fiEl) fiEl.value = cfg.fadeIn ?? 2.0;
+      const foEl = document.getElementById(p + '-fo'); if (foEl) foEl.value = cfg.fadeOut ?? 3.5;
+      const moEl = document.getElementById(p + '-mo'); if (moEl) moEl.value = cfg.masterOut ?? 1.5;
+      const lmEl = document.getElementById(p + '-lim'); if (lmEl) lmEl.checked = !!cfg.softLimiter;
+
+      setTxt(p + '-fi-val', Number(cfg.fadeIn || 0).toFixed(1) + 's');
+      setTxt(p + '-fo-val', Number(cfg.fadeOut || 0).toFixed(1) + 's');
+      setTxt(p + '-mo-val', Number(cfg.masterOut || 0).toFixed(1) + 's');
+    });
+  }
+
+  function bindCard(p) {
+    PRESET_KEYS.forEach(k => {
+      const b = document.getElementById(p + '-p-' + k);
+      if (b) b.onclick = function() {
+        const pr = PRESETS[k];
+        cfg.preset = k;
+        cfg.fadeIn = pr.fadeIn;
+        cfg.fadeOut = pr.fadeOut;
+        cfg.curve = pr.curve;
+        cfg.softLimiter = pr.softLimiter;
+        cfg.masterOut = pr.masterOut;
+        if (pr.bgmTarget !== null) {
+          const bv = document.getElementById('bgmVol');
+          if (bv) {
+            bv.value = String(pr.bgmTarget);
+            bv.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+        saveCfg();
+        refreshUI();
+      };
+    });
+    CURVE_KEYS.forEach(k => {
+      const b = document.getElementById(p + '-c-' + k);
+      if (b) b.onclick = function() { cfg.curve = k; saveCfg(); refreshUI(); };
+    });
+    const fiEl = document.getElementById(p + '-fi');
+    if (fiEl) fiEl.oninput = function() { cfg.preset = 'custom'; cfg.fadeIn = parseFloat(this.value) || 0; saveCfg(); refreshUI(); };
+    const foEl = document.getElementById(p + '-fo');
+    if (foEl) foEl.oninput = function() { cfg.preset = 'custom'; cfg.fadeOut = parseFloat(this.value) || 0; saveCfg(); refreshUI(); };
+    const moEl = document.getElementById(p + '-mo');
+    if (moEl) moEl.oninput = function() { cfg.preset = 'custom'; cfg.masterOut = parseFloat(this.value) || 0; saveCfg(); refreshUI(); };
+    const lmEl = document.getElementById(p + '-lim');
+    if (lmEl) lmEl.onchange = function() { cfg.preset = 'custom'; cfg.softLimiter = this.checked; saveCfg(); refreshUI(); };
+  }
+
+  function mountCards() {
+    const bgmAnchor = document.getElementById('bgmVol')?.closest('.panel-card');
+    if (bgmAnchor && !document.getElementById('ctsBgmProCard')) {
+      const card = document.createElement('div');
+      card.id = 'ctsBgmProCard';
+      card.className = 'panel-card';
+      card.setAttribute('data-no-i18n', '1');
+      card.innerHTML = buildHtml('cts-bp');
+      bgmAnchor.insertAdjacentElement('afterend', card);
+      bindCard('cts-bp');
+    }
+
+    const recapTab = document.getElementById('tab-recap');
+    const bigAnchor = document.getElementById('ctsHookBigCard') || document.getElementById('ctsAutoFitBigCard');
+    if (recapTab && !document.getElementById('ctsBgmProBigCard')) {
+      const card2 = document.createElement('div');
+      card2.id = 'ctsBgmProBigCard';
+      card2.className = 'panel-card';
+      card2.setAttribute('data-no-i18n', '1');
+      card2.innerHTML = buildHtml('cts-bpb');
+      if (bigAnchor) bigAnchor.insertAdjacentElement('afterend', card2);
+      else recapTab.appendChild(card2);
+      bindCard('cts-bpb');
+    }
+    refreshUI();
+  }
+
+  setTimeout(mountCards, 850);
+  setTimeout(mountCards, 2200);
+  setTimeout(mountCards, 3900);
 
   if (typeof window.setCtsAppUiLang === 'function') {
     const _prevLangFn = window.setCtsAppUiLang;
