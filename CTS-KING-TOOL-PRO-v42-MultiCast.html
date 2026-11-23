@@ -21739,7 +21739,7 @@ body.cts-desktop-mode #cueList .cue-card {
     try {
       const url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
       if (/\/tts(?:\?|$)|\/v1\/audio\/speech(?:\?|$)|cts-cloud-voice\.internal|cts-voice\.onrender\.com/i.test(url)) {
-        if (init && typeof init.body === 'string' && (cfg.rate || cfg.pitch)) {
+        if (init && !init._ctsCastApplied && typeof init.body === 'string' && (cfg.rate || cfg.pitch)) {
           const obj = JSON.parse(init.body);
           if (cfg.rate) obj.rate = cfg.rate;
           if (cfg.pitch) obj.pitch = cfg.pitch;
@@ -24888,6 +24888,521 @@ Return ONLY valid JSON (no markdown fences):
   setTimeout(mountCards, 850);
   setTimeout(mountCards, 2200);
   setTimeout(mountCards, 3900);
+
+  if (typeof window.setCtsAppUiLang === 'function') {
+    const _prevLangFn = window.setCtsAppUiLang;
+    window.setCtsAppUiLang = function(code) {
+      _prevLangFn(code);
+      setTimeout(refreshUI, 70);
+    };
+  }
+})();
+</script>
+
+
+<script id="cts-addon-42-multicast">
+// === ADD-ON #42: MULTI-VOICE CHARACTER STUDIO (6 PERSONAS + AI AUTO-CAST) ===
+(function() {
+  const CFG_KEY = 'cts_multicast_cfg';
+  const DEFAULT_PERSONAS = {
+    narrator: { base: 'piseth',  rate: -3,  pitch: -3 },
+    male:     { base: 'piseth',  rate: 2,   pitch: 1  },
+    female:   { base: 'sreymom', rate: 2,   pitch: 2  },
+    villain:  { base: 'piseth',  rate: -7,  pitch: -9 },
+    kid:      { base: 'sreymom', rate: 11,  pitch: 7  },
+    elder:    { base: 'piseth',  rate: -11, pitch: -6 }
+  };
+
+  let cfg = {
+    enabled: true,
+    selectedRole: 'narrator',
+    personas: JSON.parse(JSON.stringify(DEFAULT_PERSONAS))
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    if (saved && typeof saved === 'object') {
+      cfg.enabled = saved.enabled !== undefined ? !!saved.enabled : true;
+      cfg.selectedRole = saved.selectedRole || 'narrator';
+      if (saved.personas) {
+        Object.keys(DEFAULT_PERSONAS).forEach(k => {
+          if (saved.personas[k]) cfg.personas[k] = Object.assign({}, DEFAULT_PERSONAS[k], saved.personas[k]);
+        });
+      }
+    }
+  } catch (e) {}
+
+  function saveCfg() {
+    try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {}
+    window.__ctsMultiCastCfg = cfg;
+  }
+  window.__ctsMultiCastCfg = cfg;
+
+  function parseSigned(s, unit) {
+    if (!s) return 0;
+    const n = parseInt(String(s).replace(unit, ''), 10);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function fmtSigned(n, unit, minV, maxV) {
+    n = Math.max(minV, Math.min(maxV, Math.round(n)));
+    if (n === 0) return '';
+    return (n > 0 ? '+' : '') + n + unit;
+  }
+
+  function resolveVoiceId(origVoice, baseRole) {
+    const v = String(origVoice || 'km-KH-PisethNeural');
+    const isFem = baseRole === 'sreymom';
+    if (/^km-KH-/i.test(v)) return isFem ? 'km-KH-SreymomNeural' : 'km-KH-PisethNeural';
+    if (/^en-US-/i.test(v)) return isFem ? 'en-US-AvaNeural' : 'en-US-AndrewNeural';
+    if (/^zh-CN-/i.test(v)) return isFem ? 'zh-CN-XiaoxiaoNeural' : 'zh-CN-YunxiNeural';
+    if (/^vi-VN-/i.test(v)) return isFem ? 'vi-VN-HoaiMyNeural' : 'vi-VN-NamMinhNeural';
+    if (/^ko-KR-/i.test(v)) return isFem ? 'ko-KR-SunHiNeural' : 'ko-KR-InJoonNeural';
+    if (/^ja-JP-/i.test(v)) return isFem ? 'ja-JP-NanamiNeural' : 'ja-JP-KeitaNeural';
+    return v;
+  }
+
+  // Wrap window.fetch safely (runs before v35 Pro Audio Studio, sets _ctsCastApplied so they combine cleanly!)
+  const _prevFetchMC = window.fetch.bind(window);
+  window.fetch = function(input, init) {
+    try {
+      if (cfg.enabled && init && typeof init.body === 'string') {
+        const url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+        if (/\/tts(?:\?|$)|\/v1\/audio\/speech(?:\?|$)|cts-cloud-voice\.internal|cts-voice\.onrender\.com/i.test(url)) {
+          const obj = JSON.parse(init.body);
+          const reqTxt = String(obj.text || obj.input || '').replace(/[\r\n]+/g, ' ').trim();
+          let castRole = window.__ctsTestCastRole || null;
+
+          if (!castRole && reqTxt && typeof cues !== 'undefined' && Array.isArray(cues)) {
+            const match = cues.find(c => c && String(c.km || c.src || '').replace(/[\r\n]+/g, ' ').trim() === reqTxt);
+            if (match && match._castRole && cfg.personas[match._castRole]) {
+              castRole = match._castRole;
+            } else if (match && match.voice) {
+              if (match.voice === 'sreymom') castRole = 'female';
+              else if (match.voice === 'narrator') castRole = 'narrator';
+              else if (match.voice === 'piseth') castRole = 'male';
+            }
+          }
+
+          if (castRole && cfg.personas[castRole]) {
+            const P = cfg.personas[castRole];
+            const ap = window.__ctsAudioProCfg || {};
+            const baseRate = parseSigned(ap.rate, '%');
+            const basePitch = parseSigned(ap.pitch, 'Hz');
+            const rStr = fmtSigned(baseRate + (P.rate || 0), '%', -30, 40);
+            const pStr = fmtSigned(basePitch + (P.pitch || 0), 'Hz', -15, 15);
+            if (obj.voice) obj.voice = resolveVoiceId(obj.voice, P.base);
+            if (rStr) obj.rate = rStr;
+            if (pStr) obj.pitch = pStr;
+            init = Object.assign({}, init, { body: JSON.stringify(obj), _ctsCastApplied: true });
+          }
+        }
+      }
+    } catch (e) {}
+    return _prevFetchMC(input, init);
+  };
+
+  let aiBusy = false;
+  let testAudio = null;
+
+  async function testRoleSample(roleKey) {
+    const P = cfg.personas[roleKey];
+    if (!P) return;
+    const edgeInput = document.getElementById('ctsEdgeUrl')?.value?.trim() || 'http://127.0.0.1:5050/tts';
+    const sampleMap = {
+      narrator: 'សូមស្វាគមន៍មកកាន់ការសម្រាយរឿងថ្មីរបស់យើង។',
+      male:     'កុំបារម្ភអី ខ្ញុំនឹងការពារអ្នករហូតដល់ទីបញ្ចប់!',
+      female:   'តើអ្នកពិតជាហ៊ាននិយាយបែបនេះមែនទេ?',
+      villain:  'ហាសហា! គ្មានអ្នកណាអាចរត់គេចពីកណ្តាប់ដៃខ្ញុំបានទេ!',
+      kid:      'អូហូ! ពិតជាអស្ចារ្យណាស់ តោះយើងទៅមើលទាំងអស់គ្នា!',
+      elder:    'កូនចៅអើយ ចូរចងចាំពាក្យដំបូន្មាននេះទុកក្នុងចិត្ត។'
+    };
+    const txt = sampleMap[roleKey] || sampleMap.narrator;
+    const vidId = P.base === 'sreymom' ? 'km-KH-SreymomNeural' : 'km-KH-PisethNeural';
+    window.__ctsTestCastRole = roleKey;
+    try {
+      if (typeof toast === 'function') toast('🔊 កំពុងតេស្តសំឡេងតួអង្គ...');
+      const res = await fetch(edgeInput, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: txt, voice: vidId })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      if (testAudio) { try { testAudio.pause(); } catch (e) {} }
+      testAudio = new Audio(URL.createObjectURL(blob));
+      testAudio.play().catch(() => {});
+    } catch (e) {
+      if (typeof toast === 'function') toast('⚠️ សូមបើក Termux Edge-TTS / Cloud Server ជាមុន');
+    } finally {
+      window.__ctsTestCastRole = null;
+    }
+  }
+
+  async function runAiMultiCast() {
+    if (aiBusy) return;
+    const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+    if (!list.length) {
+      if (typeof toast === 'function') toast('⚠️ មិនទាន់មាន Subtitle Cues ទេ!');
+      return;
+    }
+    if (typeof callAI !== 'function') {
+      if (typeof toast === 'function') toast('❌ រកមិនឃើញមុខងារ AI ទេ!');
+      return;
+    }
+    aiBusy = true;
+    refreshUI();
+    try {
+      const valid = ['narrator', 'male', 'female', 'villain', 'kid', 'elder'];
+      const B = 35;
+      for (let st = 0; st < list.length; st += B) {
+        const batch = list.slice(st, st + B);
+        const linesPayload = batch.map((c, idx) => `${idx}: ${(c.km || c.src || '').replace(/\n/g, ' ').trim()}`).join('\n');
+        const sys = `You are a movie dubbing director. Assign each numbered dialogue/narration line to one character role from: ${valid.join(', ')}.
+Rules:
+- "narrator" for storytelling/scene description
+- "male" for male protagonist/man speaking
+- "female" for female character speaking
+- "villain" for antagonist, boss, threat, angry villain
+- "kid" for child, young playful, or funny comic line
+- "elder" for old wise man/woman, parent/grandfather
+Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["narrator","male","female"]. No markdown.`;
+        const res = await callAI(sys, linesPayload);
+        const raw = String(res || '').replace(/```json|```/gi, '').trim();
+        const m = raw.match(/\[[\s\S]*\]/);
+        if (m) {
+          const arr = JSON.parse(m[0]);
+          batch.forEach((c, idx) => {
+            const r = String(arr[idx] || '').toLowerCase().trim();
+            const role = valid.includes(r) ? r : 'narrator';
+            c._castRole = role;
+            const P = cfg.personas[role] || DEFAULT_PERSONAS.narrator;
+            c.voice = role === 'narrator' ? 'narrator' : (P.base === 'sreymom' ? 'sreymom' : 'piseth');
+          });
+        }
+      }
+      if (typeof renderAll === 'function') { try { renderAll(); } catch (e) {} }
+      refreshUI();
+      if (typeof toast === 'function') toast('🎭 AI ចាប់តួអង្គ ៦ បុគ្គលិកលក្ខណៈរួចរាល់! (ចុច Gen Audio ដើម្បីផលិតសំឡេង)');
+    } catch (e) {
+      if (typeof toast === 'function') toast('⚠️ AI Cast Error: ' + (e.message || e));
+    } finally {
+      aiBusy = false;
+      refreshUI();
+    }
+  }
+
+  const ROLES = ['narrator', 'male', 'female', 'villain', 'kid', 'elder'];
+  const ROLE_ICONS = { narrator: '🎙️', male: '🧑', female: '👩', villain: '😈', kid: '👦', elder: '👴' };
+
+  function cycleCueRole(cueIdx) {
+    const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+    const c = list[cueIdx];
+    if (!c) return;
+    const cur = c._castRole || (c.voice === 'sreymom' ? 'female' : (c.voice === 'narrator' ? 'narrator' : 'male'));
+    const next = ROLES[(ROLES.indexOf(cur) + 1) % ROLES.length];
+    c._castRole = next;
+    const P = cfg.personas[next] || DEFAULT_PERSONAS.narrator;
+    c.voice = next === 'narrator' ? 'narrator' : (P.base === 'sreymom' ? 'sreymom' : 'piseth');
+    c._castDirty = true;
+    if (typeof renderAll === 'function') { try { renderAll(); } catch (e) {} }
+    refreshUI();
+  }
+
+  function regenChangedCues() {
+    const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+    let cleared = 0;
+    list.forEach(c => {
+      if (c && c._castDirty) {
+        c.audioUrl = null;
+        c._rawAudioUrl = null;
+        c._audioBuf = null;
+        c._bufUrl = null;
+        c._castDirty = false;
+        cleared++;
+      }
+    });
+    if (typeof window.generateAllCuesAudio === 'function') {
+      if (cleared === 0 && list.some(c => c && !c.audioUrl)) {
+        window.generateAllCuesAudio();
+      } else if (cleared > 0) {
+        window.generateAllCuesAudio();
+      } else if (typeof toast === 'function') {
+        toast('ℹ️ មិនទាន់មានប្រយោគដែលប្តូរតួថ្មីទេ (ឬចុច Gen Audio ក្នុងតារាង)');
+      }
+    }
+  }
+
+  // Multi-language UI (6 languages, NO Thai!)
+  const T = {
+    km: {
+      title: '🎭 Multi-Voice Character Studio (៦ តួអង្គ)',
+      enChk: '🎙️ បើកប្រើសំឡេង ៦ តួអង្គពេល Gen Audio',
+      aiBtn: '✨ AI ចាប់តួ ៦ តួអង្គ (១ ចុច)', aiBusy: '⏳ AI កំពុងវិភាគតួ...',
+      r_narrator: '🎙️ អ្នកនិទាន', r_male: '🧑 តួប្រុស', r_female: '👩 តួស្រី',
+      r_villain: '😈 តួកាច/ធំ', r_kid: '👦 ក្មេង/កំប្លែង', r_elder: '👴 មនុស្សចាស់',
+      baseLbl: '🗣️ សំឡេងមូលដ្ឋាន', rateLbl: '⚡ ល្បឿន', pitchLbl: '🎵 សំនៀង',
+      testBtn: '🔊 តេស្តតួនេះ', resetBtn: '↺ លំនាំដើម',
+      listLbl: '📋 ចុចលើស្លាកតួ ដើម្បីប្តូរតួតាមប្រយោគនីមួយៗ',
+      regenBtn: '🔄 Re-Gen ប្រយោគដែលប្តូរ', empty: 'មិនទាន់មាន Subtitle Cues ទេ'
+    },
+    en: {
+      title: '🎭 Multi-Voice Character Studio (6 Personas)',
+      enChk: '🎙️ Enable 6-Character Voice Switching on Gen Audio',
+      aiBtn: '✨ AI Auto-Cast 6 Roles (1-Click)', aiBusy: '⏳ Analyzing Cast...',
+      r_narrator: '🎙️ Narrator', r_male: '🧑 Male Lead', r_female: '👩 Female Lead',
+      r_villain: '😈 Villain', r_kid: '👦 Kid/Funny', r_elder: '👴 Elder',
+      baseLbl: '🗣️ Base Voice', rateLbl: '⚡ Speed', pitchLbl: '🎵 Pitch',
+      testBtn: '🔊 Test Role', resetBtn: '↺ Reset',
+      listLbl: '📋 Tap Role Badge to Switch Per-Line Character',
+      regenBtn: '🔄 Re-Gen Changed Lines', empty: 'No subtitle cues loaded yet'
+    },
+    zh: {
+      title: '🎭 多角色配音工作室 (6 种声线)',
+      enChk: '🎙️ 生成配音时启用 6 角色自动变声',
+      aiBtn: '✨ AI 一键智能分配 6 角色', aiBusy: '⏳ AI 分析角色中...',
+      r_narrator: '🎙️ 旁白', r_male: '🧑 男主', r_female: '👩 女主',
+      r_villain: '😈 反派大佬', r_kid: '👦 少儿/搞笑', r_elder: '👴 老人',
+      baseLbl: '🗣️ 基础声线', rateLbl: '⚡ 语速', pitchLbl: '🎵 音调',
+      testBtn: '🔊 试听角色', resetBtn: '↺ 重置',
+      listLbl: '📋 点击角色标签可逐句切换角色',
+      regenBtn: '🔄 重新生成已修改句', empty: '暂无字幕列表'
+    },
+    vi: {
+      title: '🎭 Studio Đa Giọng Nhân Vật (6 Tính Cách)',
+      enChk: '🎙️ Bật đổi giọng 6 nhân vật khi tạo Audio',
+      aiBtn: '✨ AI Tự Phân 6 Vai (1-Click)', aiBusy: '⏳ Đang phân tích vai...',
+      r_narrator: '🎙️ Người kể', r_male: '🧑 Nam chính', r_female: '👩 Nữ chính',
+      r_villain: '😈 Phản diện', r_kid: '👦 Trẻ/Hài', r_elder: '👴 Người già',
+      baseLbl: '🗣️ Giọng gốc', rateLbl: '⚡ Tốc độ', pitchLbl: '🎵 Cao độ',
+      testBtn: '🔊 Nghe thử vai', resetBtn: '↺ Mặc định',
+      listLbl: '📋 Chạm thẻ vai để đổi giọng từng câu',
+      regenBtn: '🔄 Tạo lại câu đã đổi', empty: 'Chưa có câu phụ đề nào'
+    },
+    ko: {
+      title: '🎭 멀티 보이스 캐릭터 스튜디오 (6가지 페르소나)',
+      enChk: '🎙️ 음성 생성 시 6가지 캐릭터 목소리 자동 적용',
+      aiBtn: '✨ AI 6인 역할 자동 배정 (원클릭)', aiBusy: '⏳ 역할 분석 중...',
+      r_narrator: '🎙️ 내레이터', r_male: '🧑 남주', r_female: '👩 여주',
+      r_villain: '😈 악역/보스', r_kid: '👦 아이/코믹', r_elder: '👴 노인',
+      baseLbl: '🗣️ 기본 보이스', rateLbl: '⚡ 속도', pitchLbl: '🎵 음높이',
+      testBtn: '🔊 캐릭터 테스트', resetBtn: '↺ 초기화',
+      listLbl: '📋 역할 배지를 눌러 대사별 캐릭터 변경',
+      regenBtn: '🔄 변경된 대사 다시 생성', empty: '자막 대사가 없습니다'
+    },
+    ja: {
+      title: '🎭 マルチボイス・キャラクタースタジオ (6役)',
+      enChk: '🎙️ 音声生成時に6キャラクター声質切替を有効化',
+      aiBtn: '✨ AI 6役自動キャスティング (1クリック)', aiBusy: '⏳ キャスト分析中...',
+      r_narrator: '🎙️ ナレーター', r_male: '🧑 男性主役', r_female: '👩 女性主役',
+      r_villain: '😈 悪役・ボス', r_kid: '👦 子供・コメディ', r_elder: '👴 老人',
+      baseLbl: '🗣️ 基本ボイス', rateLbl: '⚡ 話速', pitchLbl: '🎵 音程',
+      testBtn: '🔊 ボイス試聴', resetBtn: '↺ リセット',
+      listLbl: '📋 バッジをタップして行ごとにキャラ変更',
+      regenBtn: '🔄 変更行のみ再生成', empty: '字幕データがありません'
+    }
+  };
+
+  function getLang() {
+    try { return localStorage.getItem('cts_tool_ui_lang') || 'km'; } catch (e) { return 'km'; }
+  }
+
+  function styleBtn(b, active) {
+    if (!b) return;
+    b.style.borderColor = active ? '#fbbf24' : 'rgba(255,255,255,0.16)';
+    b.style.background = active ? 'linear-gradient(135deg,#78350f,#b45309)' : 'rgba(255,255,255,0.04)';
+    b.style.color = active ? '#fffbeb' : 'inherit';
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
+
+  const PREFIXES = ['cts-mc', 'cts-mcb'];
+
+  function buildHtml(p, withList) {
+    return `
+      <div class="panel-title"><span id="${p}-title"></span></div>
+      <label class="chk-row"><input type="checkbox" id="${p}-en"><span id="${p}-en-lbl"></span></label>
+      <button type="button" id="${p}-ai" style="width:100%;margin:6px 0 8px;padding:9px;border-radius:10px;border:1px solid rgba(251,191,36,0.55);background:linear-gradient(135deg,#78350f,#d97706);color:#fffbeb;font-size:12px;font-weight:800;cursor:pointer"></button>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px">
+        ${ROLES.map(r => `<button type="button" id="${p}-r-${r}" style="padding:6px 3px;border-radius:8px;border:1.5px solid;font-size:11px;font-weight:700;cursor:pointer"></button>`).join('')}
+      </div>
+      <div style="padding:8px 10px;border-radius:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px">
+          <span id="${p}-base-lbl" style="font-size:11px;font-weight:700"></span>
+          <div style="display:flex;gap:5px">
+            <button type="button" id="${p}-bp" style="padding:4px 9px;border-radius:7px;border:1.5px solid;font-size:11px;font-weight:700;cursor:pointer">👨 Piseth</button>
+            <button type="button" id="${p}-bs" style="padding:4px 9px;border-radius:7px;border:1.5px solid;font-size:11px;font-weight:700;cursor:pointer">👩 Sreymom</button>
+          </div>
+        </div>
+        <div class="range-row">
+          <span id="${p}-rate-lbl" style="min-width:75px"></span>
+          <input type="range" id="${p}-rate" min="-20" max="25" step="1">
+          <b id="${p}-rate-val" style="min-width:42px;text-align:right;font-size:11.5px"></b>
+        </div>
+        <div class="range-row">
+          <span id="${p}-pitch-lbl" style="min-width:75px"></span>
+          <input type="range" id="${p}-pitch" min="-15" max="15" step="1">
+          <b id="${p}-pitch-val" style="min-width:42px;text-align:right;font-size:11.5px"></b>
+        </div>
+        <div style="display:grid;grid-template-columns:1.3fr 0.7fr;gap:6px;margin-top:6px">
+          <button type="button" id="${p}-test" style="padding:6px;border-radius:8px;border:1px solid rgba(56,189,248,0.45);background:rgba(14,116,144,0.25);color:#bae6fd;font-size:11.5px;font-weight:700;cursor:pointer"></button>
+          <button type="button" id="${p}-reset" style="padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:inherit;font-size:11px;font-weight:700;cursor:pointer"></button>
+        </div>
+      </div>
+      ${withList ? `
+      <div style="margin-top:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px">
+          <span id="${p}-list-lbl" style="font-size:11px;opacity:0.85"></span>
+          <button type="button" id="${p}-regen" style="padding:4px 8px;border-radius:7px;border:1px solid rgba(34,197,94,0.5);background:rgba(22,101,52,0.4);color:#dcfce7;font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap"></button>
+        </div>
+        <div id="${p}-cuelist" style="max-height:175px;overflow-y:auto;border-radius:9px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);padding:5px"></div>
+      </div>` : ''}`;
+  }
+
+  function refreshUI() {
+    const t = T[getLang()] || T.km;
+    const sel = cfg.selectedRole || 'narrator';
+    const P = cfg.personas[sel] || DEFAULT_PERSONAS.narrator;
+    const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+
+    PREFIXES.forEach(p => {
+      const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      setTxt(p + '-title', t.title);
+      setTxt(p + '-en-lbl', t.enChk);
+      setTxt(p + '-ai', aiBusy ? t.aiBusy : t.aiBtn);
+      setTxt(p + '-base-lbl', t.baseLbl);
+      setTxt(p + '-rate-lbl', t.rateLbl);
+      setTxt(p + '-pitch-lbl', t.pitchLbl);
+      setTxt(p + '-test', t.testBtn);
+      setTxt(p + '-reset', t.resetBtn);
+      setTxt(p + '-list-lbl', t.listLbl);
+      setTxt(p + '-regen', t.regenBtn);
+
+      const enEl = document.getElementById(p + '-en'); if (enEl) enEl.checked = !!cfg.enabled;
+
+      ROLES.forEach(r => {
+        const b = document.getElementById(p + '-r-' + r);
+        if (!b) return;
+        const cnt = list.filter(c => c && (c._castRole === r || (!c._castRole && ((r === 'female' && c.voice === 'sreymom') || (r === 'narrator' && c.voice === 'narrator') || (r === 'male' && c.voice === 'piseth'))))).length;
+        b.textContent = t['r_' + r] + (cnt ? ` (${cnt})` : '');
+        styleBtn(b, sel === r);
+      });
+
+      styleBtn(document.getElementById(p + '-bp'), P.base !== 'sreymom');
+      styleBtn(document.getElementById(p + '-bs'), P.base === 'sreymom');
+
+      const rEl = document.getElementById(p + '-rate'); if (rEl) rEl.value = P.rate || 0;
+      const pEl = document.getElementById(p + '-pitch'); if (pEl) pEl.value = P.pitch || 0;
+      setTxt(p + '-rate-val', (P.rate >= 0 ? '+' : '') + (P.rate || 0) + '%');
+      setTxt(p + '-pitch-val', (P.pitch >= 0 ? '+' : '') + (P.pitch || 0) + 'Hz');
+
+      const clEl = document.getElementById(p + '-cuelist');
+      if (clEl) {
+        if (!list.length) {
+          clEl.innerHTML = `<div style="opacity:0.65;font-size:11px;padding:8px;text-align:center">${t.empty}</div>`;
+        } else {
+          const maxShow = Math.min(list.length, 60);
+          let html = '';
+          for (let i = 0; i < maxShow; i++) {
+            const c = list[i];
+            if (!c) continue;
+            const cr = c._castRole || (c.voice === 'sreymom' ? 'female' : (c.voice === 'narrator' ? 'narrator' : 'male'));
+            const txt = (c.km || c.src || '').replace(/\s+/g, ' ').trim().slice(0, 34);
+            const dirtyDot = c._castDirty ? ' style="border-color:#4ade80"' : '';
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 5px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:11px">
+              <span style="opacity:0.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><b>#${i + 1}</b> ${escHtml(txt)}</span>
+              <button type="button" data-cidx="${i}"${dirtyDot} style="flex-shrink:0;padding:3px 7px;border-radius:7px;border:1px solid rgba(251,191,36,0.45);background:rgba(180,83,9,0.22);color:#fef3c7;font-size:10.5px;font-weight:700;cursor:pointer">${ROLE_ICONS[cr] || '🎙️'} ${t['r_' + cr].replace(/^[^\s]+\s*/, '')}</button>
+            </div>`;
+          }
+          if (list.length > maxShow) {
+            html += `<div style="opacity:0.65;font-size:10.5px;text-align:center;padding:4px">... +${list.length - maxShow} more cues</div>`;
+          }
+          clEl.innerHTML = html;
+          clEl.querySelectorAll('button[data-cidx]').forEach(btn => {
+            btn.onclick = () => cycleCueRole(parseInt(btn.getAttribute('data-cidx'), 10));
+          });
+        }
+      }
+    });
+  }
+
+  function bindCard(p) {
+    const enEl = document.getElementById(p + '-en');
+    if (enEl) enEl.onchange = function() { cfg.enabled = this.checked; saveCfg(); refreshUI(); };
+    const aiBtn = document.getElementById(p + '-ai');
+    if (aiBtn) aiBtn.onclick = runAiMultiCast;
+
+    ROLES.forEach(r => {
+      const b = document.getElementById(p + '-r-' + r);
+      if (b) b.onclick = function() { cfg.selectedRole = r; saveCfg(); refreshUI(); };
+    });
+
+    const bp = document.getElementById(p + '-bp');
+    if (bp) bp.onclick = function() { cfg.personas[cfg.selectedRole].base = 'piseth'; saveCfg(); refreshUI(); };
+    const bs = document.getElementById(p + '-bs');
+    if (bs) bs.onclick = function() { cfg.personas[cfg.selectedRole].base = 'sreymom'; saveCfg(); refreshUI(); };
+
+    const rEl = document.getElementById(p + '-rate');
+    if (rEl) rEl.oninput = function() { cfg.personas[cfg.selectedRole].rate = parseInt(this.value, 10) || 0; saveCfg(); refreshUI(); };
+    const pEl = document.getElementById(p + '-pitch');
+    if (pEl) pEl.oninput = function() { cfg.personas[cfg.selectedRole].pitch = parseInt(this.value, 10) || 0; saveCfg(); refreshUI(); };
+
+    const tBtn = document.getElementById(p + '-test');
+    if (tBtn) tBtn.onclick = () => testRoleSample(cfg.selectedRole);
+    const rstBtn = document.getElementById(p + '-reset');
+    if (rstBtn) rstBtn.onclick = () => {
+      cfg.personas[cfg.selectedRole] = Object.assign({}, DEFAULT_PERSONAS[cfg.selectedRole]);
+      saveCfg();
+      refreshUI();
+    };
+    const rgBtn = document.getElementById(p + '-regen');
+    if (rgBtn) rgBtn.onclick = regenChangedCues;
+  }
+
+  function mountCards() {
+    const dubAnchor = document.getElementById('ctsAutoFitCard') || document.getElementById('ctsAudioStudioCard') || document.getElementById('ctsVoiceCard');
+    if (dubAnchor && !document.getElementById('ctsMultiCastCard')) {
+      const card = document.createElement('div');
+      card.id = 'ctsMultiCastCard';
+      card.className = 'panel-card';
+      card.setAttribute('data-no-i18n', '1');
+      card.innerHTML = buildHtml('cts-mc', true);
+      dubAnchor.insertAdjacentElement('afterend', card);
+      bindCard('cts-mc');
+    }
+
+    const recapTab = document.getElementById('tab-recap');
+    const bigAnchor = document.getElementById('ctsBgmProBigCard') || document.getElementById('ctsAutoFitBigCard');
+    if (recapTab && !document.getElementById('ctsMultiCastBigCard')) {
+      const card2 = document.createElement('div');
+      card2.id = 'ctsMultiCastBigCard';
+      card2.className = 'panel-card';
+      card2.setAttribute('data-no-i18n', '1');
+      card2.innerHTML = buildHtml('cts-mcb', false);
+      if (bigAnchor) bigAnchor.insertAdjacentElement('afterend', card2);
+      else recapTab.appendChild(card2);
+      bindCard('cts-mcb');
+    }
+    refreshUI();
+  }
+
+  setTimeout(mountCards, 900);
+  setTimeout(mountCards, 2300);
+  setTimeout(mountCards, 4000);
+
+  // Refresh cue count/list safely when renderAll runs
+  setTimeout(function() {
+    if (typeof window.renderAll === 'function' && !window.__ctsMcWrappedRender) {
+      const _prevRA = window.renderAll;
+      window.__ctsMcWrappedRender = true;
+      window.renderAll = function() {
+        const res = _prevRA.apply(this, arguments);
+        setTimeout(refreshUI, 40);
+        return res;
+      };
+    }
+  }, 1500);
 
   if (typeof window.setCtsAppUiLang === 'function') {
     const _prevLangFn = window.setCtsAppUiLang;
