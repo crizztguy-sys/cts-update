@@ -23669,5 +23669,541 @@ body.cts-desktop-mode #cueList .cue-card {
 })();
 </script>
 
+
+<script id="cts-addon-39-thumbmaker">
+// === ADD-ON #39: 1-CLICK AI THUMBNAIL / COVER MAKER (HD PNG EXPORT) ===
+(function() {
+  const CFG_KEY = 'cts_thumb_maker_cfg';
+  let cfg = {
+    ratio: '16:9',     // 16:9 | 9:16 | 4:5 | 1:1
+    theme: 'viral',    // viral | gold | neon | clean
+    badge: '🔥 EP.01',
+    title: 'រឿងល្អមើលកំពូលប្រចាំឆ្នាំ!',
+    pos: 'bottom',     // top | center | bottom
+    scale: 1.0,
+    incLogo: true
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    if (saved && typeof saved === 'object') cfg = Object.assign(cfg, saved);
+  } catch (e) {}
+
+  function saveCfg() {
+    try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {}
+  }
+
+  const RATIOS = {
+    '16:9': { w: 1280, h: 720,  lbl: '16:9 YT' },
+    '9:16': { w: 1080, h: 1920, lbl: '9:16 TT' },
+    '4:5':  { w: 1080, h: 1350, lbl: '4:5 FB' },
+    '1:1':  { w: 1080, h: 1080, lbl: '1:1 SQ' }
+  };
+
+  const THEMES = {
+    viral: { acc: '#ef4444', title: '#fde047', badgeBg: '#dc2626', badgeCol: '#ffffff', frame: 'rgba(239,68,68,0.85)', shade: 'rgba(10,2,4,0.82)' },
+    gold:  { acc: '#f59e0b', title: '#fef3c7', badgeBg: '#d97706', badgeCol: '#fffbeb', frame: 'rgba(245,158,11,0.9)', shade: 'rgba(18,12,4,0.84)' },
+    neon:  { acc: '#38bdf8', title: '#ffffff', badgeBg: '#0284c7', badgeCol: '#f0f9ff', frame: 'rgba(56,189,248,0.9)', shade: 'rgba(10,15,35,0.84)' },
+    clean: { acc: '#ffffff', title: '#ffffff', badgeBg: '#ef4444', badgeCol: '#ffffff', frame: 'transparent', shade: 'rgba(0,0,0,0.68)' }
+  };
+
+  let capturedBgCanvas = null;
+  let customPhotoImg = null;
+  let aiBusy = false;
+
+  function splitKhClusters(str) {
+    const out = [];
+    let cur = '';
+    for (let i = 0; i < str.length; i++) {
+      const ch = str[i], code = ch.charCodeAt(0), prev = i > 0 ? str.charCodeAt(i - 1) : 0;
+      const isComb = (code >= 0x17B6 && code <= 0x17D3) || code === 0x17DD || (code >= 0x0300 && code <= 0x036F) || prev === 0x17D2;
+      if (i === 0 || isComb) cur += ch;
+      else { out.push(cur); cur = ch; }
+    }
+    if (cur) out.push(cur);
+    return out;
+  }
+
+  function wrapCoverLines(ctx, txt, maxW) {
+    const rawLines = String(txt).split(/\n/);
+    const out = [];
+    for (const rl of rawLines) {
+      const parts = rl.trim().split(/(\s+)/).filter(Boolean);
+      const tokens = [];
+      for (const p of parts) {
+        if (/^\s+$/.test(p)) { if (tokens.length) tokens[tokens.length - 1] += p; continue; }
+        const cl = splitKhClusters(p);
+        if (cl.length <= 7) tokens.push(p);
+        else for (let i = 0; i < cl.length; i += 4) tokens.push(cl.slice(i, i + 4).join(''));
+      }
+      let line = '';
+      for (const tk of tokens) {
+        const test = line ? (line + tk) : tk;
+        if (ctx.measureText(test).width > maxW && line) {
+          out.push(line.trimEnd());
+          line = tk.trimStart();
+        } else {
+          line = test;
+        }
+      }
+      if (line) out.push(line.trimEnd());
+    }
+    return out.length ? out : [txt];
+  }
+
+  function grabCurrentFrame(silent) {
+    try {
+      const vid = document.getElementById('videoPlayer');
+      const bgImg = document.getElementById('bgImagePreview');
+      let srcW = 0, srcH = 0, srcEl = null;
+
+      if (vid && vid.readyState >= 2 && vid.videoWidth > 0) {
+        srcEl = vid; srcW = vid.videoWidth; srcH = vid.videoHeight;
+      } else if (bgImg && bgImg.complete && bgImg.naturalWidth > 0 && bgImg.style.display !== 'none') {
+        srcEl = bgImg; srcW = bgImg.naturalWidth; srcH = bgImg.naturalHeight;
+      }
+
+      if (srcEl) {
+        const c = document.createElement('canvas');
+        c.width = srcW;
+        c.height = srcH;
+        c.getContext('2d').drawImage(srcEl, 0, 0, srcW, srcH);
+        capturedBgCanvas = c;
+        customPhotoImg = null;
+        renderThumbCanvas();
+        if (!silent && typeof toast === 'function') toast('📸 ចាប់ Frame ពី Video រួចរាល់!');
+        return true;
+      } else {
+        if (!silent && typeof toast === 'function') toast('⚠️ មិនទាន់មាន Video ទេ (ប្រើផ្ទៃ Cinematic ជំនួស)');
+        renderThumbCanvas();
+        return false;
+      }
+    } catch (e) {
+      if (!silent && typeof toast === 'function') toast('⚠️ មិនអាចចាប់ Frame បានទេ');
+      return false;
+    }
+  }
+
+  function drawCoverToCanvas(canvas, W, H) {
+    const ctx = canvas.getContext('2d');
+    canvas.width = W;
+    canvas.height = H;
+    const th = THEMES[cfg.theme] || THEMES.viral;
+
+    // 1. Background image/frame (cover crop) or cinematic fallback
+    const src = customPhotoImg || capturedBgCanvas;
+    if (src && (src.width || src.naturalWidth)) {
+      const sw = src.width || src.naturalWidth;
+      const sh = src.height || src.naturalHeight;
+      const scale = Math.max(W / sw, H / sh);
+      const dw = sw * scale, dh = sh * scale;
+      ctx.drawImage(src, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    } else {
+      const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+      bgGrad.addColorStop(0, '#1e1b4b');
+      bgGrad.addColorStop(0.5, '#450a0a');
+      bgGrad.addColorStop(1, '#09090b');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // 2. Dramatic vignette / gradient overlay based on text position
+    const grad = ctx.createLinearGradient(0, cfg.pos === 'top' ? 0 : H, 0, cfg.pos === 'top' ? H : 0);
+    grad.addColorStop(0, th.shade);
+    grad.addColorStop(0.55, 'rgba(0,0,0,0.28)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.12)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // 3. Outer Pro Frame (except clean)
+    if (cfg.theme !== 'clean') {
+      ctx.save();
+      ctx.strokeStyle = th.frame;
+      ctx.lineWidth = Math.max(8, Math.round(Math.min(W, H) * 0.012));
+      ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, W - ctx.lineWidth, H - ctx.lineWidth);
+      ctx.restore();
+    }
+
+    // 4. Channel Logo & Name (top-left) if enabled
+    if (cfg.incLogo) {
+      const wmImg = document.getElementById('wmImgEl');
+      const wmTxt = document.getElementById('wmTextEl');
+      const hasImg = wmImg && wmImg.complete && wmImg.naturalWidth > 0 && wmImg.style.display !== 'none';
+      const chName = wmTxt ? (wmTxt.textContent || '').trim() : '';
+      let curX = Math.round(W * 0.045);
+      const topPad = Math.round(H * 0.045);
+      const logoSz = Math.round(Math.min(W, H) * 0.085);
+
+      if (hasImg) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.85)';
+        ctx.shadowBlur = 10;
+        ctx.drawImage(wmImg, curX, topPad, logoSz, logoSz);
+        ctx.restore();
+        curX += logoSz + Math.round(W * 0.018);
+      }
+      if (chName) {
+        const cFs = Math.max(18, Math.round(Math.min(W, H) * 0.032));
+        ctx.save();
+        ctx.font = '800 ' + cFs + 'px "Kantumruy Pro", "Inter", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0,0,0,0.95)';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#fde68a';
+        ctx.fillText(chName, curX, topPad + (hasImg ? logoSz / 2 : cFs * 0.7));
+        ctx.restore();
+      }
+    }
+
+    // 5. Big Headline + Badge
+    const titleTxt = (cfg.title || '').trim();
+    const badgeTxt = (cfg.badge || '').trim();
+    const baseDim = Math.min(W, H);
+    const fs = Math.max(28, Math.round(baseDim * 0.082 * (cfg.scale || 1.0)));
+
+    ctx.save();
+    ctx.font = '900 ' + fs + 'px "Kantumruy Pro", "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    const lines = titleTxt ? wrapCoverLines(ctx, titleTxt, W * 0.86) : [];
+    const lh = fs * 1.24;
+    const totalTextH = lines.length * lh;
+    const bFs = Math.max(16, Math.round(fs * 0.48));
+    const badgeH = badgeTxt ? Math.round(bFs * 1.65) : 0;
+    const gap = badgeTxt && lines.length ? Math.round(fs * 0.35) : 0;
+    const blockH = badgeH + gap + totalTextH;
+
+    let startY = H - blockH - Math.round(H * 0.08);
+    if (cfg.pos === 'top') startY = Math.round(H * 0.16);
+    else if (cfg.pos === 'center') startY = Math.round((H - blockH) / 2);
+
+    const cx = W / 2;
+    if (badgeTxt) {
+      ctx.save();
+      ctx.font = '800 ' + bFs + 'px "Kantumruy Pro", "Inter", sans-serif';
+      const bw = Math.min(W * 0.8, ctx.measureText(badgeTxt).width + bFs * 1.6);
+      const bx = cx - bw / 2;
+      ctx.fillStyle = th.badgeBg;
+      ctx.shadowColor = 'rgba(0,0,0,0.7)';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, startY, bw, badgeH, Math.round(badgeH * 0.35));
+      else ctx.rect(bx, startY, bw, badgeH);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = th.badgeCol;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(badgeTxt, cx, startY + badgeH / 2 + 1);
+      ctx.restore();
+    }
+
+    if (lines.length) {
+      const textTop = startY + badgeH + gap;
+      ctx.font = '900 ' + fs + 'px "Kantumruy Pro", "Inter", sans-serif';
+      ctx.textBaseline = 'alphabetic';
+      lines.forEach((ln, idx) => {
+        const yPos = textTop + fs * 0.94 + idx * lh;
+        ctx.lineWidth = Math.max(6, Math.round(fs * 0.18));
+        ctx.strokeStyle = 'rgba(0,0,0,0.95)';
+        ctx.lineJoin = 'round';
+        ctx.strokeText(ln, cx, yPos);
+
+        ctx.shadowColor = cfg.theme === 'neon' ? th.acc : 'rgba(0,0,0,0.9)';
+        ctx.shadowBlur = cfg.theme === 'neon' ? Math.round(fs * 0.35) : 12;
+        ctx.fillStyle = (idx === 0 || lines.length === 1) ? th.title : '#ffffff';
+        ctx.fillText(ln, cx, yPos);
+        ctx.shadowBlur = 0;
+      });
+    }
+    ctx.restore();
+  }
+
+  function renderThumbCanvas() {
+    const cv = document.getElementById('cts-tm-canvas');
+    if (!cv) return;
+    const r = RATIOS[cfg.ratio] || RATIOS['16:9'];
+    // Render preview at crisp half-HD resolution for instant speed
+    drawCoverToCanvas(cv, Math.round(r.w / 2), Math.round(r.h / 2));
+  }
+
+  function saveThumbnailPng() {
+    const r = RATIOS[cfg.ratio] || RATIOS['16:9'];
+    const hd = document.createElement('canvas');
+    drawCoverToCanvas(hd, r.w, r.h);
+    const fname = `CTS-Cover-${cfg.ratio.replace(':', 'x')}-${Date.now()}.png`;
+    try {
+      hd.toBlob(function(blob) {
+        if (blob) {
+          const u = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = u;
+          a.download = fname;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(u), 4000);
+          if (typeof toast === 'function') toast(`💾 រក្សាទុក ${fname} (${r.w}×${r.h}) រួចរាល់!`);
+        } else {
+          const a = document.createElement('a');
+          a.href = hd.toDataURL('image/png');
+          a.download = fname;
+          a.click();
+        }
+      }, 'image/png');
+    } catch (e) {
+      if (typeof toast === 'function') toast('⚠️ Save Thumbnail Error: ' + (e.message || e));
+    }
+  }
+
+  async function generateAiCoverTitle() {
+    if (aiBusy) return;
+    if (typeof callAI !== 'function') {
+      if (typeof toast === 'function') toast('❌ រកមិនឃើញមុខងារ AI ទេ!');
+      return;
+    }
+    const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+    const sample = list.slice(0, 20).map(c => (c.km || c.src || '').trim()).filter(Boolean);
+    const storyTa = document.getElementById('storyInput')?.value?.trim() || '';
+    const ctxText = sample.length ? sample.join('\n') : storyTa.slice(0, 1200);
+    if (!ctxText) {
+      if (typeof toast === 'function') toast('⚠️ សូមបញ្ចូលសាច់រឿង ឬ Subtitle ជាមុនសិន!');
+      return;
+    }
+    aiBusy = true;
+    refreshUI();
+    try {
+      const lang = getLang();
+      const langHint = lang === 'en' ? 'English' : (lang === 'zh' ? 'Chinese' : (lang === 'vi' ? 'Vietnamese' : (lang === 'ko' ? 'Korean' : (lang === 'ja' ? 'Japanese' : 'Khmer'))));
+      const sys = `You create viral YouTube/TikTok movie thumbnail headlines. Return ONLY JSON: {"badge":"short 2-word tag with emoji","title":"bold dramatic 4-7 word cover headline in ${langHint}"}. No markdown.`;
+      const res = await callAI(sys, `Write a catchy thumbnail cover headline for:\n${ctxText}`);
+      const raw = String(res || '').replace(/```json|```/gi, '').trim();
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (m) {
+        const obj = JSON.parse(m[0]);
+        if (obj.title) cfg.title = String(obj.title).trim();
+        if (obj.badge) cfg.badge = String(obj.badge).trim();
+      } else if (raw) {
+        cfg.title = raw.split('\n')[0].slice(0, 65).trim();
+      }
+      saveCfg();
+      refreshUI();
+      renderThumbCanvas();
+      if (typeof toast === 'function') toast('✨ AI បង្កើតចំណងជើងគម្របរួចរាល់!');
+    } catch (e) {
+      if (typeof toast === 'function') toast('⚠️ AI Error: ' + (e.message || e));
+    } finally {
+      aiBusy = false;
+      refreshUI();
+    }
+  }
+
+  // Multi-language UI (6 languages, NO Thai!)
+  const T = {
+    km: {
+      title: '🖼️ 1-Click AI Thumbnail / Cover Maker (បង្កើតគម្របវីដេអូ)',
+      grabBtn: '📸 ចាប់ Frame', upBtn: '🖼️ រើសរូប', aiBtn: '✨ AI គិតក្បាលគម្រប', aiBusy: '⏳ កំពុងគិត...',
+      ratLbl: '📐 ខ្នាតគម្រប', thmLbl: '🎨 ម៉ូដគម្រប',
+      t_viral: '🔥 Viral', t_gold: '👑 Gold', t_neon: '⚡ Neon', t_clean: '🎬 Clean',
+      badgeLbl: '🏷️ ស្លាកកែង/ក្បាល', txtLbl: '✍️ ចំណងជើងធំលើគម្រប',
+      posLbl: '📍 ទីតាំងអក្សរ', p_top: '⬆️ លើ', p_center: '🎯 កណ្តាល', p_bottom: '⬇️ ក្រោម',
+      sclLbl: '🔍 ទំហំអក្សរ', logoChk: '👑 ភ្ជាប់ Logo & ឈ្មោះឆានែល',
+      saveBtn: '💾 Save គម្រប HD PNG'
+    },
+    en: {
+      title: '🖼️ 1-Click AI Thumbnail / Cover Maker',
+      grabBtn: '📸 Grab Frame', upBtn: '🖼️ Upload Photo', aiBtn: '✨ AI Headline', aiBusy: '⏳ Thinking...',
+      ratLbl: '📐 Cover Aspect Ratio', thmLbl: '🎨 Cover Template',
+      t_viral: '🔥 Viral', t_gold: '👑 Gold', t_neon: '⚡ Neon', t_clean: '🎬 Clean',
+      badgeLbl: '🏷️ Top Tag', txtLbl: '✍️ Big Cover Headline',
+      posLbl: '📍 Text Position', p_top: '⬆️ Top', p_center: '🎯 Center', p_bottom: '⬇️ Bottom',
+      sclLbl: '🔍 Text Size', logoChk: '👑 Include Channel Logo & Name',
+      saveBtn: '💾 Save HD Cover PNG'
+    },
+    zh: {
+      title: '🖼️ 一键 AI 封面图制作器 (Thumbnail Maker)',
+      grabBtn: '📸 截取当前帧', upBtn: '🖼️ 上传图片', aiBtn: '✨ AI 爆款标题', aiBusy: '⏳ 生成中...',
+      ratLbl: '📐 封面比例', thmLbl: '🎨 封面模板',
+      t_viral: '🔥 爆款红', t_gold: '👑 黑金', t_neon: '⚡ 霓虹', t_clean: '🎬 简约',
+      badgeLbl: '🏷️ 角标文字', txtLbl: '✍️ 封面大标题',
+      posLbl: '📍 标题位置', p_top: '⬆️ 顶部', p_center: '🎯 居中', p_bottom: '⬇️ 底部',
+      sclLbl: '🔍 字体大小', logoChk: '👑 附带频道 Logo 和名称',
+      saveBtn: '💾 保存高清 PNG 封面'
+    },
+    vi: {
+      title: '🖼️ Tạo Ảnh Bìa / Thumbnail AI 1-Click',
+      grabBtn: '📸 Chụp Frame', upBtn: '🖼️ Chọn Ảnh', aiBtn: '✨ AI Tiêu đề', aiBusy: '⏳ Đang tạo...',
+      ratLbl: '📐 Tỉ lệ khung hình', thmLbl: '🎨 Mẫu thiết kế',
+      t_viral: '🔥 Viral', t_gold: '👑 Vàng', t_neon: '⚡ Neon', t_clean: '🎬 Sạch',
+      badgeLbl: '🏷️ Nhãn phụ', txtLbl: '✍️ Tiêu đề lớn trên bìa',
+      posLbl: '📍 Vị trí chữ', p_top: '⬆️ Trên', p_center: '🎯 Giữa', p_bottom: '⬇️ Dưới',
+      sclLbl: '🔍 Cỡ chữ', logoChk: '👑 Gắn Logo & Tên kênh',
+      saveBtn: '💾 Lưu Ảnh Bìa HD PNG'
+    },
+    ko: {
+      title: '🖼️ 원클릭 AI 썸네일 / 커버 메이커',
+      grabBtn: '📸 프레임 캡처', upBtn: '🖼️ 사진 업로드', aiBtn: '✨ AI 제목', aiBusy: '⏳ 생성 중...',
+      ratLbl: '📐 커버 비율', thmLbl: '🎨 템플릿',
+      t_viral: '🔥 바이럴', t_gold: '👑 골드', t_neon: '⚡ 네온', t_clean: '🎬 클린',
+      badgeLbl: '🏷️ 상단 태그', txtLbl: '✍️ 썸네일 큰 제목',
+      posLbl: '📍 텍스트 위치', p_top: '⬆️ 상단', p_center: '🎯 중앙', p_bottom: '⬇️ 하단',
+      sclLbl: '🔍 글자 크기', logoChk: '👑 채널 로고 및 이름 포함',
+      saveBtn: '💾 HD PNG 썸네일 저장'
+    },
+    ja: {
+      title: '🖼️ ワンクリック AI サムネイル作成',
+      grabBtn: '📸 フレーム取得', upBtn: '🖼️ 画像選択', aiBtn: '✨ AI 見出し', aiBusy: '⏳ 作成中...',
+      ratLbl: '📐 アスペクト比', thmLbl: '🎨 テンプレート',
+      t_viral: '🔥 バイラル', t_gold: '👑 ゴールド', t_neon: '⚡ ネオン', t_clean: '🎬 クリア',
+      badgeLbl: '🏷️ バッジ', txtLbl: '✍️ サムネ大見出し',
+      posLbl: '📍 文字位置', p_top: '⬆️ 上部', p_center: '🎯 中央', p_bottom: '⬇️ 下部',
+      sclLbl: '🔍 文字サイズ', logoChk: '👑 チャンネルロゴを含める',
+      saveBtn: '💾 HD PNG を保存'
+    }
+  };
+
+  function getLang() {
+    try { return localStorage.getItem('cts_tool_ui_lang') || 'km'; } catch (e) { return 'km'; }
+  }
+
+  function styleBtn(b, active) {
+    if (!b) return;
+    b.style.borderColor = active ? '#fbbf24' : 'rgba(255,255,255,0.16)';
+    b.style.background = active ? 'linear-gradient(135deg,#78350f,#b45309)' : 'rgba(255,255,255,0.04)';
+    b.style.color = active ? '#fffbeb' : 'inherit';
+  }
+
+  function refreshUI() {
+    const t = T[getLang()] || T.km;
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt('cts-tm-title', t.title);
+    setTxt('cts-tm-grab', t.grabBtn);
+    setTxt('cts-tm-upbtn', t.upBtn);
+    setTxt('cts-tm-ai', aiBusy ? t.aiBusy : t.aiBtn);
+    setTxt('cts-tm-rat-lbl', t.ratLbl);
+    setTxt('cts-tm-thm-lbl', t.thmLbl);
+    setTxt('cts-tm-badge-lbl', t.badgeLbl);
+    setTxt('cts-tm-txt-lbl', t.txtLbl);
+    setTxt('cts-tm-pos-lbl', t.posLbl);
+    setTxt('cts-tm-scl-lbl', t.sclLbl);
+    setTxt('cts-tm-logo-lbl', t.logoChk);
+    setTxt('cts-tm-save', t.saveBtn);
+
+    Object.keys(RATIOS).forEach(r => {
+      const b = document.getElementById('cts-tm-r-' + r);
+      if (b) { b.textContent = RATIOS[r].lbl; styleBtn(b, cfg.ratio === r); }
+    });
+    Object.keys(THEMES).forEach(k => {
+      const b = document.getElementById('cts-tm-t-' + k);
+      if (b) { b.textContent = t['t_' + k]; styleBtn(b, cfg.theme === k); }
+    });
+    ['top', 'center', 'bottom'].forEach(p => {
+      const b = document.getElementById('cts-tm-p-' + p);
+      if (b) { b.textContent = t['p_' + p]; styleBtn(b, cfg.pos === p); }
+    });
+
+    const bIn = document.getElementById('cts-tm-badge');
+    if (bIn && bIn !== document.activeElement) bIn.value = cfg.badge || '';
+    const tIn = document.getElementById('cts-tm-txt');
+    if (tIn && tIn !== document.activeElement) tIn.value = cfg.title || '';
+    const sIn = document.getElementById('cts-tm-scl');
+    if (sIn) sIn.value = cfg.scale || 1.0;
+    setTxt('cts-tm-scl-val', (cfg.scale || 1.0).toFixed(2) + 'x');
+    const lIn = document.getElementById('cts-tm-logo');
+    if (lIn) lIn.checked = !!cfg.incLogo;
+  }
+
+  function mountCard() {
+    const tabSet = document.getElementById('tab-settings');
+    if (!tabSet || document.getElementById('ctsThumbMakerCard')) return;
+
+    const card = document.createElement('div');
+    card.id = 'ctsThumbMakerCard';
+    card.className = 'panel-card';
+    card.setAttribute('data-no-i18n', '1');
+    card.innerHTML = `
+      <div class="panel-title"><span id="cts-tm-title"></span></div>
+      <div style="background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:8px;text-align:center;margin-bottom:8px">
+        <canvas id="cts-tm-canvas" style="max-width:100%;max-height:220px;border-radius:7px;box-shadow:0 4px 14px rgba(0,0,0,0.6)"></canvas>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:6px;margin-bottom:8px">
+        <button type="button" id="cts-tm-grab" style="padding:8px 4px;border-radius:9px;border:1px solid rgba(56,189,248,0.45);background:rgba(14,116,144,0.25);color:#bae6fd;font-size:11.5px;font-weight:700;cursor:pointer"></button>
+        <button type="button" id="cts-tm-upbtn" style="padding:8px 4px;border-radius:9px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:inherit;font-size:11.5px;font-weight:700;cursor:pointer"></button>
+        <button type="button" id="cts-tm-ai" style="padding:8px 4px;border-radius:9px;border:1px solid rgba(251,191,36,0.55);background:linear-gradient(135deg,#78350f,#d97706);color:#fffbeb;font-size:11.5px;font-weight:800;cursor:pointer"></button>
+      </div>
+      <input type="file" id="cts-tm-file" accept="image/*" style="display:none">
+      <div class="field">
+        <label id="cts-tm-rat-lbl"></label>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+          ${Object.keys(RATIOS).map(r => `<button type="button" id="cts-tm-r-${r}" style="padding:6px 3px;border-radius:8px;border:1.5px solid;font-size:11px;font-weight:700;cursor:pointer"></button>`).join('')}
+        </div>
+      </div>
+      <div class="field">
+        <label id="cts-tm-thm-lbl"></label>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+          ${Object.keys(THEMES).map(k => `<button type="button" id="cts-tm-t-${k}" style="padding:6px 3px;border-radius:8px;border:1.5px solid;font-size:11px;font-weight:700;cursor:pointer"></button>`).join('')}
+        </div>
+      </div>
+      <div class="field"><label id="cts-tm-badge-lbl"></label><input type="text" id="cts-tm-badge" maxlength="28"></div>
+      <div class="field"><label id="cts-tm-txt-lbl"></label><textarea id="cts-tm-txt" rows="2" style="width:100%;resize:vertical;border-radius:9px;padding:7px 9px;font-size:12px"></textarea></div>
+      <div class="field">
+        <label id="cts-tm-pos-lbl"></label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+          ${['top', 'center', 'bottom'].map(p => `<button type="button" id="cts-tm-p-${p}" style="padding:6px 3px;border-radius:8px;border:1.5px solid;font-size:11px;font-weight:700;cursor:pointer"></button>`).join('')}
+        </div>
+      </div>
+      <div class="range-row">
+        <span id="cts-tm-scl-lbl" style="min-width:100px"></span>
+        <input type="range" id="cts-tm-scl" min="0.75" max="1.45" step="0.05">
+        <b id="cts-tm-scl-val" style="min-width:40px;text-align:right;font-size:11.5px"></b>
+      </div>
+      <label class="chk-row"><input type="checkbox" id="cts-tm-logo"><span id="cts-tm-logo-lbl"></span></label>
+      <button type="button" id="cts-tm-save" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid rgba(34,197,94,0.6);background:linear-gradient(135deg,#166534,#16a34a);color:#f0fdf4;font-size:13px;font-weight:800;cursor:pointer"></button>`;
+
+    const firstCard = tabSet.querySelector('.panel-card');
+    if (firstCard) firstCard.insertAdjacentElement('afterend', card);
+    else tabSet.appendChild(card);
+
+    document.getElementById('cts-tm-grab').onclick = () => grabCurrentFrame(false);
+    document.getElementById('cts-tm-upbtn').onclick = () => document.getElementById('cts-tm-file').click();
+    document.getElementById('cts-tm-file').onchange = function(ev) {
+      const f = ev.target.files && ev.target.files[0];
+      if (!f) return;
+      const img = new Image();
+      img.onload = () => { customPhotoImg = img; renderThumbCanvas(); };
+      img.src = URL.createObjectURL(f);
+    };
+    document.getElementById('cts-tm-ai').onclick = generateAiCoverTitle;
+    document.getElementById('cts-tm-save').onclick = saveThumbnailPng;
+
+    Object.keys(RATIOS).forEach(r => {
+      document.getElementById('cts-tm-r-' + r).onclick = () => { cfg.ratio = r; saveCfg(); refreshUI(); renderThumbCanvas(); };
+    });
+    Object.keys(THEMES).forEach(k => {
+      document.getElementById('cts-tm-t-' + k).onclick = () => { cfg.theme = k; saveCfg(); refreshUI(); renderThumbCanvas(); };
+    });
+    ['top', 'center', 'bottom'].forEach(p => {
+      document.getElementById('cts-tm-p-' + p).onclick = () => { cfg.pos = p; saveCfg(); refreshUI(); renderThumbCanvas(); };
+    });
+
+    document.getElementById('cts-tm-badge').oninput = function() { cfg.badge = this.value; saveCfg(); renderThumbCanvas(); };
+    document.getElementById('cts-tm-txt').oninput = function() { cfg.title = this.value; saveCfg(); renderThumbCanvas(); };
+    document.getElementById('cts-tm-scl').oninput = function() { cfg.scale = parseFloat(this.value) || 1.0; saveCfg(); refreshUI(); renderThumbCanvas(); };
+    document.getElementById('cts-tm-logo').onchange = function() { cfg.incLogo = this.checked; saveCfg(); renderThumbCanvas(); };
+
+    refreshUI();
+    grabCurrentFrame(true);
+  }
+
+  setTimeout(mountCard, 750);
+  setTimeout(mountCard, 2000);
+  setTimeout(mountCard, 3700);
+
+  if (typeof window.setCtsAppUiLang === 'function') {
+    const _prevLangFn = window.setCtsAppUiLang;
+    window.setCtsAppUiLang = function(code) {
+      _prevLangFn(code);
+      setTimeout(refreshUI, 70);
+    };
+  }
+})();
+</script>
+
 </body>
 </html>
