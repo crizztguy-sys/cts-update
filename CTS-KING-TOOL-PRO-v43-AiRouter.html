@@ -25416,22 +25416,22 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
 
 
 <script id="cts-addon-43-airouter">
-// === ADD-ON #43: ALIEN AI TRANSLATION ROUTER STUDIO (10 DISTINCT ALIEN GEOMETRIES & ANIMATIONS, SETTINGS ONLY) ===
+// === ADD-ON #43: ALIEN CONSTELLATION AI ROUTER (TRANSPARENT TOOL LOGO + 10 FULL ALIEN STYLES, SETTINGS ONLY) ===
 (function() {
   const CFG_KEY = 'cts_ai_router_cfg_v1';
   const STATS_KEY = 'cts_ai_router_stats_v1';
 
   const SKINS = {
-    mothership: { name: '🛸 1. Mothership',   bg: '#050814', card: 'rgba(10,18,40,0.9)',    border: 'rgba(56,189,248,0.55)',  acc: '#0284c7', acc2: '#38bdf8', text: '#e0f2fe', muted: '#7dd3fc', orb: 'radial-gradient(circle at 35% 35%, #7dd3fc, #0369a1 60%, #082f49)', glyph: '🛸', shape: 'bevel' },
-    biohive:    { name: '🧬 2. Bio-Hive',     bg: '#04120c', card: 'rgba(9,32,20,0.9)',     border: 'rgba(52,211,153,0.55)',  acc: '#059669', acc2: '#a3e635', text: '#ecfdf5', muted: '#6ee7b7', orb: 'radial-gradient(circle at 35% 35%, #a3e635, #047857 60%, #022c22)', glyph: '🧬', shape: 'organic' },
-    hexgrid:    { name: '⬡ 3. Hex-Matrix',    bg: '#070a12', card: 'rgba(14,20,34,0.92)',   border: 'rgba(34,211,238,0.55)',  acc: '#0891b2', acc2: '#22d3ee', text: '#ecfeff', muted: '#67e8f9', orb: 'radial-gradient(circle at 35% 35%, #22d3ee, #0e7490 60%, #083344)', glyph: '⬡', shape: 'hex' },
-    blackhole:  { name: '🕳️ 4. Singularity',  bg: '#04020a', card: 'rgba(18,10,32,0.92)',   border: 'rgba(168,85,247,0.58)',  acc: '#7e22ce', acc2: '#f472b6', text: '#faf5ff', muted: '#d8b4fe', orb: 'radial-gradient(circle, #000000 38%, #7e22ce 68%, #f472b6 100%)', glyph: '🕳️', shape: 'capsule' },
-    predator:   { name: '👁️ 5. Predator HUD', bg: '#110305', card: 'rgba(32,6,10,0.92)',    border: 'rgba(244,63,94,0.62)',   acc: '#e11d48', acc2: '#fbbf24', text: '#fff1f2', muted: '#fda4af', orb: 'radial-gradient(circle at 35% 35%, #fb7185, #be123c 60%, #4c0519)', glyph: '◬', shape: 'visor' },
-    tesseract:  { name: '⚡ 6. Tesseract',    bg: '#06071a', card: 'rgba(16,18,52,0.92)',   border: 'rgba(129,140,248,0.6)',  acc: '#4f46e5', acc2: '#22d3ee', text: '#eef2ff', muted: '#a5b4fc', orb: 'linear-gradient(135deg, #4f46e5, #06b6d4)', glyph: '❖', shape: 'shard' },
-    monolith:   { name: '🔮 7. Monolith',     bg: '#0d0718', card: 'rgba(26,14,48,0.9)',    border: 'rgba(232,121,249,0.55)', acc: '#c026d3', acc2: '#f0abfc', text: '#fdf4ff', muted: '#f5d0fe', orb: 'linear-gradient(160deg, #f0abfc, #86198f 55%, #3b0764)', glyph: '◆', shape: 'crystal' },
-    stargate:   { name: '🛰️ 8. Star-Gate',    bg: '#080b12', card: 'rgba(18,22,36,0.92)',   border: 'rgba(251,191,36,0.58)',  acc: '#d97706', acc2: '#38bdf8', text: '#fffbeb', muted: '#fde68a', orb: 'radial-gradient(circle, #38bdf8 25%, #0284c7 55%, #b45309 88%)', glyph: '❂', shape: 'gate' },
-    swarm:      { name: '🦠 9. Nano-Swarm',   bg: '#031012', card: 'rgba(6,28,32,0.92)',    border: 'rgba(45,212,191,0.55)',  acc: '#0d9488', acc2: '#5eead4', text: '#f0fdfa', muted: '#99f6e4', orb: 'radial-gradient(circle at 35% 35%, #5eead4, #0f766e 60%, #042f2e)', glyph: '✺', shape: 'radar' },
-    warpdrive:  { name: '🌌 10. Warp Drive',  bg: '#09040e', card: 'rgba(22,10,32,0.92)',   border: 'rgba(251,146,60,0.58)',  acc: '#ea580c', acc2: '#38bdf8', text: '#fff7ed', muted: '#fed7aa', orb: 'radial-gradient(circle at 35% 35%, #fdba74, #c2410c 55%, #1e1b4b)', glyph: '✦', shape: 'wing' }
+    mothership: { name: '🛸 1. Mothership',   bg: '#040914', card: 'rgba(8,18,40,0.92)',    border: '#38bdf8', acc: '#0284c7', acc2: '#38bdf8', text: '#e0f2fe', muted: '#7dd3fc', cls: 'st-mothership', pathType: 'curve',   layout: 'wing',    logoFilter: 'hue-rotate(175deg) saturate(1.3) drop-shadow(0 0 14px #38bdf8)' },
+    biohive:    { name: '🧬 2. Bio-Hive',     bg: '#031209', card: 'rgba(7,30,18,0.92)',    border: '#4ade80', acc: '#059669', acc2: '#a3e635', text: '#ecfdf5', muted: '#86efac', cls: 'st-biohive',    pathType: 'sine',    layout: 'cluster', logoFilter: 'hue-rotate(92deg) saturate(1.7) drop-shadow(0 0 16px #a3e635)' },
+    hexmatrix:  { name: '⬡ 3. Hex-Matrix',    bg: '#040c14', card: 'rgba(10,22,38,0.94)',   border: '#22d3ee', acc: '#0891b2', acc2: '#22d3ee', text: '#ecfeff', muted: '#67e8f9', cls: 'st-hexmatrix',  pathType: 'circuit', layout: 'hexring', logoFilter: 'hue-rotate(155deg) contrast(1.2) drop-shadow(0 0 14px #22d3ee)' },
+    blackhole:  { name: '🕳️ 4. Singularity',  bg: '#04010a', card: 'rgba(18,8,34,0.93)',    border: '#c084fc', acc: '#7e22ce', acc2: '#f472b6', text: '#faf5ff', muted: '#e9d5ff', cls: 'st-blackhole',  pathType: 'vortex',  layout: 'orbit',   logoFilter: 'hue-rotate(255deg) saturate(1.6) drop-shadow(0 0 18px #f472b6)' },
+    predator:   { name: '👁️ 5. Predator HUD', bg: '#120205', card: 'rgba(34,6,12,0.94)',    border: '#fb7185', acc: '#e11d48', acc2: '#fbbf24', text: '#fff1f2', muted: '#fda4af', cls: 'st-predator',   pathType: 'laser',   layout: 'target',  logoFilter: 'hue-rotate(-20deg) contrast(1.35) saturate(1.8) drop-shadow(0 0 16px #fb7185)' },
+    tesseract:  { name: '⚡ 6. Tesseract',    bg: '#05061c', card: 'rgba(14,16,52,0.93)',   border: '#818cf8', acc: '#4f46e5', acc2: '#22d3ee', text: '#eef2ff', muted: '#a5b4fc', cls: 'st-tesseract',  pathType: 'bolt',    layout: 'diamond', logoFilter: 'hue-rotate(205deg) brightness(1.15) drop-shadow(0 0 16px #818cf8)' },
+    monolith:   { name: '🔮 7. Monolith',     bg: '#0c0518', card: 'rgba(26,12,48,0.92)',   border: '#e879f9', acc: '#c026d3', acc2: '#f0abfc', text: '#fdf4ff', muted: '#f5d0fe', cls: 'st-monolith',   pathType: 'dual',    layout: 'pyramid', logoFilter: 'hue-rotate(285deg) saturate(1.5) drop-shadow(0 0 18px #f0abfc)' },
+    stargate:   { name: '🛰️ 8. Star-Gate',    bg: '#070a12', card: 'rgba(18,22,36,0.93)',   border: '#fbbf24', acc: '#d97706', acc2: '#38bdf8', text: '#fffbeb', muted: '#fde68a', cls: 'st-stargate',   pathType: 'dual',    layout: 'orbit',   logoFilter: 'sepia(0.35) saturate(1.7) drop-shadow(0 0 16px #fbbf24)' },
+    swarm:      { name: '🦠 9. Nano-Swarm',   bg: '#021012', card: 'rgba(6,28,32,0.93)',    border: '#2dd4bf', acc: '#0d9488', acc2: '#5eead4', text: '#f0fdfa', muted: '#99f6e4', cls: 'st-swarm',      pathType: 'sine',    layout: 'swarm',   logoFilter: 'hue-rotate(135deg) saturate(1.6) drop-shadow(0 0 16px #5eead4)' },
+    warpdrive:  { name: '🌌 10. Warp Drive',  bg: '#0a0410', card: 'rgba(24,10,34,0.93)',   border: '#fb923c', acc: '#ea580c', acc2: '#38bdf8', text: '#fff7ed', muted: '#fed7aa', cls: 'st-warpdrive',  pathType: 'bolt',    layout: 'wing',    logoFilter: 'hue-rotate(15deg) contrast(1.2) saturate(1.7) drop-shadow(0 0 18px #fb923c)' }
   };
 
   let cfg = {
@@ -25459,9 +25459,7 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     if (st && st.date === todayStr()) stats = Object.assign(stats, st);
   } catch (e) {}
 
-  function saveCfg() {
-    try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {}
-  }
+  function saveCfg() { try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {} }
   function saveStats() {
     if (stats.date !== todayStr()) stats = { date: todayStr(), totalLines: 0, perNode: {} };
     try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)); } catch (e) {}
@@ -25469,25 +25467,101 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
 
   function detectProviderFromKey(k) {
     const s = String(k || '').trim();
-    if (s.startsWith('AIza') || s.startsWith('AQ.')) return 'gemini';
-    return 'openai';
+    return (s.startsWith('AIza') || s.startsWith('AQ.')) ? 'gemini' : 'openai';
   }
-
   function keyIdOf(prov, rawKey) {
     const k = String(rawKey || '').trim();
-    if (!k) return prov + '_empty';
-    return prov + '_' + k.slice(0, 6) + '_' + k.slice(-4);
+    return k ? (prov + '_' + k.slice(0, 6) + '_' + k.slice(-4)) : (prov + '_empty');
+  }
+  function maskKey(k) {
+    if (!k) return 'Free';
+    return k.length <= 10 ? k : (k.slice(0, 4) + '••' + k.slice(-4));
   }
 
-  function maskKey(k) {
-    if (!k) return 'Zero-Key';
-    if (k.length <= 10) return k;
-    return k.slice(0, 5) + '•••' + k.slice(-4);
+  // Extract CTS Tool Logo from #headerLogoWrap & remove solid/dark background via BFS flood-fill
+  let cachedCleanLogoUrl = null;
+  let logoExtractAttempted = false;
+
+  function extractCleanToolLogo(cb) {
+    if (cachedCleanLogoUrl) { if (cb) cb(cachedCleanLogoUrl); return; }
+    const wrap = document.getElementById('headerLogoWrap');
+    const imgEl = wrap ? wrap.querySelector('img') : null;
+    const svgEl = wrap ? wrap.querySelector('svg') : null;
+
+    if (svgEl) {
+      try {
+        const clone = svgEl.cloneNode(true);
+        const w = clone.getAttribute('width') || 128;
+        clone.querySelectorAll('rect').forEach(r => {
+          const rw = parseFloat(r.getAttribute('width') || '0');
+          if (rw >= 80 || r.getAttribute('width') === '100%') r.remove();
+        });
+        const xml = new XMLSerializer().serializeToString(clone);
+        cachedCleanLogoUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+        if (cb) cb(cachedCleanLogoUrl);
+        return;
+      } catch (e) {}
+    }
+
+    const srcUrl = (imgEl && imgEl.src) ? imgEl.src : (document.getElementById('wmImgEl')?.src || '');
+    if (!srcUrl) return;
+    if (logoExtractAttempted) return;
+    logoExtractAttempted = true;
+
+    const tmp = new Image();
+    if (!srcUrl.startsWith('data:')) tmp.crossOrigin = 'anonymous';
+    tmp.onload = function() {
+      try {
+        const S = 140;
+        const c = document.createElement('canvas');
+        c.width = S; c.height = S;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(tmp, 0, 0, S, S);
+        const idata = ctx.getImageData(0, 0, S, S);
+        const d = idata.data;
+
+        // Check corner alpha; if already transparent, keep!
+        const corners = [0, (S - 1) * 4, ((S - 1) * S) * 4, ((S * S) - 1) * 4];
+        const hasOpaqueCorner = corners.some(idx => d[idx + 3] > 200);
+        if (hasOpaqueCorner) {
+          const bgR = d[0], bgG = d[1], bgB = d[2];
+          const vis = new Uint8Array(S * S);
+          const q = [];
+          for (let x = 0; x < S; x++) { q.push(x, (S - 1) * S + x); }
+          for (let y = 1; y < S - 1; y++) { q.push(y * S, y * S + S - 1); }
+
+          let head = 0;
+          while (head < q.length) {
+            const p = q[head++];
+            if (vis[p]) continue;
+            vis[p] = 1;
+            const i4 = p * 4;
+            const dist = Math.hypot(d[i4] - bgR, d[i4 + 1] - bgG, d[i4 + 2] - bgB);
+            if (dist < 58 || (d[i4] < 24 && d[i4 + 1] < 24 && d[i4 + 2] < 24)) {
+              d[i4 + 3] = dist < 38 ? 0 : Math.round(((dist - 38) / 20) * d[i4 + 3]);
+              const x = p % S, y = (p / S) | 0;
+              if (x > 0 && !vis[p - 1]) q.push(p - 1);
+              if (x < S - 1 && !vis[p + 1]) q.push(p + 1);
+              if (y > 0 && !vis[p - S]) q.push(p - S);
+              if (y < S - 1 && !vis[p + S]) q.push(p + S);
+            }
+          }
+          ctx.putImageData(idata, 0, 0);
+        }
+        cachedCleanLogoUrl = c.toDataURL('image/png');
+        if (cb) cb(cachedCleanLogoUrl);
+      } catch (e) {
+        cachedCleanLogoUrl = srcUrl;
+        if (cb) cb(cachedCleanLogoUrl);
+      }
+    };
+    tmp.onerror = () => { cachedCleanLogoUrl = srcUrl; if (cb) cb(cachedCleanLogoUrl); };
+    tmp.src = srcUrl;
   }
 
   const runtimeState = {};
   const activityLog = [];
-  let activeJob = { name: 'Standby • Neural Uplink Ready', done: 0, total: 0, state: 'idle' };
+  let activeJob = { name: 'Standby • Neural Target', done: 0, total: 0, state: 'idle' };
   let isSplitting = false;
   let isPinging = false;
   let showAddBox = false;
@@ -25517,7 +25591,7 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
       if (st.status === 'cooldown' && st.until && Date.now() > st.until) st.status = 'ready';
       nodes.push({
         id, provider: 'gemini', rawKey: k,
-        name: meta.name || `Unit-0${idx + 1} (Gemini)`,
+        name: meta.name || `Unit-0${idx + 1}`,
         model: meta.model || curGemModel,
         enabled: meta.enabled !== false,
         status: meta.enabled === false ? 'paused' : st.status,
@@ -25537,7 +25611,7 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
         const st = runtimeState[id] || { status: 'ready' };
         nodes.push({
           id, provider: 'gemini', rawKey: k,
-          name: meta.name || `Unit (${k.slice(0, 5)})`,
+          name: meta.name || `Unit-${nodes.length + 1}`,
           model: meta.model || curGemModel,
           enabled: meta.enabled !== false,
           status: meta.enabled === false ? 'paused' : st.status,
@@ -25551,10 +25625,10 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
       const meta = cfg.nodeMeta[id] || {};
       const st = runtimeState[id] || { status: 'ready' };
       if (st.status === 'cooldown' && st.until && Date.now() > st.until) st.status = 'ready';
-      const provLabel = k.startsWith('gsk_') ? 'Groq' : (k.startsWith('sk-or-') ? 'OpenRouter' : 'OpenAI');
+      const provLabel = k.startsWith('gsk_') ? 'Groq' : (k.startsWith('sk-or-') ? 'Router' : 'OpenAI');
       nodes.push({
         id, provider: 'openai', rawKey: k,
-        name: meta.name || `${provLabel} Unit ${idx + 1}`,
+        name: meta.name || `${provLabel}-${idx + 1}`,
         model: meta.model || curOaiModel,
         enabled: meta.enabled !== false,
         status: meta.enabled === false ? 'paused' : st.status,
@@ -25567,8 +25641,8 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     const fSt = runtimeState['free_cloud'] || { status: 'ready' };
     nodes.push({
       id: 'free_cloud', provider: 'free', rawKey: '',
-      name: '🆓 Free Cloud Relay',
-      model: 'Auto-GTX (Zero Key)',
+      name: 'Free Relay',
+      model: 'Zero-Key',
       enabled: cfg.freeEnabled !== false,
       status: cfg.freeEnabled === false ? 'paused' : fSt.status,
       latency: fSt.latency || 0,
@@ -25622,16 +25696,12 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     let estLines = 1;
     try {
       if (init && typeof init.body === 'string') {
-        const linesFound = (init.body.match(/\\n/g) || []).length;
-        estLines = Math.max(1, Math.min(40, linesFound || 1));
+        estLines = Math.max(1, Math.min(40, (init.body.match(/\\n/g) || []).length || 1));
       }
     } catch (e) {}
 
     const t0 = performance.now();
-    if (matchedId) {
-      runtimeState[matchedId] = { status: 'running' };
-      scheduleRefresh();
-    }
+    if (matchedId) { runtimeState[matchedId] = { status: 'running' }; scheduleRefresh(); }
     try {
       const resp = await _prevFetchRT(input, init);
       const lat = Math.round(performance.now() - t0);
@@ -25705,9 +25775,8 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
       for (const c of batch) {
         const src = (c.src || c.km || '').replace(/\n/g, ' ').trim();
         if (!src) { out.push(''); continue; }
-        if (typeof freeTranslate === 'function') {
-          out.push(await freeTranslate(src, 'auto', tgtCode));
-        } else {
+        if (typeof freeTranslate === 'function') out.push(await freeTranslate(src, 'auto', tgtCode));
+        else {
           const r = await _prevFetchRT(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(tgtCode)}&dt=t&q=${encodeURIComponent(src)}`);
           const j = await r.json();
           out.push((j?.[0] || []).map(x => x?.[0] || '').join(''));
@@ -25787,10 +25856,7 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     const allNodes = collectNodes().filter(n => n.enabled && n.status !== 'cooldown');
     const apiFirst = allNodes.filter(n => n.provider !== 'free');
     const readyNodes = apiFirst.length ? apiFirst : allNodes;
-    if (!readyNodes.length) {
-      if (typeof toast === 'function') toast('⚠️ មិនមាន Node Ready ទេ!');
-      return;
-    }
+    if (!readyNodes.length) return;
 
     const targets = list.filter(c => !(c.km || '').trim());
     const workList = targets.length ? targets : list;
@@ -25799,12 +25865,11 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     for (let i = 0; i < workList.length; i += B) batches.push(workList.slice(i, i + B));
 
     isSplitting = true;
-    activeJob = { name: `Hyper-Beam (${workList.length} lines)`, done: 0, total: workList.length, state: 'running' };
-    addLog(`Hyper-Route Engaged: ${workList.length} lines -> ${cfg.splitAccounts ? readyNodes.length : 1} unit(s)`, true);
+    activeJob = { name: `Beam (${workList.length} ln)`, done: 0, total: workList.length, state: 'running' };
+    addLog(`Hyper-Route Engaged: ${workList.length} lines`, true);
     refreshUI();
 
-    let nextIdx = 0;
-    let rr = 0;
+    let nextIdx = 0, rr = 0;
     const workers = cfg.splitAccounts ? Math.min(cfg.concurrency || 2, Math.max(1, readyNodes.length)) : 1;
 
     async function workerLoop() {
@@ -25819,15 +25884,11 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
           if (runtimeState[nd.id]?.status === 'cooldown' && Date.now() < (runtimeState[nd.id].until || 0)) continue;
           try {
             const arr = await translateBatchWithNode(nd, batch);
-            batch.forEach((c, idx) => {
-              if (arr[idx]) c.km = String(arr[idx]).trim();
-            });
+            batch.forEach((c, idx) => { if (arr[idx]) c.km = String(arr[idx]).trim(); });
             activeJob.done += batch.length;
             ok = true;
             break;
-          } catch (e) {
-            if (!cfg.autoFallback) break;
-          }
+          } catch (e) { if (!cfg.autoFallback) break; }
         }
         if (!ok) addLog(`Sector #${myBIdx + 1} delayed`, false);
         refreshUI();
@@ -25848,15 +25909,12 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
 
   function addAccountToRealPool(name, keyVal, modelVal) {
     const k = String(keyVal || '').trim();
-    if (!k) {
-      if (typeof toast === 'function') toast('⚠️ សូម Paste API Key (AQ... ឬ AIza...)');
-      return false;
-    }
+    if (!k) { if (typeof toast === 'function') toast('⚠️ សូម Paste API Key (AQ... ឬ AIza...)'); return false; }
     const prov = detectProviderFromKey(k);
     const id = keyIdOf(prov, k);
     const defModel = prov === 'gemini' ? (document.getElementById('geminiModel')?.value || 'gemini-2.5-flash') : 'llama-3.3-70b-versatile';
     cfg.nodeMeta[id] = {
-      name: String(name || '').trim() || (prov === 'gemini' ? 'Alien Gemini Unit' : 'Alien OAI Unit'),
+      name: String(name || '').trim() || (prov === 'gemini' ? 'Alien Unit' : 'OAI Unit'),
       model: String(modelVal || '').trim() || defModel,
       enabled: true
     };
@@ -25864,19 +25922,13 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
 
     if (typeof apiKeyPool !== 'undefined' && Array.isArray(apiKeyPool)) {
       const existing = apiKeyPool.find(x => x.key === k);
-      if (existing) {
-        existing.provider = prov;
-        existing.model = cfg.nodeMeta[id].model;
-      } else {
+      if (existing) { existing.provider = prov; existing.model = cfg.nodeMeta[id].model; }
+      else {
         const ep = k.startsWith('gsk_') ? 'https://api.groq.com/openai/v1/chat/completions'
           : (k.startsWith('sk-or-') ? 'https://openrouter.ai/api/v1/chat/completions' : '');
         apiKeyPool.push({
           id: 'rt_' + Date.now() + '_' + Math.floor(Math.random() * 999),
-          provider: prov,
-          key: k,
-          url: ep,
-          model: cfg.nodeMeta[id].model,
-          active: apiKeyPool.length === 0
+          provider: prov, key: k, url: ep, model: cfg.nodeMeta[id].model, active: apiKeyPool.length === 0
         });
       }
       if (typeof safeSet === 'function') safeSet('cts_king_key_pool', apiKeyPool);
@@ -25892,114 +25944,231 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
   }
 
   function removeNodeFromPool(nodeId, rawKey) {
-    if (nodeId === 'free_cloud') {
-      cfg.freeEnabled = !cfg.freeEnabled;
-      saveCfg();
-      refreshUI();
-      return;
-    }
+    if (nodeId === 'free_cloud') { cfg.freeEnabled = !cfg.freeEnabled; saveCfg(); refreshUI(); return; }
     if (rawKey && typeof apiKeyPool !== 'undefined' && Array.isArray(apiKeyPool)) {
-      for (let i = apiKeyPool.length - 1; i >= 0; i--) {
-        if (apiKeyPool[i].key === rawKey) apiKeyPool.splice(i, 1);
-      }
+      for (let i = apiKeyPool.length - 1; i >= 0; i--) { if (apiKeyPool[i].key === rawKey) apiKeyPool.splice(i, 1); }
       if (typeof safeSet === 'function') safeSet('cts_king_key_pool', apiKeyPool);
     }
     if (typeof settings !== 'undefined') {
-      if (settings.geminiKey === rawKey) {
-        settings.geminiKey = '';
-        const gk = document.getElementById('geminiKey'); if (gk) gk.value = '';
-      }
-      if (settings.openaiKey === rawKey) {
-        settings.openaiKey = '';
-        const ok = document.getElementById('openaiKey'); if (ok) ok.value = '';
-      }
+      if (settings.geminiKey === rawKey) { settings.geminiKey = ''; const gk = document.getElementById('geminiKey'); if (gk) gk.value = ''; }
+      if (settings.openaiKey === rawKey) { settings.openaiKey = ''; const ok = document.getElementById('openaiKey'); if (ok) ok.value = ''; }
       if (typeof saveSettings === 'function') { try { saveSettings(true); } catch (e) {} }
     }
     if (typeof renderKeyPool === 'function') { try { renderKeyPool(); } catch (e) {} }
     if (typeof updateEngineBadge === 'function') { try { updateEngineBadge(); } catch (e) {} }
     delete runtimeState[nodeId];
-    addLog('Ejected Node', true);
+    addLog('Ejected Unit', true);
     refreshUI();
   }
 
-  // Strictly Scoped Alien CSS (NEVER leaks outside #ctsRouterModal & #ctsAiRouterCard!)
+  // Spatial Constellation Coordinates (scattered compact pods around Center CTS Logo!)
+  function getNodeCoords(idx, total, layout, isDesktop) {
+    if (isDesktop) {
+      if (layout === 'orbit' || layout === 'hexring') {
+        const angs = [-150, -30, 165, 15, -110, -70, 130, 50];
+        const a = (angs[idx % angs.length] + Math.floor(idx / 8) * 18) * Math.PI / 180;
+        const rx = 34, ry = 35;
+        return { x: 48 + rx * Math.cos(a), y: 48 + ry * Math.sin(a) };
+      }
+      if (layout === 'pyramid') {
+        const slots = [[50,14],[22,28],[78,28],[16,56],[84,56],[28,80]];
+        const p = slots[idx % slots.length];
+        return { x: p[0], y: p[1] };
+      }
+      if (layout === 'cluster' || layout === 'swarm') {
+        const slots = [[18,18],[76,14],[14,48],[82,42],[24,78],[42,22],[62,76],[86,68]];
+        const p = slots[idx % slots.length];
+        return { x: p[0], y: p[1] };
+      }
+      // wing / diamond / target
+      const slots = [[18,18],[22,48],[18,78],[78,18],[82,48],[38,16],[64,16]];
+      const p = slots[idx % slots.length];
+      return { x: p[0], y: p[1] };
+    } else {
+      // Mobile: compact scattered pods positioned around Central Logo (50%, 49%) + Job Pod at (50%, 86%)
+      if (layout === 'orbit' || layout === 'hexring') {
+        const slots = [[24,13],[76,16],[22,35],[78,38],[24,63],[76,63]];
+        const p = slots[idx % slots.length];
+        return { x: p[0], y: p[1] + Math.floor(idx / 6) * 8 };
+      }
+      if (layout === 'pyramid') {
+        const slots = [[50,11],[24,27],[76,27],[22,64],[78,64],[50,33]];
+        const p = slots[idx % slots.length];
+        return { x: p[0], y: p[1] + Math.floor(idx / 6) * 8 };
+      }
+      if (layout === 'cluster' || layout === 'swarm') {
+        const slots = [[23,13],[77,19],[20,34],[80,62],[25,65],[54,15]];
+        const p = slots[idx % slots.length];
+        return { x: p[0], y: p[1] + Math.floor(idx / 6) * 8 };
+      }
+      // wing / diamond / target
+      const slots = [[24,14],[76,14],[23,34],[77,34],[24,64],[76,64]];
+      const p = slots[idx % slots.length];
+      return { x: p[0], y: p[1] + Math.floor(idx / 6) * 8 };
+    }
+  }
+
+  // Build Alien Conduit SVG path by style
+  function buildAlienPath(sx, sy, tx, ty, type, seed) {
+    const mx = (sx + tx) / 2, my = (sy + ty) / 2;
+    const dx = tx - sx, dy = ty - sy;
+    const dist = Math.hypot(dx, dy) || 1;
+    const nx = -dy / dist, ny = dx / dist;
+
+    if (type === 'laser') {
+      return `M ${sx} ${sy} L ${tx} ${ty}`;
+    }
+    if (type === 'circuit') {
+      const m1x = sx + dx * 0.45, m2y = ty;
+      return `M ${sx} ${sy} L ${m1x} ${sy} L ${m1x} ${m2y} L ${tx} ${ty}`;
+    }
+    if (type === 'bolt') {
+      const p1x = sx + dx * 0.3 + nx * 16 * (seed % 2 ? 1 : -1);
+      const p1y = sy + dy * 0.3 + ny * 16 * (seed % 2 ? 1 : -1);
+      const p2x = sx + dx * 0.65 - nx * 14 * (seed % 2 ? 1 : -1);
+      const p2y = sy + dy * 0.65 - ny * 14 * (seed % 2 ? 1 : -1);
+      return `M ${sx} ${sy} L ${p1x.toFixed(1)} ${p1y.toFixed(1)} L ${p2x.toFixed(1)} ${p2y.toFixed(1)} L ${tx} ${ty}`;
+    }
+    if (type === 'sine') {
+      const c1x = sx + dx * 0.33 + nx * 24, c1y = sy + dy * 0.33 + ny * 24;
+      const c2x = sx + dx * 0.66 - nx * 24, c2y = sy + dy * 0.66 - ny * 24;
+      return `M ${sx} ${sy} C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${tx} ${ty}`;
+    }
+    if (type === 'vortex') {
+      const c1x = mx + nx * 38, c1y = my + ny * 38;
+      return `M ${sx} ${sy} Q ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${tx} ${ty}`;
+    }
+    // curve / dual
+    return `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`;
+  }
+
+  // Strictly Scoped Alien CSS (10 Dramatically Different Alien Themes & Motions!)
   const styleEl = document.createElement('style');
   styleEl.textContent = `
-    #ctsAiRouterCard{position:relative;flex-shrink:0!important;height:auto!important;overflow:visible!important;border:1.5px solid rgba(56,189,248,0.55)!important;background:linear-gradient(145deg,rgba(6,14,32,0.96),rgba(20,10,44,0.96))!important;box-shadow:0 0 18px rgba(56,189,248,0.22)!important}
-    #ctsAiRouterCard>*{position:relative;z-index:1}
-    #cts-rt-open{position:relative;overflow:hidden;clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);letter-spacing:.4px;animation:ctsAlienGlow 2.4s ease-in-out infinite}
+    #ctsAiRouterCard{position:relative;flex-shrink:0!important;height:auto!important;overflow:visible!important;border:1.5px solid rgba(56,189,248,0.58)!important;background:linear-gradient(145deg,rgba(6,14,32,0.96),rgba(20,10,44,0.96))!important;box-shadow:0 0 20px rgba(56,189,248,0.22)!important}
+    #cts-rt-open{position:relative;clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);letter-spacing:.4px;animation:ctsAlGlow 2.2s ease-in-out infinite}
 
-    #ctsRouterModal{position:fixed;inset:0;z-index:99998;display:none;align-items:center;justify-content:center;background:rgba(2,4,12,0.84);backdrop-filter:blur(8px);padding:8px}
+    #ctsRouterModal{position:fixed;inset:0;z-index:99998;display:none;align-items:center;justify-content:center;background:rgba(1,3,10,0.88);backdrop-filter:blur(9px);padding:6px}
     #ctsRouterModal.open{display:flex}
-    #ctsRouterShell{position:relative;width:100%;max-width:1050px;max-height:94vh;display:flex;flex-direction:column;background:var(--rt-bg);color:var(--rt-text);border:1.5px solid var(--rt-border);box-shadow:0 0 45px var(--rt-acc),inset 0 0 25px rgba(0,0,0,0.65);overflow:hidden;font-family:inherit;border-radius:16px}
-    #ctsRouterShell::after{content:'';position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--rt-acc2),transparent);opacity:.45;animation:ctsAlienScan 3.8s linear infinite;pointer-events:none;z-index:20}
+    #ctsRouterShell{position:relative;width:100%;max-width:1080px;max-height:95vh;display:flex;flex-direction:column;background:var(--rt-bg);color:var(--rt-text);border:1.5px solid var(--rt-border);box-shadow:0 0 42px var(--rt-acc),inset 0 0 30px rgba(0,0,0,0.75);overflow:hidden;font-family:inherit;border-radius:16px}
+    .cts-rt-head,.cts-rt-stats,.cts-rt-skins,.cts-rt-log{flex-shrink:0;position:relative;z-index:6}
+    .cts-rt-head{display:flex;flex-direction:column;gap:7px;padding:9px 12px;border-bottom:1px solid var(--rt-border);background:rgba(0,0,0,0.45)}
+    .cts-rt-stats{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:6px 12px;font-size:10.5px;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.28)}
+    .cts-rt-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:var(--rt-card);border:1px solid var(--rt-border);font-weight:800}
+    .cts-rt-skins{display:flex;gap:6px;overflow-x:auto;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.34)}
+    .cts-rt-skin-btn{flex-shrink:0;padding:5px 10px;border:1px solid var(--rt-border);background:rgba(255,255,255,0.04);color:var(--rt-text);font-size:11px;font-weight:800;cursor:pointer;transition:transform .15s,box-shadow .2s}
+    .cts-rt-skin-btn.act{background:linear-gradient(135deg,var(--rt-acc),var(--rt-acc2));color:#020617;box-shadow:0 0 14px var(--rt-acc2);transform:scale(1.05)}
 
-    .cts-rt-head,.cts-rt-stats,.cts-rt-skins,.cts-rt-log{flex-shrink:0}
-    .cts-rt-head{display:flex;flex-direction:column;gap:8px;padding:10px 14px;border-bottom:1px solid var(--rt-border);background:rgba(0,0,0,0.38);position:relative;z-index:5}
-    .cts-rt-stats{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:7px 14px;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.22);z-index:5}
-    .cts-rt-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:var(--rt-card);border:1px solid var(--rt-border);font-weight:700;clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%)}
-    .cts-rt-skins{display:flex;gap:6px;overflow-x:auto;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,0.07);background:rgba(0,0,0,0.28);z-index:5}
-    .cts-rt-skin-btn{flex-shrink:0;padding:5px 10px;border:1px solid var(--rt-border);background:rgba(255,255,255,0.04);color:var(--rt-text);font-size:11px;font-weight:800;cursor:pointer;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);transition:transform .15s,box-shadow .2s}
-    .cts-rt-skin-btn.act{background:linear-gradient(135deg,var(--rt-acc),var(--rt-acc2));color:#020617;box-shadow:0 0 14px var(--rt-acc2);transform:scale(1.04)}
+    .cts-rt-body{position:relative;flex:1;min-height:360px;overflow-y:auto;overflow-x:hidden}
+    .cts-rt-stage{position:relative;width:100%;min-height:420px;overflow:hidden}
+    .cts-rt-bgfx{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.62}
+    .cts-rt-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
 
-    .cts-rt-body{position:relative;flex:1;overflow-y:auto;padding:14px 14px 28px;overflow-x:hidden}
-    .cts-rt-bgfx{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:0.55}
-    .cts-rt-grid{position:relative;display:grid;grid-template-columns:1fr;gap:14px;align-items:center;z-index:2}
-    @media(min-width:760px){.cts-rt-grid{grid-template-columns:1.05fr 0.72fr 0.95fr;gap:18px;min-height:330px}}
-    .cts-rt-col{display:flex;flex-direction:column;gap:9px}
+    /* Compact Scattered Account Pods */
+    .cts-rt-pod{position:absolute;transform:translate(-50%,-50%);z-index:4;width:142px;padding:6px 8px;background:var(--rt-card);border:1.5px solid var(--rt-border);box-shadow:0 4px 16px rgba(0,0,0,0.6),0 0 10px var(--rt-acc);transition:transform .2s,box-shadow .2s}
+    @media(min-width:760px){.cts-rt-pod{width:170px;padding:8px 10px}}
+    .cts-rt-pod.running{border-color:var(--rt-acc2);box-shadow:0 0 22px var(--rt-acc2);z-index:5}
+    .cts-rt-pod-top{display:flex;align-items:center;justify-content:space-between;gap:3px;font-size:11px;font-weight:900}
+    .cts-rt-pod-sub{font-size:9.5px;color:var(--rt-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cts-rt-pod-bot{display:flex;align-items:center;justify-content:space-between;margin-top:4px;font-size:9.5px;opacity:.9}
+    .cts-rt-mini-btn{padding:1px 5px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.45);color:var(--rt-text);font-size:9.5px;cursor:pointer;border-radius:4px}
 
-    /* Alien Node & Button Geometries per Shape */
-    .cts-rt-node{position:relative;padding:10px 12px;background:var(--rt-card);border:1.5px solid var(--rt-border);display:flex;align-items:center;justify-content:space-between;gap:8px;transition:transform .2s,box-shadow .2s}
-    .cts-rt-node.running{border-color:var(--rt-acc2);box-shadow:0 0 22px var(--rt-acc2);animation:ctsAlienFloat 1.2s ease-in-out infinite}
-    .cts-rt-job{position:relative;padding:12px 13px;background:var(--rt-card);border:1.5px solid var(--rt-border)}
-    .cts-rt-btn{padding:6px 10px;border:1px solid var(--rt-border);background:var(--rt-card);color:var(--rt-text);font-size:11.5px;font-weight:800;cursor:pointer;transition:transform .12s,box-shadow .18s}
-    .cts-rt-btn:active{transform:scale(0.95)}
-    .cts-rt-btn.pri{background:linear-gradient(135deg,var(--rt-acc),var(--rt-acc2));border-color:var(--rt-acc2);color:#020617;box-shadow:0 0 14px var(--rt-acc)}
-
-    /* 10 Distinct Alien Shape Classes */
-    .rt-shape-bevel .cts-rt-node,.rt-shape-bevel .cts-rt-job,.rt-shape-bevel .cts-rt-btn{clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);border-radius:0}
-    .rt-shape-organic .cts-rt-node,.rt-shape-organic .cts-rt-job{border-radius:22px 6px 22px 6px;animation:ctsAlienBreathe 3.6s ease-in-out infinite}
-    .rt-shape-organic .cts-rt-btn{border-radius:14px 4px 14px 4px}
-    .rt-shape-hex .cts-rt-node,.rt-shape-hex .cts-rt-job{clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,14px 100%,0 50%);padding:10px 18px;border-radius:0}
-    .rt-shape-hex .cts-rt-btn{clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%);padding:6px 13px}
-    .rt-shape-capsule .cts-rt-node,.rt-shape-capsule .cts-rt-job,.rt-shape-capsule .cts-rt-btn{border-radius:999px}
-    .rt-shape-visor .cts-rt-node,.rt-shape-visor .cts-rt-job{border-radius:4px;border-left:4px solid var(--rt-acc2);border-right:4px solid var(--rt-acc2);box-shadow:inset 0 0 16px rgba(244,63,94,0.18)}
-    .rt-shape-visor .cts-rt-btn{clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%)}
-    .rt-shape-shard .cts-rt-node,.rt-shape-shard .cts-rt-job,.rt-shape-shard .cts-rt-btn{clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));border-radius:0}
-    .rt-shape-crystal .cts-rt-node,.rt-shape-crystal .cts-rt-job{clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 14px,calc(100% - 10px) 100%,10px 100%,0 calc(100% - 14px));animation:ctsAlienFloat 4s ease-in-out infinite}
-    .rt-shape-crystal .cts-rt-btn{clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);padding:7px 14px}
-    .rt-shape-gate .cts-rt-node,.rt-shape-gate .cts-rt-job{border-radius:16px;border-top:2px solid var(--rt-acc2);border-bottom:2px solid var(--rt-acc2)}
-    .rt-shape-gate .cts-rt-btn{border-radius:12px;border-top:2px solid var(--rt-acc2)}
-    .rt-shape-radar .cts-rt-node,.rt-shape-radar .cts-rt-job{border-radius:14px;border-style:dashed}
-    .rt-shape-radar .cts-rt-btn{border-radius:99px;border-style:dashed}
-    .rt-shape-wing .cts-rt-node,.rt-shape-wing .cts-rt-job,.rt-shape-wing .cts-rt-btn{clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 100%,0 100%);border-radius:0}
-
-    /* Alien Central Reactor Core + Multi-Ring Animations */
-    .cts-rt-orb-wrap{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 0}
-    .cts-rt-core-stage{position:relative;width:136px;height:136px;display:flex;align-items:center;justify-content:center}
+    /* Central CTS Transparent Tool Logo Hub */
+    .cts-rt-hub{position:absolute;left:50%;top:49%;transform:translate(-50%,-50%);z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    @media(min-width:760px){.cts-rt-hub{left:50%;top:48%}}
+    .cts-rt-core-stage{position:relative;width:126px;height:126px;display:flex;align-items:center;justify-content:center}
     .cts-rt-ring1,.cts-rt-ring2,.cts-rt-ring3{position:absolute;border-radius:50%;pointer-events:none}
-    .cts-rt-ring1{inset:2px;border:2px dashed var(--rt-acc2);opacity:.75;animation:ctsAlienSpin 7s linear infinite}
-    .cts-rt-ring2{inset:12px;border:2px dotted var(--rt-acc);opacity:.85;animation:ctsAlienSpinRev 4.5s linear infinite}
-    .cts-rt-ring3{inset:0;background:conic-gradient(from 0deg,transparent 0 260deg,var(--rt-acc2) 320deg,transparent 360deg);opacity:.38;animation:ctsAlienSpin 2.6s linear infinite}
-    .cts-rt-orb{position:relative;z-index:3;width:86px;height:86px;border-radius:50%;background:var(--rt-orb);border:2px solid var(--rt-acc2);box-shadow:0 0 32px var(--rt-acc2),inset 0 0 18px rgba(255,255,255,0.28);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;font-size:12px;text-shadow:0 0 8px #000}
-    .cts-rt-orb.active{animation:ctsAlienPulse .75s infinite ease-in-out}
-    .rt-shape-hex .cts-rt-orb{clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);border-radius:0}
-    .rt-shape-crystal .cts-rt-orb{clip-path:polygon(50% 0,95% 35%,75% 100%,25% 100%,5% 35%);border-radius:0}
-    .rt-shape-shard .cts-rt-orb{border-radius:14px;animation:ctsAlienSpin 8s linear infinite}
-    .rt-shape-blackhole .cts-rt-ring1,.rt-shape-capsule .cts-rt-ring1{transform:rotateX(65deg);border-style:solid}
+    .cts-rt-ring1{inset:0;border:2px dashed var(--rt-acc2);opacity:.8;animation:ctsAlSpin 7s linear infinite}
+    .cts-rt-ring2{inset:10px;border:2px dotted var(--rt-acc);opacity:.9;animation:ctsAlSpinRev 4.2s linear infinite}
+    .cts-rt-ring3{inset:-4px;background:conic-gradient(from 0deg,transparent 0 250deg,var(--rt-acc2) 320deg,transparent 360deg);opacity:.36;animation:ctsAlSpin 2.4s linear infinite}
+    .cts-rt-logo-wrap{position:relative;z-index:4;width:74px;height:74px;display:flex;align-items:center;justify-content:center}
+    #cts-rt-core-logo{width:70px;height:70px;object-fit:contain;pointer-events:none;transition:filter .3s}
 
-    .cts-rt-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
-    .cts-rt-flow{stroke-dasharray:7 6;animation:ctsRtFlow .7s linear infinite}
-    .cts-rt-log{border-top:1px solid var(--rt-border);padding:8px 14px;background:rgba(0,0,0,0.42);max-height:105px;overflow-y:auto;font-size:11px;z-index:5}
+    /* Compact Job Target Pod */
+    .cts-rt-jobpod{position:absolute;left:50%;top:86%;transform:translate(-50%,-50%);z-index:4;width:236px;padding:8px 10px;background:var(--rt-card);border:1.5px solid var(--rt-acc2);box-shadow:0 0 20px var(--rt-acc)}
+    @media(min-width:760px){.cts-rt-jobpod{left:84%;top:80%;width:220px}}
 
-    @keyframes ctsAlienSpin{to{transform:rotate(360deg)}}
-    @keyframes ctsAlienSpinRev{to{transform:rotate(-360deg)}}
-    @keyframes ctsAlienScan{0%{top:-2%}100%{top:102%}}
-    @keyframes ctsAlienPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
-    @keyframes ctsAlienFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-    @keyframes ctsAlienBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.014)}}
-    @keyframes ctsAlienGlow{0%,100%{box-shadow:0 0 12px rgba(56,189,248,0.45)}50%{box-shadow:0 0 24px rgba(168,85,247,0.85)}}
-    @keyframes ctsRtFlow{to{stroke-dashoffset:-26}}
+    .cts-rt-btn{padding:5px 9px;border:1px solid var(--rt-border);background:var(--rt-card);color:var(--rt-text);font-size:11px;font-weight:800;cursor:pointer;transition:transform .12s,box-shadow .2s}
+    .cts-rt-btn:active{transform:scale(0.94)}
+    .cts-rt-btn.pri{background:linear-gradient(135deg,var(--rt-acc),var(--rt-acc2));border-color:var(--rt-acc2);color:#020617;box-shadow:0 0 12px var(--rt-acc2)}
+    .cts-rt-log{border-top:1px solid var(--rt-border);padding:7px 12px;background:rgba(0,0,0,0.48);max-height:82px;overflow-y:auto;font-size:10.5px}
+    .cts-rt-flow{stroke-dasharray:6 6;animation:ctsRtFlow .7s linear infinite}
+
+    /* === 10 DISTINCT ALIEN STYLES (EVERY BUTTON, POD, PILL, SKIN TAB, CORE & LOGO ANIMATION CHANGES!) === */
+    /* 1. Mothership: Chamfered Bevel Armor + Radar Sweep + Holo-Tilt Logo */
+    .st-mothership .cts-rt-pod,.st-mothership .cts-rt-jobpod,.st-mothership .cts-rt-btn,.st-mothership .cts-rt-pill,.st-mothership .cts-rt-skin-btn{clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);border-radius:0}
+    .st-mothership #cts-rt-core-logo{animation:ctsAlHolo 3.2s ease-in-out infinite}
+
+    /* 2. Bio-Hive: Organic Breathing Cell Membranes + Slime Glow + Bio-Heartbeat Logo */
+    .st-biohive .cts-rt-pod,.st-biohive .cts-rt-jobpod{border-radius:22px 5px 22px 5px;animation:ctsAlBreathe 2.8s ease-in-out infinite}
+    .st-biohive .cts-rt-btn,.st-biohive .cts-rt-pill,.st-biohive .cts-rt-skin-btn{border-radius:16px 4px 16px 4px}
+    .st-biohive .cts-rt-ring1{border-radius:42% 58% 46% 54% / 54% 42% 58% 46%;border-style:solid}
+    .st-biohive #cts-rt-core-logo{animation:ctsAlHeart 1.5s ease-in-out infinite}
+
+    /* 3. Hex-Matrix: Pure Hexagons + PCB Circuit + Spinning Hex Armor + Matrix Spin Logo */
+    .st-hexmatrix .cts-rt-pod,.st-hexmatrix .cts-rt-jobpod{clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);padding:8px 15px;border-radius:0}
+    .st-hexmatrix .cts-rt-btn,.st-hexmatrix .cts-rt-pill,.st-hexmatrix .cts-rt-skin-btn{clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%);padding:5px 12px;border-radius:0}
+    .st-hexmatrix .cts-rt-ring1,.st-hexmatrix .cts-rt-ring2{clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);border-radius:0;border-style:solid}
+    .st-hexmatrix #cts-rt-core-logo{animation:ctsAlSpin 10s linear infinite}
+
+    /* 4. Singularity Black Hole: Gravity Capsules + 3D Tilted Accretion Disk + Gravity Wobble Logo */
+    .st-blackhole .cts-rt-pod,.st-blackhole .cts-rt-jobpod,.st-blackhole .cts-rt-btn,.st-blackhole .cts-rt-pill,.st-blackhole .cts-rt-skin-btn{border-radius:999px}
+    .st-blackhole .cts-rt-ring1{transform:rotateX(68deg);border:3px solid var(--rt-acc2);animation:ctsAlSpin 2.5s linear infinite}
+    .st-blackhole .cts-rt-ring2{transform:rotateY(65deg);border:2px solid var(--rt-acc);animation:ctsAlSpinRev 3.2s linear infinite}
+    .st-blackhole #cts-rt-core-logo{animation:ctsAlWobble 2.8s ease-in-out infinite}
+
+    /* 5. Predator Thermal HUD: Skewed Tactical Visor + Laser Scan + Thermal Flicker Logo */
+    .st-predator .cts-rt-pod,.st-predator .cts-rt-jobpod{border-radius:3px;border-left:4px solid var(--rt-acc2);border-right:4px solid var(--rt-acc2)}
+    .st-predator .cts-rt-btn,.st-predator .cts-rt-skin-btn{transform:skewX(-10deg);border-radius:2px}
+    .st-predator .cts-rt-pill{border-radius:2px;border-left:3px solid var(--rt-acc2)}
+    .st-predator::after{content:'';position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#fb7185,#fbbf24,transparent);animation:ctsAlScan 2.2s linear infinite;pointer-events:none;z-index:20}
+    .st-predator #cts-rt-core-logo{animation:ctsAlFlicker 1.9s infinite}
+
+    /* 6. Plasma Tesseract: 4D Slanted Shards + 3D Cube Core + Phase Glitch Logo */
+    .st-tesseract .cts-rt-pod,.st-tesseract .cts-rt-jobpod,.st-tesseract .cts-rt-btn,.st-tesseract .cts-rt-skin-btn,.st-tesseract .cts-rt-pill{clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%);border-radius:0}
+    .st-tesseract .cts-rt-ring1{border-radius:14px;border-style:solid;animation:ctsAlSpin 4s linear infinite}
+    .st-tesseract .cts-rt-ring2{border-radius:14px;border-style:solid;animation:ctsAlSpinRev 4s linear infinite}
+    .st-tesseract #cts-rt-core-logo{animation:ctsAlGlitch 2.4s steps(2) infinite}
+
+    /* 7. Crystal Monolith: Octagonal Gem Cuts + Levitating Float Logo */
+    .st-monolith .cts-rt-pod,.st-monolith .cts-rt-jobpod{clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 14px,100% calc(100% - 14px),calc(100% - 10px) 100%,10px 100%,0 calc(100% - 14px),0 14px);border-radius:0;animation:ctsAlFloat 3.4s ease-in-out infinite}
+    .st-monolith .cts-rt-btn,.st-monolith .cts-rt-skin-btn{clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%);padding:5px 12px;border-radius:0}
+    .st-monolith .cts-rt-ring1{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);border-radius:0;border-style:solid}
+    .st-monolith #cts-rt-core-logo{animation:ctsAlFloat 2.4s ease-in-out infinite}
+
+    /* 8. Star-Gate Portal: Golden Chevron Brackets + Portal Ripple Logo */
+    .st-stargate .cts-rt-pod,.st-stargate .cts-rt-jobpod{border-radius:14px;border-top:3px solid var(--rt-acc);border-bottom:3px solid var(--rt-acc2)}
+    .st-stargate .cts-rt-btn,.st-stargate .cts-rt-skin-btn{border-radius:10px;border-top:2px solid var(--rt-acc2)}
+    .st-stargate .cts-rt-ring1{border:4px dashed var(--rt-acc);animation:ctsAlSpin 12s linear infinite}
+    .st-stargate #cts-rt-core-logo{animation:ctsAlRipple 2.2s ease-in-out infinite}
+
+    /* 9. Nano-Swarm: Dashed Telemetry Pods + Sonar Sweep + Orbiting Phase Logo */
+    .st-swarm .cts-rt-pod,.st-swarm .cts-rt-jobpod{border-radius:14px;border-style:dashed;animation:ctsAlSwarm 2.6s ease-in-out infinite}
+    .st-swarm .cts-rt-btn,.st-swarm .cts-rt-skin-btn,.st-swarm .cts-rt-pill{border-radius:99px;border-style:dashed}
+    .st-swarm #cts-rt-core-logo{animation:ctsAlSpinRev 8s linear infinite}
+
+    /* 10. Warp Drive: Swept-Back Starship Wings + Thruster Shake Logo */
+    .st-warpdrive .cts-rt-pod,.st-warpdrive .cts-rt-jobpod{clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 100%,0 100%);border-radius:0}
+    .st-warpdrive .cts-rt-btn,.st-warpdrive .cts-rt-skin-btn{clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 100%,0 100%);border-radius:0}
+    .st-warpdrive #cts-rt-core-logo{animation:ctsAlWarp 1.1s ease-in-out infinite}
+
+    @keyframes ctsAlSpin{to{transform:rotate(360deg)}}
+    @keyframes ctsAlSpinRev{to{transform:rotate(-360deg)}}
+    @keyframes ctsAlScan{0%{top:-2%}100%{top:102%}}
+    @keyframes ctsAlFloat{0%,100%{transform:translate(-50%,-50%) translateY(0)}50%{transform:translate(-50%,-50%) translateY(-5px)}}
+    .st-monolith .cts-rt-hub #cts-rt-core-logo{animation:ctsAlFloatLogo 2.3s ease-in-out infinite}
+    @keyframes ctsAlFloatLogo{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.06)}}
+    @keyframes ctsAlBreathe{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.04)}}
+    @keyframes ctsAlHeart{0%,100%{transform:scale(1)}25%{transform:scale(1.12)}45%{transform:scale(.96)}65%{transform:scale(1.08)}}
+    @keyframes ctsAlHolo{0%,100%{transform:perspective(260px) rotateY(-14deg) scale(1)}50%{transform:perspective(260px) rotateY(14deg) scale(1.06)}}
+    @keyframes ctsAlWobble{0%,100%{transform:rotate(-8deg) scale(1)}50%{transform:rotate(8deg) scale(1.08)}}
+    @keyframes ctsAlFlicker{0%,19%,21%,23%,25%,54%,56%,100%{opacity:1;transform:scale(1)}20%,24%,55%{opacity:.55;transform:scale(1.05)}}
+    @keyframes ctsAlGlitch{0%{transform:translate(0,0) scale(1)}25%{transform:translate(-2px,1px) scale(1.04)}50%{transform:translate(2px,-1px) scale(.98)}75%{transform:translate(-1px,-2px) scale(1.03)}100%{transform:translate(0,0) scale(1)}}
+    @keyframes ctsAlRipple{0%,100%{transform:scale(1) rotate(0deg)}50%{transform:scale(1.09) rotate(8deg)}}
+    @keyframes ctsAlSwarm{0%,100%{transform:translate(-50%,-50%) translateX(0)}50%{transform:translate(-50%,-50%) translateX(3px)}}
+    @keyframes ctsAlWarp{0%,100%{transform:scale(1) translateY(0)}50%{transform:scale(1.08) translateY(-2px)}}
+    @keyframes ctsAlGlow{0%,100%{box-shadow:0 0 12px rgba(56,189,248,0.45)}50%{box-shadow:0 0 24px rgba(168,85,247,0.85)}}
+    @keyframes ctsRtFlow{to{stroke-dashoffset:-24}}
   `;
   document.head.appendChild(styleEl);
 
@@ -26019,151 +26188,142 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
   }
 
-  function getShapeBgSvg(sk) {
-    if (sk.shape === 'hex') return `<svg width="100%" height="100%"><defs><pattern id="ctsHexP" width="40" height="35" patternUnits="userSpaceOnUse"><polygon points="20,1 39,10 39,26 20,34 1,26 1,10" fill="none" stroke="${sk.acc}" stroke-opacity="0.16" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(#ctsHexP)"/></svg>`;
-    if (sk.shape === 'radar') return `<div style="position:absolute;inset:0;background:radial-gradient(circle,transparent 20%,${sk.acc}18 21%,transparent 22%,transparent 45%,${sk.acc}18 46%,transparent 47%),conic-gradient(from 0deg,transparent 0 300deg,${sk.acc2}33 360deg);animation:ctsAlienSpin 4s linear infinite"></div>`;
-    if (sk.shape === 'wing') return `<div style="position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 36px,${sk.acc2}18 37px,transparent 38px),radial-gradient(ellipse at center,${sk.acc}22,transparent 70%)"></div>`;
-    return `<div style="position:absolute;inset:0;background-image:radial-gradient(${sk.acc2}33 1.2px,transparent 1.2px);background-size:20px 20px"></div>`;
+  function getShapeBgFx(sk) {
+    if (sk.cls === 'st-hexmatrix') return `<svg width="100%" height="100%"><defs><pattern id="ctsHexP2" width="38" height="33" patternUnits="userSpaceOnUse"><polygon points="19,1 37,9 37,24 19,32 1,24 1,9" fill="none" stroke="${sk.acc2}" stroke-opacity="0.22" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(#ctsHexP2)"/></svg>`;
+    if (sk.cls === 'st-swarm' || sk.cls === 'st-mothership') return `<div style="position:absolute;inset:-40%;background:radial-gradient(circle,transparent 18%,${sk.acc}24 19%,transparent 20%,transparent 38%,${sk.acc}24 39%,transparent 40%),conic-gradient(from 0deg,transparent 0 295deg,${sk.acc2}44 360deg);animation:ctsAlSpin 4.5s linear infinite"></div>`;
+    if (sk.cls === 'st-warpdrive') return `<div style="position:absolute;inset:0;background:repeating-linear-gradient(125deg,transparent 0 28px,${sk.acc2}20 29px,transparent 30px),radial-gradient(circle at 50% 48%,${sk.acc}30,transparent 65%)"></div>`;
+    if (sk.cls === 'st-biohive') return `<div style="position:absolute;inset:0;background:radial-gradient(circle at 20% 25%,${sk.acc2}25,transparent 35%),radial-gradient(circle at 80% 70%,${sk.acc}2a,transparent 40%)"></div>`;
+    if (sk.cls === 'st-blackhole') return `<div style="position:absolute;inset:-30%;background:conic-gradient(from 0deg,${sk.acc}22,transparent 40%,${sk.acc2}22,transparent 80%);animation:ctsAlSpin 6s linear infinite"></div>`;
+    return `<div style="position:absolute;inset:0;background-image:radial-gradient(${sk.acc2}38 1.2px,transparent 1.2px);background-size:18px 18px"></div>`;
   }
 
   function drawSvgLines() {
     const svg = document.getElementById('cts-rt-svg');
-    const body = document.getElementById('cts-rt-body');
-    const orb = document.getElementById('cts-rt-orb');
+    const stage = document.getElementById('cts-rt-stage');
+    const hub = document.getElementById('cts-rt-orb');
     const job = document.getElementById('cts-rt-job-card');
-    if (!svg || !body || !orb || !modalOpen) return;
+    if (!svg || !stage || !hub || !modalOpen) return;
 
-    const br = body.getBoundingClientRect();
-    const or = orb.getBoundingClientRect();
+    const br = stage.getBoundingClientRect();
+    const or = hub.getBoundingClientRect();
     const ox = or.left - br.left + or.width / 2;
-    const oy = or.top - br.top + or.height / 2 + body.scrollTop;
+    const oy = or.top - br.top + or.height / 2;
 
-    svg.setAttribute('width', String(body.clientWidth));
-    svg.setAttribute('height', String(body.scrollHeight));
+    svg.setAttribute('width', String(stage.clientWidth));
+    svg.setAttribute('height', String(stage.clientHeight));
 
     const sk = SKINS[cfg.skin] || SKINS.mothership;
     let paths = '';
 
-    body.querySelectorAll('.cts-rt-node').forEach((el, idx) => {
+    stage.querySelectorAll('.cts-rt-pod').forEach((el, idx) => {
       const r = el.getBoundingClientRect();
-      const x1 = r.right - br.left;
-      const y1 = r.top - br.top + r.height / 2 + body.scrollTop;
-      const isDesktop = body.clientWidth >= 760;
-      const sx = isDesktop ? x1 : (r.left - br.left + r.width / 2);
-      const sy = isDesktop ? y1 : (r.bottom - br.top + body.scrollTop);
-      const tx = isDesktop ? (ox - or.width / 2) : ox;
-      const ty = isDesktop ? oy : (oy - or.height / 2);
-      const mx = (sx + tx) / 2, my = (sy + ty) / 2;
-      const d = isDesktop
-        ? `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`
-        : `M ${sx} ${sy} C ${sx} ${my}, ${tx} ${my}, ${tx} ${ty}`;
-
+      const sx = r.left - br.left + r.width / 2;
+      const sy = r.top - br.top + r.height / 2;
       const isRun = el.classList.contains('running');
       const isPaused = el.getAttribute('data-st') === 'paused' || el.getAttribute('data-st') === 'cooldown';
       const stroke = isRun ? sk.acc2 : (isPaused ? 'rgba(148,163,184,0.22)' : sk.acc);
-      const op = isRun ? '0.98' : (isPaused ? '0.32' : '0.52');
-      const pid = `cts-p-${idx}`;
-      paths += `<path id="${pid}" d="${d}" fill="none" stroke="${stroke}" stroke-opacity="${op}" stroke-width="${isRun ? 2.8 : 1.6}" class="${isRun || !isPaused ? 'cts-rt-flow' : ''}"/>`;
+      const op = isRun ? '0.98' : (isPaused ? '0.30' : '0.62');
+      const pid = `cts-ap-${idx}`;
+      const d = buildAlienPath(sx, sy, ox, oy, sk.pathType, idx);
+      paths += `<path id="${pid}" d="${d}" fill="none" stroke="${stroke}" stroke-opacity="${op}" stroke-width="${isRun ? 2.8 : 1.7}" class="${!isPaused ? 'cts-rt-flow' : ''}"/>`;
+      if (sk.pathType === 'dual' && !isPaused) {
+        const d2 = buildAlienPath(sx + 3, sy + 3, ox, oy, 'vortex', idx + 1);
+        paths += `<path d="${d2}" fill="none" stroke="${sk.acc2}" stroke-opacity="0.35" stroke-width="1"/>`;
+      }
       if (!isPaused) {
-        paths += `<circle r="${isRun ? 4.2 : 2.6}" fill="${sk.acc2}"><animateMotion dur="${isRun ? '0.7s' : '2.2s'}" repeatCount="indefinite"><mpath href="#${pid}"/></animateMotion></circle>`;
+        paths += `<circle r="${isRun ? 4.5 : 2.8}" fill="${sk.acc2}"><animateMotion dur="${isRun ? '0.6s' : '1.9s'}" repeatCount="indefinite"><mpath href="#${pid}"/></animateMotion></circle>`;
       }
     });
 
     if (job) {
       const jr = job.getBoundingClientRect();
-      const isDesktop = body.clientWidth >= 760;
-      const sx = isDesktop ? (ox + or.width / 2) : ox;
-      const sy = isDesktop ? oy : (oy + or.height / 2);
-      const tx = isDesktop ? (jr.left - br.left) : (jr.left - br.left + jr.width / 2);
-      const ty = isDesktop ? (jr.top - br.top + jr.height / 2 + body.scrollTop) : (jr.top - br.top + body.scrollTop);
-      const mx = (sx + tx) / 2, my = (sy + ty) / 2;
-      const d = isDesktop
-        ? `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`
-        : `M ${sx} ${sy} C ${sx} ${my}, ${tx} ${my}, ${tx} ${ty}`;
+      const tx = jr.left - br.left + jr.width / 2;
+      const ty = jr.top - br.top + jr.height / 2;
       const act = activeJob.state === 'running';
-      paths += `<path id="cts-p-job" d="${d}" fill="none" stroke="${act ? sk.acc2 : sk.acc}" stroke-opacity="${act ? 0.98 : 0.52}" stroke-width="${act ? 2.8 : 1.8}" class="cts-rt-flow"/>`;
-      paths += `<circle r="${act ? 4.5 : 2.8}" fill="${sk.acc2}"><animateMotion dur="${act ? '0.65s' : '2s'}" repeatCount="indefinite"><mpath href="#cts-p-job"/></animateMotion></circle>`;
+      const d = buildAlienPath(ox, oy, tx, ty, sk.pathType, 9);
+      paths += `<path id="cts-ap-job" d="${d}" fill="none" stroke="${act ? sk.acc2 : sk.acc}" stroke-opacity="${act ? 0.98 : 0.68}" stroke-width="${act ? 3 : 2}" class="cts-rt-flow"/>`;
+      paths += `<circle r="${act ? 4.8 : 3.2}" fill="${sk.acc2}"><animateMotion dur="${act ? '0.55s' : '1.7s'}" repeatCount="indefinite"><mpath href="#cts-ap-job"/></animateMotion></circle>`;
     }
     svg.innerHTML = paths;
   }
 
   const T = {
     km: {
-      cardTitle: '🛸 Alien AI Translation Router (គ្រប់គ្រង Key & បែងចែកការងារ)',
-      cardDesc: 'ផ្ទាំងបញ្ជាមនុស្សក្រៅភព ១០ Styles ៖ តាមដាន Key ទាំងអស់, បំបែក Batch បកប្រែព្រមគ្នា និង Free Relay។',
+      cardTitle: '🛸 Alien AI Translation Router (១០ Styles មនុស្សក្រៅភព)',
+      cardDesc: 'ប្រព័ន្ធបញ្ជាគណនី AI មនុស្សក្រៅភព + Logo CTS កណ្តាល (ដូរពណ៌ & ចលនា ១០ បែប) + ខ្សែភ្លើងថាមពល + Free Relay។',
       openBtn: '🛸 បើកផ្ទាំង Alien AI Router (១០ Styles)',
-      hdrTitle: '🛸 ALIEN AI ROUTER',
-      ready: 'Ready', running: 'កំពុងបញ្ជូន', linesToday: 'បន្ទាត់ថ្ងៃនេះ', needAtt: 'ត្រូវពិនិត្យ',
-      allGood: 'ប្រព័ន្ធស្ថិរភាព', conc: 'ព្រមគ្នា', autoFb: 'Auto Fallback', split: 'Split across nodes',
-      ping: '📡 Scan', addAcc: '+ Dock Key', splitRun: '⚡ HYPER-SPLIT TRANSLATE CUES',
-      accHdr: '◈ ALIEN NEURAL NODES', jobHdr: '◈ TRANSMISSION TARGET', logHdr: 'TELEMETRY LOG',
-      addTitle: 'ភ្ជាប់ Key ថ្មីចូលប្រព័ន្ធ Router', namePh: 'ឈ្មោះសម្គាល់ (ឧ. mymail@gmail.com)',
+      hdrTitle: '🛸 ALIEN NEXUS',
+      ready: 'Ready', running: 'បញ្ជូន', linesToday: 'បន្ទាត់ថ្ងៃនេះ', needAtt: 'ប្រយ័ត្ន',
+      allGood: 'ប្រព័ន្ធស្ថិរភាព', conc: 'Beams', autoFb: 'Auto Fallback', split: 'Split',
+      ping: '📡 Scan', addAcc: '+ Dock Key', splitRun: '⚡ HYPER-SPLIT TRANSLATE',
+      logHdr: 'TELEMETRY LOG',
+      addTitle: 'ភ្ជាប់ Key ថ្មីចូលប្រព័ន្ធ Alien Router', namePh: 'ឈ្មោះសម្គាល់ (ឧ. mymail@gmail.com)',
       keyPh: 'Paste Key (AQ..., AIza..., gsk_...)', saveAcc: '🛸 Dock & Scan', cancel: 'បិទ',
-      getKey: '🔑 យក Key ១ ចុច', pasteKey: '📋 Paste'
+      getKey: '🔑 យក Key', pasteKey: '📋 Paste'
     },
     en: {
-      cardTitle: '🛸 Alien AI Translation Router (Multi-Key Nexus)',
-      cardDesc: 'Extraterrestrial command console with 10 animated alien geometries, live key telemetry, Free Relay & parallel split routing.',
+      cardTitle: '🛸 Alien AI Translation Router (10 Extraterrestrial Styles)',
+      cardDesc: 'Spatial alien constellation with transparent CTS Logo core (morphs color & motion across 10 styles) + real multi-key routing.',
       openBtn: '🛸 Open Alien AI Router (10 Styles)',
-      hdrTitle: '🛸 ALIEN AI ROUTER',
+      hdrTitle: '🛸 ALIEN NEXUS',
       ready: 'ready', running: 'active', linesToday: 'lines today', needAtt: 'alert',
-      allGood: 'all systems nominal', conc: 'Beams', autoFb: 'Auto fallback', split: 'Split across nodes',
-      ping: '📡 Scan', addAcc: '+ Dock Key', splitRun: '⚡ HYPER-SPLIT TRANSLATE CUES',
-      accHdr: '◈ ALIEN NEURAL NODES', jobHdr: '◈ TRANSMISSION TARGET', logHdr: 'TELEMETRY LOG',
+      allGood: 'nominal', conc: 'Beams', autoFb: 'Auto fallback', split: 'Split',
+      ping: '📡 Scan', addAcc: '+ Dock Key', splitRun: '⚡ HYPER-SPLIT TRANSLATE',
+      logHdr: 'TELEMETRY LOG',
       addTitle: 'Dock New API Key Node', namePh: 'Label (e.g. mymail@gmail.com)',
       keyPh: 'Paste Key (AQ..., AIza..., gsk_...)', saveAcc: '🛸 Dock & Scan', cancel: 'Cancel',
       getKey: '🔑 Get Key', pasteKey: '📋 Paste'
     },
     zh: {
-      cardTitle: '🛸 外星 AI 翻译路由中枢 (10 种科幻形态)',
-      cardDesc: '外星科技动态控制台：实时节点监测、内置免费中继、多账号并发分流与 10 种外星 UI 形态。',
+      cardTitle: '🛸 外星 AI 翻译路由中枢 (10 种外星科技形态)',
+      cardDesc: '星际分布节点 + 去背透明工具 Logo 核心（随 10 种风格变色与动态演化）+ 真实并发分流。',
       openBtn: '🛸 打开外星 AI 路由器 (10 种形态)',
-      hdrTitle: '🛸 ALIEN AI ROUTER',
-      ready: '就绪', running: '传输中', linesToday: '今日行数', needAtt: '警报',
-      allGood: '系统稳定', conc: '并发束', autoFb: '自动容灾', split: '多节点分流',
+      hdrTitle: '🛸 ALIEN NEXUS',
+      ready: '就绪', running: '传输', linesToday: '今日行数', needAtt: '警报',
+      allGood: '稳定', conc: '光束', autoFb: '自动容灾', split: '并发',
       ping: '📡 扫描', addAcc: '+ 接入密钥', splitRun: '⚡ 超光速并发翻译',
-      accHdr: '◈ 外星神经节点', jobHdr: '◈ 传输目标队列', logHdr: '遥测日志',
+      logHdr: '遥测日志',
       addTitle: '接入新 API 密钥节点', namePh: '备注名称 (如 Gmail)',
-      keyPh: '粘贴 Key (AQ..., AIza..., gsk_...)', saveAcc: '🛸 接入并扫描', cancel: '取消',
+      keyPh: '粘贴 Key (AQ..., AIza...)', saveAcc: '🛸 接入并扫描', cancel: '取消',
       getKey: '🔑 获取 Key', pasteKey: '📋 粘贴'
     },
     vi: {
       cardTitle: '🛸 Alien AI Translation Router (10 Giao Diện Ngoài Hành Tinh)',
-      cardDesc: 'Bảng điều khiển công nghệ ngoài hành tinh với 10 hình thái chuyển động, quét key thực & chia luồng dịch.',
+      cardDesc: 'Sơ đồ vệ tinh đa điểm + Logo CTS tách nền (đổi màu & chuyển động theo 10 style) + chia luồng thực.',
       openBtn: '🛸 Mở Alien AI Router (10 Styles)',
-      hdrTitle: '🛸 ALIEN AI ROUTER',
-      ready: 'sẵn sàng', running: 'đang chạy', linesToday: 'dòng hôm nay', needAtt: 'cảnh báo',
-      allGood: 'ổn định', conc: 'Luồng', autoFb: 'Auto fallback', split: 'Chia đều các node',
+      hdrTitle: '🛸 ALIEN NEXUS',
+      ready: 'sẵn sàng', running: 'chạy', linesToday: 'dòng', needAtt: 'cảnh báo',
+      allGood: 'ổn định', conc: 'Luồng', autoFb: 'Fallback', split: 'Chia đều',
       ping: '📡 Quét', addAcc: '+ Gắn Key', splitRun: '⚡ CHIA LUỒNG DỊCH NGAY',
-      accHdr: '◈ CÁC NODE NGOÀI HÀNH TINH', jobHdr: '◈ MỤC TIÊU TRUYỀN TẢI', logHdr: 'NHẬT KÝ TÍN HIỆU',
-      addTitle: 'Gắn API Key mới vào Trạm', namePh: 'Tên ghi chú (VD: Gmail)',
-      keyPh: 'Dán Key (AQ..., AIza..., gsk_...)', saveAcc: '🛸 Lưu & Quét', cancel: 'Hủy',
+      logHdr: 'NHẬT KÝ TÍN HIỆU',
+      addTitle: 'Gắn API Key mới', namePh: 'Tên ghi chú (VD: Gmail)',
+      keyPh: 'Dán Key (AQ..., AIza...)', saveAcc: '🛸 Lưu & Quét', cancel: 'Hủy',
       getKey: '🔑 Lấy Key', pasteKey: '📋 Dán'
     },
     ko: {
-      cardTitle: '🛸 외계 AI 번역 라우터 (10종 에일리언 UI)',
-      cardDesc: '10가지 외계 테크 모션 UI, 실시간 API 노드 텔레메트리, 무료 릴레이 및 병렬 분할 번역.',
+      cardTitle: '🛸 외계 AI 번역 라우터 (10종 에일리언 스타일)',
+      cardDesc: '우주 성좌 배치 + 배경 제거된 CTS 로고 코어(10종 컬러·모션 변신) + 실시간 멀티키 라우팅.',
       openBtn: '🛸 외계 AI 라우터 열기 (10 스타일)',
-      hdrTitle: '🛸 ALIEN AI ROUTER',
-      ready: '대기', running: '전송중', linesToday: '오늘 줄 수', needAtt: '주의',
-      allGood: '모든 시스템 정상', conc: '빔 수', autoFb: '자동 전환', split: '노드 분할',
-      ping: '📡 스캔', addAcc: '+ 키 연결', splitRun: '⚡ 하이퍼 분할 번역 실행',
-      accHdr: '◈ 에일리언 뉴럴 노드', jobHdr: '◈ 전송 타겟', logHdr: '텔레메트리 로그',
+      hdrTitle: '🛸 ALIEN NEXUS',
+      ready: '대기', running: '전송', linesToday: '오늘 줄', needAtt: '주의',
+      allGood: '정상', conc: '빔', autoFb: '자동 전환', split: '분할',
+      ping: '📡 스캔', addAcc: '+ 키 연결', splitRun: '⚡ 하이퍼 분할 번역',
+      logHdr: '텔레메트리 로그',
       addTitle: '새 API 키 노드 연결', namePh: '라벨 (예: Gmail)',
-      keyPh: '키 붙여넣기 (AQ..., AIza...)', saveAcc: '🛸 연결 및 스캔', cancel: '취소',
+      keyPh: 'API 키 (AQ..., AIza...)', saveAcc: '🛸 연결 및 스캔', cancel: '취소',
       getKey: '🔑 키 발급', pasteKey: '📋 붙여넣기'
     },
     ja: {
-      cardTitle: '🛸 エイリアン AI 翻訳ルーター (10種エイリアンUI)',
-      cardDesc: '10種類のエイリアン動態UI、リアルタイムノード監視、無料リレー、並列分割翻訳。',
+      cardTitle: '🛸 エイリアン AI ルーター (10種エイリアンUI)',
+      cardDesc: '星座配置ノード＋背景透過ツールロゴ（10スタイルで色・動き変化）＋並列分割翻訳。',
       openBtn: '🛸 エイリアン AI ルーターを開く (10種)',
-      hdrTitle: '🛸 ALIEN AI ROUTER',
-      ready: '待機', running: '通信中', linesToday: '本日の行数', needAtt: '警告',
-      allGood: '全システム正常', conc: 'ビーム', autoFb: '自動切替', split: 'ノード分散',
-      ping: '📡 スキャン', addAcc: '+ キー接続', splitRun: '⚡ ハイパー分割翻訳を実行',
-      accHdr: '◈ エイリアン・ニューラルノード', jobHdr: '◈ 送信ターゲット', logHdr: 'テレメトリログ',
-      addTitle: '新しい API キーノードを接続', namePh: 'ラベル名',
-      keyPh: 'API キー (AQ..., AIza...)', saveAcc: '🛸 接続してスキャン', cancel: 'キャンセル',
+      hdrTitle: '🛸 ALIEN NEXUS',
+      ready: '待機', running: '通信', linesToday: '本日の行数', needAtt: '警告',
+      allGood: '正常', conc: 'ビーム', autoFb: '自動切替', split: '分散',
+      ping: '📡 スキャン', addAcc: '+ キー接続', splitRun: '⚡ ハイパー分割翻訳',
+      logHdr: 'テレメトリログ',
+      addTitle: '新しい API キーを接続', namePh: 'ラベル名',
+      keyPh: 'API キー (AQ..., AIza...)', saveAcc: '🛸 接続スキャン', cancel: 'キャンセル',
       getKey: '🔑 キー取得', pasteKey: '📋 貼付'
     }
   };
@@ -26186,8 +26346,12 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     ensureModal();
     modalOpen = true;
     document.getElementById('ctsRouterModal').classList.add('open');
+    extractCleanToolLogo(() => {
+      const img = document.getElementById('cts-rt-core-logo');
+      if (img && cachedCleanLogoUrl && img.src !== cachedCleanLogoUrl) img.src = cachedCleanLogoUrl;
+    });
     refreshUI();
-    setTimeout(drawSvgLines, 40);
+    setTimeout(drawSvgLines, 45);
   }
 
   function closeModal() {
@@ -26218,7 +26382,7 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     if (!shell || !modalOpen) return;
 
     const sk = SKINS[cfg.skin] || SKINS.mothership;
-    shell.className = 'rt-shape-' + sk.shape;
+    shell.className = sk.cls;
     shell.style.setProperty('--rt-bg', sk.bg);
     shell.style.setProperty('--rt-card', sk.card);
     shell.style.setProperty('--rt-border', sk.border);
@@ -26226,29 +26390,31 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     shell.style.setProperty('--rt-acc2', sk.acc2);
     shell.style.setProperty('--rt-text', sk.text);
     shell.style.setProperty('--rt-muted', sk.muted);
-    shell.style.setProperty('--rt-orb', sk.orb);
 
     const anyRun = runCnt > 0 || isSplitting || isPinging;
     const curGemModel = document.getElementById('geminiModel')?.value || 'gemini-2.5-flash';
+    const isDesktop = window.innerWidth >= 760;
+    const stageH = Math.max(410, 340 + Math.max(0, nodes.length - 4) * 34);
+    const logoSrc = cachedCleanLogoUrl || document.querySelector('#headerLogoWrap img')?.src || '';
 
     shell.innerHTML = `
       <div class="cts-rt-head">
         <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
-          <div style="display:flex;align-items:center;gap:8px;font-weight:900;font-size:14px;letter-spacing:.6px">
+          <div style="display:flex;align-items:center;gap:7px;font-weight:900;font-size:13.5px;letter-spacing:.6px">
             <span>${t.hdrTitle}</span>
-            <span style="font-size:10px;padding:2px 8px;border:1px solid ${sk.acc2};color:${anyRun ? sk.acc2 : sk.muted}">${anyRun ? '⚡ HYPER-LINK' : '◈ ONLINE'}</span>
+            <span style="font-size:9.5px;padding:2px 7px;border:1px solid ${sk.acc2};color:${anyRun ? sk.acc2 : sk.muted}">${anyRun ? '⚡ HYPER-LINK' : '◈ ONLINE'}</span>
           </div>
           <button type="button" id="cts-rt-close" class="cts-rt-btn" style="padding:4px 10px">✕</button>
         </div>
-        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
-          <div style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 7px;background:rgba(255,255,255,0.05);border:1px solid var(--rt-border)">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:5px">
+          <div style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;padding:2px 6px;background:rgba(255,255,255,0.05);border:1px solid var(--rt-border)">
             <span>${t.conc}:</span>
-            <button type="button" id="cts-rt-cminus" class="cts-rt-btn" style="padding:2px 7px">-</button>
+            <button type="button" id="cts-rt-cminus" class="cts-rt-btn" style="padding:1px 6px">-</button>
             <b>${cfg.concurrency}</b>
-            <button type="button" id="cts-rt-cplus" class="cts-rt-btn" style="padding:2px 7px">+</button>
+            <button type="button" id="cts-rt-cplus" class="cts-rt-btn" style="padding:1px 6px">+</button>
           </div>
-          <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cts-rt-fb" ${cfg.autoFallback ? 'checked' : ''}><span>${t.autoFb}</span></label>
-          <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cts-rt-sp" ${cfg.splitAccounts ? 'checked' : ''}><span>${t.split}</span></label>
+          <label style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;cursor:pointer"><input type="checkbox" id="cts-rt-fb" ${cfg.autoFallback ? 'checked' : ''}><span>${t.autoFb}</span></label>
+          <label style="display:inline-flex;align-items:center;gap:3px;font-size:10.5px;cursor:pointer"><input type="checkbox" id="cts-rt-sp" ${cfg.splitAccounts ? 'checked' : ''}><span>${t.split}</span></label>
           <button type="button" id="cts-rt-ping" class="cts-rt-btn">${isPinging ? '⏳...' : t.ping}</button>
           <button type="button" id="cts-rt-addbtn" class="cts-rt-btn pri">${t.addAcc}</button>
         </div>
@@ -26266,18 +26432,18 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
       </div>
 
       ${showAddBox ? `
-      <div id="cts-rt-addform" style="padding:10px 14px;background:rgba(0,0,0,0.52);border-bottom:1px solid var(--rt-border);display:grid;gap:6px;z-index:6">
+      <div id="cts-rt-addform" style="padding:9px 12px;background:rgba(0,0,0,0.58);border-bottom:1px solid var(--rt-border);display:grid;gap:6px;z-index:8">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-          <span style="font-size:12px;font-weight:800">🛸 ${t.addTitle}</span>
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="cts-rt-btn" style="text-decoration:none;font-size:10.5px;padding:4px 8px">${t.getKey}</a>
+          <span style="font-size:11.5px;font-weight:800">🛸 ${t.addTitle}</span>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" class="cts-rt-btn" style="text-decoration:none;font-size:10px;padding:3px 8px">${t.getKey}</a>
         </div>
-        <div style="display:grid;grid-template-columns:1fr;gap:6px">
-          <input type="text" id="cts-rt-aname" placeholder="${t.namePh}" style="padding:7px 9px;border-radius:8px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.45);color:var(--rt-text);font-size:11.5px">
+        <div style="display:grid;grid-template-columns:1fr;gap:5px">
+          <input type="text" id="cts-rt-aname" placeholder="${t.namePh}" style="padding:6px 8px;border-radius:6px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.5);color:var(--rt-text);font-size:11px">
           <div style="display:flex;gap:5px">
-            <input type="password" id="cts-rt-akey" placeholder="${t.keyPh}" style="flex:1;padding:7px 9px;border-radius:8px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.45);color:var(--rt-text);font-size:11.5px">
+            <input type="password" id="cts-rt-akey" placeholder="${t.keyPh}" style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.5);color:var(--rt-text);font-size:11px">
             <button type="button" id="cts-rt-apaste" class="cts-rt-btn" style="white-space:nowrap">${t.pasteKey}</button>
           </div>
-          <input type="text" id="cts-rt-amodel" value="${escHtml(curGemModel)}" style="padding:7px 9px;border-radius:8px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.45);color:var(--rt-text);font-size:11.5px">
+          <input type="text" id="cts-rt-amodel" value="${escHtml(curGemModel)}" style="padding:6px 8px;border-radius:6px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.5);color:var(--rt-text);font-size:11px">
         </div>
         <div style="display:flex;gap:6px">
           <button type="button" id="cts-rt-asave" class="cts-rt-btn pri">${t.saveAcc}</button>
@@ -26285,69 +26451,63 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
         </div>
       </div>` : ''}
 
-      <div class="cts-rt-body" id="cts-rt-body">
-        <div class="cts-rt-bgfx">${getShapeBgSvg(sk)}</div>
-        <svg class="cts-rt-svg" id="cts-rt-svg"></svg>
-        <div class="cts-rt-grid">
-          <div class="cts-rt-col">
-            <div style="font-size:10.5px;font-weight:900;color:var(--rt-muted);letter-spacing:1px">${t.accHdr}</div>
-            ${nodes.map(n => {
-              const stCol = n.status === 'running' ? sk.acc2 : (n.status === 'ready' ? '#4ade80' : (n.status === 'cooldown' ? '#fbbf24' : '#94a3b8'));
-              const stTxt = n.status === 'running' ? 'BEAMING ⚡' : (n.status === 'ready' ? 'ONLINE' : (n.status === 'cooldown' ? 'SHIELD 429' : (n.status === 'paused' ? 'DORMANT' : 'FAULT')));
-              return `
-              <div class="cts-rt-node ${n.status === 'running' ? 'running' : ''}" data-st="${n.status}">
-                <div style="min-width:0">
-                  <div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:800">
-                    <span style="color:${stCol}">◈</span>
-                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(n.name)}</span>
-                    <span style="font-size:9px;padding:1px 5px;border:1px solid var(--rt-border);color:var(--rt-acc2)">${escHtml(n.provider.toUpperCase())}</span>
-                  </div>
-                  <div style="font-size:10.5px;color:var(--rt-muted);margin-top:2px">
-                    <span style="color:${stCol};font-weight:800">${stTxt}</span> • ${escHtml(n.model)} • ${maskKey(n.rawKey)}
-                  </div>
-                  <div style="font-size:10px;opacity:0.8;margin-top:1px">🛸 ${n.linesToday} lines (${n.reqsToday} tx)${n.latency ? ` • ${n.latency}ms` : ''}</div>
-                </div>
-                <div style="display:flex;gap:4px;flex-shrink:0">
-                  <button type="button" data-toggle="${escHtml(n.id)}" class="cts-rt-btn" style="padding:4px 7px;font-size:10.5px">${n.enabled ? '⏸️' : '▶️'}</button>
-                  ${n.provider !== 'free' ? `<button type="button" data-del="${escHtml(n.id)}" data-rkey="${escHtml(n.rawKey)}" class="cts-rt-btn" style="padding:4px 7px;font-size:10.5px">🗑️</button>` : ''}
-                </div>
-              </div>`;
-            }).join('')}
-          </div>
+      <div class="cts-rt-body">
+        <div class="cts-rt-stage" id="cts-rt-stage" style="height:${stageH}px">
+          <div class="cts-rt-bgfx">${getShapeBgFx(sk)}</div>
+          <svg class="cts-rt-svg" id="cts-rt-svg"></svg>
 
-          <div class="cts-rt-orb-wrap">
-            <div class="cts-rt-core-stage">
+          ${nodes.map((n, idx) => {
+            const pos = getNodeCoords(idx, nodes.length, sk.layout, isDesktop);
+            const stCol = n.status === 'running' ? sk.acc2 : (n.status === 'ready' ? '#4ade80' : (n.status === 'cooldown' ? '#fbbf24' : '#94a3b8'));
+            const stTxt = n.status === 'running' ? 'BEAM' : (n.status === 'ready' ? 'READY' : (n.status === 'cooldown' ? '429' : (n.status === 'paused' ? 'OFF' : 'ERR')));
+            return `
+            <div class="cts-rt-pod ${n.status === 'running' ? 'running' : ''}" data-st="${n.status}" style="left:${pos.x}%;top:${pos.y}%">
+              <div class="cts-rt-pod-top">
+                <span style="display:flex;align-items:center;gap:3px;min-width:0">
+                  <span style="color:${stCol}">●</span>
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(n.name)}</span>
+                </span>
+                <span style="font-size:8.5px;padding:1px 4px;border:1px solid ${sk.acc2};color:${sk.acc2};flex-shrink:0">${escHtml(n.provider.toUpperCase())}</span>
+              </div>
+              <div class="cts-rt-pod-sub"><b style="color:${stCol}">${stTxt}</b> • ${maskKey(n.rawKey)}</div>
+              <div class="cts-rt-pod-bot">
+                <span>${n.linesToday} ln${n.latency ? ` • ${n.latency}ms` : ''}</span>
+                <span style="display:flex;gap:3px">
+                  <button type="button" data-toggle="${escHtml(n.id)}" class="cts-rt-mini-btn">${n.enabled ? '⏸' : '▶'}</button>
+                  ${n.provider !== 'free' ? `<button type="button" data-del="${escHtml(n.id)}" data-rkey="${escHtml(n.rawKey)}" class="cts-rt-mini-btn">🗑</button>` : ''}
+                </span>
+              </div>
+            </div>`;
+          }).join('')}
+
+          <div class="cts-rt-hub">
+            <div class="cts-rt-core-stage" id="cts-rt-orb">
               <div class="cts-rt-ring1"></div>
               <div class="cts-rt-ring2"></div>
               <div class="cts-rt-ring3"></div>
-              <div class="cts-rt-orb ${anyRun ? 'active' : ''}" id="cts-rt-orb">
-                <div style="font-size:22px">${sk.glyph}</div>
-                <div style="font-size:10.5px;letter-spacing:.8px">NEXUS</div>
+              <div class="cts-rt-logo-wrap">
+                ${logoSrc
+                  ? `<img id="cts-rt-core-logo" src="${escHtml(logoSrc)}" alt="CTS" style="filter:${sk.logoFilter}">`
+                  : `<span style="font-size:28px;filter:${sk.logoFilter}">🛸</span>`}
               </div>
-            </div>
-            <div style="font-size:10.5px;color:var(--rt-muted);margin-top:6px;text-align:center;font-weight:700">
-              ${escHtml(sk.name.replace(/^[^\s]+\s+\d+\.\s*/, ''))} • ${cfg.splitAccounts ? 'MULTI-BEAM' : 'SINGLE'}
             </div>
           </div>
 
-          <div class="cts-rt-col">
-            <div style="font-size:10.5px;font-weight:900;color:var(--rt-muted);letter-spacing:1px">${t.jobHdr}</div>
-            <div class="cts-rt-job" id="cts-rt-job-card">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px;font-weight:800">
-                <span>◬ ${escHtml(activeJob.name)}</span>
-                <span style="color:${activeJob.state === 'done' ? '#4ade80' : (activeJob.state === 'running' ? sk.acc2 : sk.muted)}">${activeJob.total ? `${activeJob.done}/${activeJob.total}` : 'STANDBY'}</span>
-              </div>
-              <div style="height:8px;background:rgba(255,255,255,0.09);overflow:hidden;margin:9px 0;border:1px solid var(--rt-border)">
-                <div style="height:100%;width:${activeJob.total ? Math.round((activeJob.done / activeJob.total) * 100) : 0}%;background:linear-gradient(90deg,var(--rt-acc),var(--rt-acc2));transition:width .2s"></div>
-              </div>
-              <button type="button" id="cts-rt-runsplit" class="cts-rt-btn pri" style="width:100%;padding:9px;letter-spacing:.5px">${isSplitting ? '🛸 HYPER-ROUTING...' : t.splitRun}</button>
+          <div class="cts-rt-jobpod" id="cts-rt-job-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:5px;font-size:11px;font-weight:900">
+              <span>◬ ${escHtml(activeJob.name)}</span>
+              <span style="color:${activeJob.state === 'done' ? '#4ade80' : (activeJob.state === 'running' ? sk.acc2 : sk.muted)}">${activeJob.total ? `${activeJob.done}/${activeJob.total}` : 'STANDBY'}</span>
             </div>
+            <div style="height:6px;background:rgba(255,255,255,0.1);overflow:hidden;margin:6px 0;border:1px solid var(--rt-border)">
+              <div style="height:100%;width:${activeJob.total ? Math.round((activeJob.done / activeJob.total) * 100) : 0}%;background:linear-gradient(90deg,var(--rt-acc),var(--rt-acc2));transition:width .2s"></div>
+            </div>
+            <button type="button" id="cts-rt-runsplit" class="cts-rt-btn pri" style="width:100%;padding:6px;font-size:10.5px;letter-spacing:.4px">${isSplitting ? '🛸 ROUTING...' : t.splitRun}</button>
           </div>
         </div>
       </div>
 
       <div class="cts-rt-log">
-        <div style="font-weight:900;color:var(--rt-muted);margin-bottom:3px;letter-spacing:.6px">◈ ${t.logHdr}</div>
+        <div style="font-weight:900;color:var(--rt-muted);margin-bottom:2px;letter-spacing:.6px">◈ ${t.logHdr}</div>
         ${activityLog.length ? activityLog.map(l => `<div><span style="opacity:0.6">[${l.ts}]</span> <span style="color:${l.ok ? '#86efac' : '#fca5a5'}">${escHtml(l.text)}</span></div>`).join('') : '<div style="opacity:0.65">◈ Alien Nexus standing by — awaiting neural transmission...</div>'}
       </div>
     `;
@@ -26420,8 +26580,25 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
     refreshUI();
   }
 
-  window.addEventListener('resize', () => { if (modalOpen) drawSvgLines(); });
-  setTimeout(function(){ try{ if(typeof apiKeyPool!=='undefined'&&Array.isArray(apiKeyPool)){ let ch=false; apiKeyPool.forEach(x=>{ if(x&&x.key&&(x.key.startsWith('AQ.')||x.key.startsWith('AIza'))&&x.provider!=='gemini'){ x.provider='gemini'; ch=true; } }); if(ch){ if(typeof safeSet==='function') safeSet('cts_king_key_pool',apiKeyPool); if(typeof renderKeyPool==='function') renderKeyPool(); } } }catch(e){} mountSettingsCard(); }, 950);
+  window.addEventListener('resize', () => { if (modalOpen) { refreshUI(); drawSvgLines(); } });
+  setTimeout(function() {
+    try {
+      if (typeof apiKeyPool !== 'undefined' && Array.isArray(apiKeyPool)) {
+        let ch = false;
+        apiKeyPool.forEach(x => {
+          if (x && x.key && (x.key.startsWith('AQ.') || x.key.startsWith('AIza')) && x.provider !== 'gemini') {
+            x.provider = 'gemini'; ch = true;
+          }
+        });
+        if (ch) {
+          if (typeof safeSet === 'function') safeSet('cts_king_key_pool', apiKeyPool);
+          if (typeof renderKeyPool === 'function') renderKeyPool();
+        }
+      }
+    } catch (e) {}
+    extractCleanToolLogo();
+    mountSettingsCard();
+  }, 950);
   setTimeout(mountSettingsCard, 2400);
   setTimeout(mountSettingsCard, 4100);
 
