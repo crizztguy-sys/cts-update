@@ -24205,5 +24205,386 @@ body.cts-desktop-mode #cueList .cue-card {
 })();
 </script>
 
+
+<script id="cts-addon-40-viralseo">
+// === ADD-ON #40: AI VIRAL TITLE, DESCRIPTION & HASHTAGS ===
+(function() {
+  const CFG_KEY = 'cts_viral_seo_cfg';
+  let cfg = {
+    platform: 'all',   // tiktok | fb | yt | all
+    outLang: 'km',     // km | en | both
+    tone: 'curious',   // curious | hype | funny
+    titles: [],
+    selectedIdx: 0,
+    desc: '',
+    hashtags: ''
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    if (saved && typeof saved === 'object') cfg = Object.assign(cfg, saved);
+  } catch (e) {}
+
+  function saveCfg() {
+    try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {}
+  }
+
+  let aiBusy = false;
+
+  function copyTextSafe(txt) {
+    if (!txt) return;
+    const done = () => { if (typeof toast === 'function') toast('📋 Copy ចូល Clipboard រួចរាល់!'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(txt).then(done).catch(() => fallbackCopy(txt, done));
+    } else {
+      fallbackCopy(txt, done);
+    }
+  }
+
+  function fallbackCopy(txt, cb) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      if (cb) cb();
+    } catch (e) {}
+  }
+
+  function gatherStoryContext() {
+    const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+    const lines = list.map(c => (c.km || c.src || '').trim()).filter(Boolean);
+    if (lines.length) {
+      if (lines.length <= 30) return lines.join('\n');
+      const pick = [];
+      const step = lines.length / 30;
+      for (let i = 0; i < 30; i++) pick.push(lines[Math.floor(i * step)]);
+      return pick.join('\n');
+    }
+    const storyTa = document.getElementById('storyInput')?.value?.trim() || '';
+    if (storyTa) return storyTa.slice(0, 2200);
+    const hk = (window.__ctsHookTitleCfg && window.__ctsHookTitleCfg.text) || '';
+    return hk.trim();
+  }
+
+  async function generateViralSeo() {
+    if (aiBusy) return;
+    if (typeof callAI !== 'function') {
+      if (typeof toast === 'function') toast('❌ រកមិនឃើញមុខងារ AI ទេ!');
+      return;
+    }
+    const ctxText = gatherStoryContext();
+    if (!ctxText) {
+      if (typeof toast === 'function') toast('⚠️ សូមបញ្ចូលអត្ថបទរឿង ឬ Subtitle ជាមុនសិន!');
+      return;
+    }
+
+    aiBusy = true;
+    refreshUI();
+    try {
+      const platMap = {
+        tiktok: 'TikTok short viral video',
+        fb: 'Facebook Reels / Video post with engaging storytelling & share CTA',
+        yt: 'YouTube / YouTube Shorts SEO optimized',
+        all: 'TikTok, Facebook Reels, and YouTube'
+      };
+      const langMap = {
+        km: 'Khmer (natural, modern Cambodian social media style)',
+        en: 'English',
+        both: 'Khmer first, followed by English translation'
+      };
+      const toneMap = {
+        curious: 'curiosity-gap, emotional, suspenseful',
+        hype: 'high-energy, dramatic, shocking action',
+        funny: 'witty, entertaining, humorous'
+      };
+
+      const sys = `You are a top social media growth strategist for ${platMap[cfg.platform] || 'social media'}.
+Write in ${langMap[cfg.outLang] || 'Khmer'} with a ${toneMap[cfg.tone] || 'curious'} tone.
+Return ONLY valid JSON (no markdown fences):
+{
+  "titles": ["viral title option 1", "viral title option 2", "viral title option 3"],
+  "description": "engaging 2-4 line post caption/description with call-to-action",
+  "hashtags": "#hashtag1 #hashtag2 #hashtag3 ... (8-12 relevant high-reach hashtags)"
+}`;
+      const res = await callAI(sys, `Generate viral titles, description, and hashtags for this video story:\n${ctxText}`);
+      const raw = String(res || '').replace(/```json|```/gi, '').trim();
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (m) {
+        const obj = JSON.parse(m[0]);
+        cfg.titles = Array.isArray(obj.titles) ? obj.titles.map(x => String(x).trim()).filter(Boolean).slice(0, 3) : [];
+        cfg.selectedIdx = 0;
+        cfg.desc = String(obj.description || '').trim();
+        cfg.hashtags = String(obj.hashtags || '').trim();
+      } else {
+        const parts = raw.split('\n').map(x => x.trim()).filter(Boolean);
+        cfg.titles = parts.slice(0, 3);
+        cfg.selectedIdx = 0;
+        cfg.desc = parts.slice(3).join('\n');
+      }
+      saveCfg();
+      refreshUI();
+      if (typeof toast === 'function') toast('🧠 AI បង្កើត Title, Caption & Hashtags រួចរាល់!');
+    } catch (e) {
+      if (typeof toast === 'function') toast('⚠️ AI Error: ' + (e.message || e));
+    } finally {
+      aiBusy = false;
+      refreshUI();
+    }
+  }
+
+  function sendTitleToThumb() {
+    const chosen = (cfg.titles && cfg.titles[cfg.selectedIdx]) || '';
+    if (!chosen) return;
+    const tmTxt = document.getElementById('cts-tm-txt');
+    if (tmTxt) {
+      tmTxt.value = chosen;
+      tmTxt.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (typeof toast === 'function') toast('🖼️ បញ្ជូនចំណងជើងទៅ Thumbnail Maker រួចរាល់!');
+  }
+
+  // Multi-language UI (6 languages, NO Thai!)
+  const T = {
+    km: {
+      title: '🧠 AI Viral Title, Description & Hashtags',
+      platLbl: '📱 វេទិកាបង្ហោះ',
+      p_all: '🌐 ទាំង ៣', p_tiktok: '🎵 TikTok', p_fb: '📘 Facebook', p_yt: '▶️ YouTube',
+      langLbl: '🗣️ ភាសាសរសេរ',
+      l_km: '🇰🇭 ខ្មែរ', l_en: '🇺🇸 English', l_both: '🌏 ខ្មែរ+EN',
+      toneLbl: '🎭 ស្ទីលសរសេរ',
+      tn_curious: '😱 ទាក់ទាញ/ឆ្ងល់', tn_hype: '🔥 កក្រើក/Drama', tn_funny: '😂 កំប្លែង',
+      genBtn: '✨ AI បង្កើត Title & Hashtags ១ ចុច', genBusy: '⏳ AI កំពុងសរសេរ...',
+      titLbl: '🏆 ជ្រើសរើសចំណងជើង (ចុចដើម្បីរើស)',
+      descLbl: '📝 ពិពណ៌នា (Description / Caption)',
+      hashLbl: '#️⃣ Hashtags',
+      cpAll: '📋 Copy ទាំងអស់', cpTit: '📋 Copy Title', toThumb: '🖼️ ដាក់លើ Thumbnail'
+    },
+    en: {
+      title: '🧠 AI Viral Title, Description & Hashtags',
+      platLbl: '📱 Target Platform',
+      p_all: '🌐 All 3', p_tiktok: '🎵 TikTok', p_fb: '📘 Facebook', p_yt: '▶️ YouTube',
+      langLbl: '🗣️ Output Language',
+      l_km: '🇰🇭 Khmer', l_en: '🇺🇸 English', l_both: '🌏 KM+EN',
+      toneLbl: '🎭 Writing Tone',
+      tn_curious: '😱 Curious', tn_hype: '🔥 Hype/Drama', tn_funny: '😂 Fun/Witty',
+      genBtn: '✨ Generate Viral Title & Tags (1-Click)', genBusy: '⏳ Writing...',
+      titLbl: '🏆 Title Options (Tap to select)',
+      descLbl: '📝 Description / Caption',
+      hashLbl: '#️⃣ Hashtags',
+      cpAll: '📋 Copy All', cpTit: '📋 Copy Title', toThumb: '🖼️ Use in Cover'
+    },
+    zh: {
+      title: '🧠 AI 爆款标题、文案与标签生成器',
+      platLbl: '📱 发布平台',
+      p_all: '🌐 全平台', p_tiktok: '🎵 TikTok', p_fb: '📘 Facebook', p_yt: '▶️ YouTube',
+      langLbl: '🗣️ 输出语言',
+      l_km: '🇰🇭 高棉语', l_en: '🇺🇸 英语', l_both: '🌏 双语',
+      toneLbl: '🎭 文案风格',
+      tn_curious: '😱 悬念吸睛', tn_hype: '🔥 震撼剧情', tn_funny: '😂 幽默搞笑',
+      genBtn: '✨ 一键生成爆款标题与标签', genBusy: '⏳ 生成中...',
+      titLbl: '🏆 标题备选 (点击选择)',
+      descLbl: '📝 视频简介 / 文案',
+      hashLbl: '#️⃣ 热门标签',
+      cpAll: '📋 一键复制全部', cpTit: '📋 复制标题', toThumb: '🖼️ 填入封面'
+    },
+    vi: {
+      title: '🧠 AI Tạo Tiêu Đề, Mô Tả & Hashtags Viral',
+      platLbl: '📱 Nền tảng đăng',
+      p_all: '🌐 Cả 3', p_tiktok: '🎵 TikTok', p_fb: '📘 Facebook', p_yt: '▶️ YouTube',
+      langLbl: '🗣️ Ngôn ngữ viết',
+      l_km: '🇰🇭 Khmer', l_en: '🇺🇸 English', l_both: '🌏 Song ngữ',
+      toneLbl: '🎭 Phong cách',
+      tn_curious: '😱 Gây tò mò', tn_hype: '🔥 Kịch tính', tn_funny: '😂 Hài hước',
+      genBtn: '✨ AI Tạo Tiêu Đề & Hashtags (1-Click)', genBusy: '⏳ Đang viết...',
+      titLbl: '🏆 Gợi ý Tiêu đề (Chạm để chọn)',
+      descLbl: '📝 Mô tả / Caption',
+      hashLbl: '#️⃣ Hashtags',
+      cpAll: '📋 Copy Tất cả', cpTit: '📋 Copy Tiêu đề', toThumb: '🖼️ Gửi sang Bìa'
+    },
+    ko: {
+      title: '🧠 AI 바이럴 제목, 설명 & 해시태그 생성기',
+      platLbl: '📱 업로드 플랫폼',
+      p_all: '🌐 전체', p_tiktok: '🎵 TikTok', p_fb: '📘 Facebook', p_yt: '▶️ YouTube',
+      langLbl: '🗣️ 작성 언어',
+      l_km: '🇰🇭 크메르어', l_en: '🇺🇸 영어', l_both: '🌏 2개국어',
+      toneLbl: '🎭 문체 스타일',
+      tn_curious: '😱 호기심', tn_hype: '🔥 드라마틱', tn_funny: '😂 유머',
+      genBtn: '✨ 원클릭 바이럴 제목 & 태그 생성', genBusy: '⏳ 생성 중...',
+      titLbl: '🏆 제목 후보 (선택)',
+      descLbl: '📝 영상 설명 / 캡션',
+      hashLbl: '#️⃣ 해시태그',
+      cpAll: '📋 전체 복사', cpTit: '📋 제목 복사', toThumb: '🖼️ 썸네일 적용'
+    },
+    ja: {
+      title: '🧠 AI バズるタイトル・概要・ハッシュタグ生成',
+      platLbl: '📱 投稿プラットフォーム',
+      p_all: '🌐 全て', p_tiktok: '🎵 TikTok', p_fb: '📘 Facebook', p_yt: '▶️ YouTube',
+      langLbl: '🗣️ 出力言語',
+      l_km: '🇰🇭 クメール語', l_en: '🇺🇸 英語', l_both: '🌏 2言語',
+      toneLbl: '🎭 トーン',
+      tn_curious: '😱 気になる', tn_hype: '🔥 ドラマチック', tn_funny: '😂 コメディ',
+      genBtn: '✨ ワンクリックAIタイトル・タグ生成', genBusy: '⏳ 生成中...',
+      titLbl: '🏆 タイトル候補 (タップで選択)',
+      descLbl: '📝 説明文 / キャプション',
+      hashLbl: '#️⃣ ハッシュタグ',
+      cpAll: '📋 全てコピー', cpTit: '📋 タイトルのみ', toThumb: '🖼️ サムネへ送る'
+    }
+  };
+
+  function getLang() {
+    try { return localStorage.getItem('cts_tool_ui_lang') || 'km'; } catch (e) { return 'km'; }
+  }
+
+  function styleBtn(b, active) {
+    if (!b) return;
+    b.style.borderColor = active ? '#fbbf24' : 'rgba(255,255,255,0.16)';
+    b.style.background = active ? 'linear-gradient(135deg,#78350f,#b45309)' : 'rgba(255,255,255,0.04)';
+    b.style.color = active ? '#fffbeb' : 'inherit';
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
+
+  function refreshUI() {
+    const t = T[getLang()] || T.km;
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt('cts-vs-title', t.title);
+    setTxt('cts-vs-plat-lbl', t.platLbl);
+    setTxt('cts-vs-lang-lbl', t.langLbl);
+    setTxt('cts-vs-tone-lbl', t.toneLbl);
+    setTxt('cts-vs-gen', aiBusy ? t.genBusy : t.genBtn);
+    setTxt('cts-vs-tit-lbl', t.titLbl);
+    setTxt('cts-vs-desc-lbl', t.descLbl);
+    setTxt('cts-vs-hash-lbl', t.hashLbl);
+    setTxt('cts-vs-cpall', t.cpAll);
+    setTxt('cts-vs-cptit', t.cpTit);
+    setTxt('cts-vs-tothumb', t.toThumb);
+
+    ['all', 'tiktok', 'fb', 'yt'].forEach(p => {
+      const b = document.getElementById('cts-vs-p-' + p);
+      if (b) { b.textContent = t['p_' + p]; styleBtn(b, cfg.platform === p); }
+    });
+    ['km', 'en', 'both'].forEach(l => {
+      const b = document.getElementById('cts-vs-l-' + l);
+      if (b) { b.textContent = t['l_' + l]; styleBtn(b, cfg.outLang === l); }
+    });
+    ['curious', 'hype', 'funny'].forEach(tn => {
+      const b = document.getElementById('cts-vs-tn-' + tn);
+      if (b) { b.textContent = t['tn_' + tn]; styleBtn(b, cfg.tone === tn); }
+    });
+
+    const box = document.getElementById('cts-vs-titles-box');
+    if (box) {
+      if (!cfg.titles || !cfg.titles.length) {
+        box.innerHTML = `<div style="opacity:0.6;font-size:11px;padding:6px">---</div>`;
+      } else {
+        box.innerHTML = cfg.titles.map((tit, idx) => {
+          const act = idx === cfg.selectedIdx;
+          return `<button type="button" data-tidx="${idx}" style="width:100%;text-align:left;padding:7px 9px;border-radius:8px;border:1.5px solid ${act ? '#fbbf24' : 'rgba(255,255,255,0.14)'};background:${act ? 'rgba(180,83,9,0.28)' : 'rgba(255,255,255,0.03)'};color:inherit;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:4px">${act ? '✅ ' : '▫️ '}${escHtml(tit)}</button>`;
+        }).join('');
+        box.querySelectorAll('button[data-tidx]').forEach(btn => {
+          btn.onclick = function() {
+            cfg.selectedIdx = parseInt(this.getAttribute('data-tidx'), 10) || 0;
+            saveCfg();
+            refreshUI();
+          };
+        });
+      }
+    }
+
+    const dIn = document.getElementById('cts-vs-desc');
+    if (dIn && dIn !== document.activeElement) dIn.value = cfg.desc || '';
+    const hIn = document.getElementById('cts-vs-hash');
+    if (hIn && hIn !== document.activeElement) hIn.value = cfg.hashtags || '';
+  }
+
+  function mountCard() {
+    const tabSet = document.getElementById('tab-settings');
+    if (!tabSet || document.getElementById('ctsViralSeoCard')) return;
+
+    const card = document.createElement('div');
+    card.id = 'ctsViralSeoCard';
+    card.className = 'panel-card';
+    card.setAttribute('data-no-i18n', '1');
+    card.innerHTML = `
+      <div class="panel-title"><span id="cts-vs-title"></span></div>
+      <div class="field">
+        <label id="cts-vs-plat-lbl"></label>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+          ${['all', 'tiktok', 'fb', 'yt'].map(p => `<button type="button" id="cts-vs-p-${p}" style="padding:6px 3px;border-radius:8px;border:1.5px solid;font-size:11px;font-weight:700;cursor:pointer"></button>`).join('')}
+        </div>
+      </div>
+      <div class="field">
+        <label id="cts-vs-lang-lbl"></label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+          ${['km', 'en', 'both'].map(l => `<button type="button" id="cts-vs-l-${l}" style="padding:6px 3px;border-radius:8px;border:1.5px solid;font-size:11px;font-weight:700;cursor:pointer"></button>`).join('')}
+        </div>
+      </div>
+      <div class="field">
+        <label id="cts-vs-tone-lbl"></label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+          ${['curious', 'hype', 'funny'].map(tn => `<button type="button" id="cts-vs-tn-${tn}" style="padding:6px 3px;border-radius:8px;border:1.5px solid;font-size:11px;font-weight:700;cursor:pointer"></button>`).join('')}
+        </div>
+      </div>
+      <button type="button" id="cts-vs-gen" style="width:100%;margin:4px 0 8px;padding:9px;border-radius:10px;border:1px solid rgba(251,191,36,0.55);background:linear-gradient(135deg,#78350f,#d97706);color:#fffbeb;font-size:12.5px;font-weight:800;cursor:pointer"></button>
+      <div class="field"><label id="cts-vs-tit-lbl"></label><div id="cts-vs-titles-box"></div></div>
+      <div class="field"><label id="cts-vs-desc-lbl"></label><textarea id="cts-vs-desc" rows="3" style="width:100%;resize:vertical;border-radius:9px;padding:7px 9px;font-size:12px"></textarea></div>
+      <div class="field"><label id="cts-vs-hash-lbl"></label><textarea id="cts-vs-hash" rows="2" style="width:100%;resize:vertical;border-radius:9px;padding:7px 9px;font-size:11.5px"></textarea></div>
+      <div style="display:grid;grid-template-columns:1.1fr 0.9fr 1fr;gap:6px;margin-top:6px">
+        <button type="button" id="cts-vs-cpall" style="padding:8px 4px;border-radius:9px;border:1px solid rgba(34,197,94,0.55);background:rgba(22,101,52,0.45);color:#dcfce7;font-size:11.5px;font-weight:800;cursor:pointer"></button>
+        <button type="button" id="cts-vs-cptit" style="padding:8px 4px;border-radius:9px;border:1px solid rgba(56,189,248,0.45);background:rgba(14,116,144,0.25);color:#bae6fd;font-size:11.5px;font-weight:700;cursor:pointer"></button>
+        <button type="button" id="cts-vs-tothumb" style="padding:8px 4px;border-radius:9px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:inherit;font-size:11px;font-weight:700;cursor:pointer"></button>
+      </div>`;
+
+    const thumbAnchor = document.getElementById('ctsThumbMakerCard') || tabSet.querySelector('.panel-card');
+    if (thumbAnchor) thumbAnchor.insertAdjacentElement('afterend', card);
+    else tabSet.appendChild(card);
+
+    ['all', 'tiktok', 'fb', 'yt'].forEach(p => {
+      document.getElementById('cts-vs-p-' + p).onclick = () => { cfg.platform = p; saveCfg(); refreshUI(); };
+    });
+    ['km', 'en', 'both'].forEach(l => {
+      document.getElementById('cts-vs-l-' + l).onclick = () => { cfg.outLang = l; saveCfg(); refreshUI(); };
+    });
+    ['curious', 'hype', 'funny'].forEach(tn => {
+      document.getElementById('cts-vs-tn-' + tn).onclick = () => { cfg.tone = tn; saveCfg(); refreshUI(); };
+    });
+
+    document.getElementById('cts-vs-gen').onclick = generateViralSeo;
+    document.getElementById('cts-vs-desc').oninput = function() { cfg.desc = this.value; saveCfg(); };
+    document.getElementById('cts-vs-hash').oninput = function() { cfg.hashtags = this.value; saveCfg(); };
+
+    document.getElementById('cts-vs-cpall').onclick = () => {
+      const tit = (cfg.titles && cfg.titles[cfg.selectedIdx]) || '';
+      const full = [tit, cfg.desc, cfg.hashtags].filter(Boolean).join('\n\n');
+      copyTextSafe(full);
+    };
+    document.getElementById('cts-vs-cptit').onclick = () => {
+      const tit = (cfg.titles && cfg.titles[cfg.selectedIdx]) || '';
+      copyTextSafe(tit);
+    };
+    document.getElementById('cts-vs-tothumb').onclick = sendTitleToThumb;
+
+    refreshUI();
+  }
+
+  setTimeout(mountCard, 800);
+  setTimeout(mountCard, 2100);
+  setTimeout(mountCard, 3800);
+
+  if (typeof window.setCtsAppUiLang === 'function') {
+    const _prevLangFn = window.setCtsAppUiLang;
+    window.setCtsAppUiLang = function(code) {
+      _prevLangFn(code);
+      setTimeout(refreshUI, 70);
+    };
+  }
+})();
+</script>
+
 </body>
 </html>
