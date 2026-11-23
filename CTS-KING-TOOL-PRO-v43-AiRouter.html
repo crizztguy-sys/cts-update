@@ -25414,5 +25414,847 @@ Return ONLY a JSON array of strings with exact length ${batch.length}, e.g. ["na
 })();
 </script>
 
+
+<script id="cts-addon-43-airouter">
+// === ADD-ON #43: AI TRANSLATION ROUTER STUDIO (SETTINGS TAB ONLY, 10 SKINS, REAL KEY ROUTING) ===
+(function() {
+  const CFG_KEY = 'cts_ai_router_cfg_v1';
+  const STATS_KEY = 'cts_ai_router_stats_v1';
+
+  const SKINS = {
+    violet:   { name: '🟣 Cyber Violet',   bg: '#090916', card: 'rgba(20,18,44,0.92)',    border: 'rgba(139,92,246,0.45)',  acc: '#8b5cf6', acc2: '#38bdf8', text: '#f1f5f9', muted: '#94a3b8', orb: 'radial-gradient(circle at 35% 35%, #a78bfa, #6d28d9 60%, #1e1b4b)' },
+    crimson:  { name: '🔴 CTS Crimson',    bg: '#110407', card: 'rgba(28,8,13,0.93)',     border: 'rgba(239,68,68,0.48)',   acc: '#ef4444', acc2: '#f59e0b', text: '#fef2f2', muted: '#fca5a5', orb: 'radial-gradient(circle at 35% 35%, #f87171, #b91c1c 60%, #450a0a)' },
+    cyan:     { name: '🔵 Quantum Cyan',   bg: '#040d16', card: 'rgba(8,25,42,0.92)',     border: 'rgba(6,182,212,0.48)',   acc: '#06b6d4', acc2: '#3b82f6', text: '#ecfeff', muted: '#7dd3fc', orb: 'radial-gradient(circle at 35% 35%, #67e8f9, #0284c7 60%, #082f49)' },
+    matrix:   { name: '🟢 Emerald Matrix', bg: '#031109', card: 'rgba(6,28,16,0.93)',     border: 'rgba(16,185,129,0.48)',  acc: '#10b981', acc2: '#84cc16', text: '#ecfdf5', muted: '#6ee7b7', orb: 'radial-gradient(circle at 35% 35%, #6ee7b7, #059669 60%, #022c22)' },
+    gold:     { name: '🟡 Royal Gold',     bg: '#0d0a04', card: 'rgba(28,21,8,0.94)',     border: 'rgba(245,158,11,0.52)',  acc: '#f59e0b', acc2: '#fde047', text: '#fffbeb', muted: '#fcd34d', orb: 'radial-gradient(circle at 35% 35%, #fde047, #b45309 60%, #451a03)' },
+    synth:    { name: '🩷 Synthwave',      bg: '#13061f', card: 'rgba(34,11,52,0.92)',    border: 'rgba(236,72,153,0.52)',  acc: '#ec4899', acc2: '#22d3ee', text: '#fdf2f8', muted: '#f9a8d4', orb: 'radial-gradient(circle at 35% 35%, #f472b6, #be185d 60%, #500724)' },
+    solar:    { name: '🟠 Solar Inferno',  bg: '#140804', card: 'rgba(34,14,7,0.93)',     border: 'rgba(249,115,22,0.52)',  acc: '#f97316', acc2: '#facc15', text: '#fff7ed', muted: '#fdba74', orb: 'radial-gradient(circle at 35% 35%, #fb923c, #c2410c 60%, #431407)' },
+    frost:    { name: '⚪ Frosted Glass',  bg: '#0f172a', card: 'rgba(30,41,59,0.88)',    border: 'rgba(148,163,184,0.42)', acc: '#38bdf8', acc2: '#e2e8f0', text: '#f8fafc', muted: '#cbd5e1', orb: 'radial-gradient(circle at 35% 35%, #e2e8f0, #475569 60%, #0f172a)' },
+    aurora:   { name: '🌌 Deep Aurora',    bg: '#041214', card: 'rgba(9,31,34,0.92)',     border: 'rgba(45,212,191,0.48)',  acc: '#2dd4bf', acc2: '#a855f7', text: '#f0fdfa', muted: '#99f6e4', orb: 'radial-gradient(circle at 35% 35%, #5eead4, #0f766e 60%, #134e4a)' },
+    contrast: { name: '⚡ High-Contrast',  bg: '#000000', card: 'rgba(14,14,16,0.98)',    border: 'rgba(255,255,255,0.38)', acc: '#facc15', acc2: '#22c55e', text: '#ffffff', muted: '#d4d4d8', orb: 'radial-gradient(circle at 35% 35%, #ffffff, #52525b 60%, #09090b)' }
+  };
+
+  let cfg = {
+    skin: 'violet',
+    splitAccounts: true,
+    autoFallback: true,
+    concurrency: 2,
+    nodeMeta: {} // keyId -> { name, model, enabled }
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    if (saved && typeof saved === 'object') cfg = Object.assign(cfg, saved);
+  } catch (e) {}
+
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+  }
+
+  let stats = { date: todayStr(), totalLines: 0, perNode: {} };
+  try {
+    const st = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+    if (st && st.date === todayStr()) stats = Object.assign(stats, st);
+  } catch (e) {}
+
+  function saveCfg() {
+    try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {}
+  }
+  function saveStats() {
+    if (stats.date !== todayStr()) stats = { date: todayStr(), totalLines: 0, perNode: {} };
+    try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)); } catch (e) {}
+  }
+
+  function keyIdOf(prov, rawKey) {
+    const k = String(rawKey || '').trim();
+    if (!k) return prov + '_empty';
+    return prov + '_' + k.slice(0, 6) + '_' + k.slice(-4);
+  }
+
+  function maskKey(k) {
+    if (!k) return 'Free';
+    if (k.length <= 10) return k;
+    return k.slice(0, 5) + '•••' + k.slice(-4);
+  }
+
+  const runtimeState = {}; // id -> { status: 'ready'|'running'|'cooldown'|'error', until: ts, latency: ms }
+  const activityLog = [];  // { ts, text, ok }
+  let activeJob = { name: 'Idle • Waiting for job', done: 0, total: 0, state: 'idle' };
+  let isSplitting = false;
+  let isPinging = false;
+  let showAddBox = false;
+  let modalOpen = false;
+
+  function addLog(text, ok) {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const ts = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    activityLog.unshift({ ts, text, ok: ok !== false });
+    if (activityLog.length > 25) activityLog.length = 25;
+  }
+
+  function collectNodes() {
+    const nodes = [];
+    const seen = new Set();
+    const curGemModel = document.getElementById('geminiModel')?.value || (typeof settings !== 'undefined' && settings.geminiModel) || 'gemini-2.5-flash';
+    const curOaiModel = document.getElementById('openaiModel')?.value || (typeof settings !== 'undefined' && settings.openaiModel) || 'llama-3.3-70b-versatile';
+
+    const gemKeys = (typeof getProviderKeys === 'function') ? getProviderKeys('gemini') : [];
+    gemKeys.forEach((k, idx) => {
+      if (!k || seen.has(k)) return;
+      seen.add(k);
+      const id = keyIdOf('gemini', k);
+      const meta = cfg.nodeMeta[id] || {};
+      const st = runtimeState[id] || { status: 'ready' };
+      if (st.status === 'cooldown' && st.until && Date.now() > st.until) st.status = 'ready';
+      nodes.push({
+        id, provider: 'gemini', rawKey: k,
+        name: meta.name || `Gemini Account ${idx + 1}`,
+        model: meta.model || curGemModel,
+        enabled: meta.enabled !== false,
+        status: meta.enabled === false ? 'paused' : st.status,
+        latency: st.latency || 0,
+        linesToday: (stats.perNode[id] && stats.perNode[id].lines) || 0,
+        reqsToday: (stats.perNode[id] && stats.perNode[id].reqs) || 0
+      });
+    });
+
+    const oaiKeys = (typeof getProviderKeys === 'function') ? getProviderKeys('openai') : [];
+    oaiKeys.forEach((k, idx) => {
+      if (!k || seen.has(k)) return;
+      seen.add(k);
+      const id = keyIdOf('openai', k);
+      const meta = cfg.nodeMeta[id] || {};
+      const st = runtimeState[id] || { status: 'ready' };
+      if (st.status === 'cooldown' && st.until && Date.now() > st.until) st.status = 'ready';
+      const provLabel = k.startsWith('gsk_') ? 'Groq' : (k.startsWith('sk-or-') ? 'OpenRouter' : 'OpenAI');
+      nodes.push({
+        id, provider: 'openai', rawKey: k,
+        name: meta.name || `${provLabel} Node ${idx + 1}`,
+        model: meta.model || curOaiModel,
+        enabled: meta.enabled !== false,
+        status: meta.enabled === false ? 'paused' : st.status,
+        latency: st.latency || 0,
+        linesToday: (stats.perNode[id] && stats.perNode[id].lines) || 0,
+        reqsToday: (stats.perNode[id] && stats.perNode[id].reqs) || 0
+      });
+    });
+
+    return nodes;
+  }
+
+  function recordNodeHit(id, name, linesDelta, ok, statusCode, latMs) {
+    if (!stats.perNode[id]) stats.perNode[id] = { lines: 0, reqs: 0 };
+    if (ok) {
+      stats.perNode[id].reqs += 1;
+      stats.perNode[id].lines += Math.max(1, linesDelta || 1);
+      stats.totalLines += Math.max(1, linesDelta || 1);
+      runtimeState[id] = { status: 'ready', latency: latMs || 0 };
+      saveStats();
+      addLog(`${name} • OK (${latMs || 0}ms)`, true);
+    } else if (statusCode === 429) {
+      runtimeState[id] = { status: 'cooldown', until: Date.now() + 45000, latency: latMs || 0 };
+      addLog(`${name} • Quota 429 (Cooldown 45s)`, false);
+    } else {
+      runtimeState[id] = { status: 'error', latency: latMs || 0 };
+      addLog(`${name} • Error ${statusCode || ''}`, false);
+    }
+    scheduleRefresh();
+  }
+
+  // Real-time fetch monitor (observes Gemini & OpenAI/Groq calls without breaking TTS or anything else!)
+  const _prevFetchRT = window.fetch.bind(window);
+  window.fetch = async function(input, init) {
+    const url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+    const isGem = /generativelanguage\.googleapis\.com/i.test(url);
+    const isOai = /api\.groq\.com|openrouter\.ai|api\.openai\.com/i.test(url);
+    if (!isGem && !isOai) return _prevFetchRT(input, init);
+
+    let matchedId = null, matchedName = 'AI Node';
+    const nodes = collectNodes();
+    if (isGem) {
+      const m = url.match(/[?&]key=([^&]+)/);
+      const rk = m ? decodeURIComponent(m[1]) : '';
+      const nd = nodes.find(n => n.provider === 'gemini' && n.rawKey === rk);
+      if (nd) { matchedId = nd.id; matchedName = nd.name; }
+    } else if (isOai && init && init.headers) {
+      const auth = init.headers.Authorization || init.headers.authorization || '';
+      const rk = String(auth).replace(/^Bearer\s+/i, '').trim();
+      const nd = nodes.find(n => n.provider === 'openai' && n.rawKey === rk);
+      if (nd) { matchedId = nd.id; matchedName = nd.name; }
+    }
+
+    let estLines = 1;
+    try {
+      if (init && typeof init.body === 'string') {
+        const linesFound = (init.body.match(/\\n/g) || []).length;
+        estLines = Math.max(1, Math.min(40, linesFound || 1));
+      }
+    } catch (e) {}
+
+    const t0 = performance.now();
+    if (matchedId) {
+      runtimeState[matchedId] = { status: 'running' };
+      scheduleRefresh();
+    }
+    try {
+      const resp = await _prevFetchRT(input, init);
+      const lat = Math.round(performance.now() - t0);
+      if (matchedId) {
+        recordNodeHit(matchedId, matchedName, estLines, resp.ok, resp.status, lat);
+      }
+      return resp;
+    } catch (err) {
+      const lat = Math.round(performance.now() - t0);
+      if (matchedId) {
+        recordNodeHit(matchedId, matchedName, 0, false, 0, lat);
+      }
+      throw err;
+    }
+  };
+
+  async function pingNode(node) {
+    const t0 = performance.now();
+    runtimeState[node.id] = { status: 'running' };
+    refreshUI();
+    try {
+      if (node.provider === 'gemini') {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(node.model || 'gemini-2.5-flash')}:generateContent?key=${encodeURIComponent(node.rawKey)}`;
+        const r = await _prevFetchRT(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'OK' }] }], generationConfig: { maxOutputTokens: 4 } })
+        });
+        const lat = Math.round(performance.now() - t0);
+        recordNodeHit(node.id, node.name, 1, r.ok, r.status, lat);
+        return r.ok;
+      } else {
+        const ep = node.rawKey.startsWith('gsk_') ? 'https://api.groq.com/openai/v1/chat/completions'
+          : (node.rawKey.startsWith('sk-or-') ? 'https://openrouter.ai/api/v1/chat/completions'
+          : (document.getElementById('openaiUrl')?.value?.trim() || 'https://api.openai.com/v1/chat/completions'));
+        const r = await _prevFetchRT(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + node.rawKey },
+          body: JSON.stringify({ model: node.model || 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'OK' }], max_tokens: 4 })
+        });
+        const lat = Math.round(performance.now() - t0);
+        recordNodeHit(node.id, node.name, 1, r.ok, r.status, lat);
+        return r.ok;
+      }
+    } catch (e) {
+      recordNodeHit(node.id, node.name, 0, false, 0, Math.round(performance.now() - t0));
+      return false;
+    }
+  }
+
+  async function pingAllNodes() {
+    if (isPinging) return;
+    const nodes = collectNodes().filter(n => n.enabled);
+    if (!nodes.length) {
+      if (typeof toast === 'function') toast('⚠️ មិនទាន់មាន API Key ទេ! សូមចុច + Add Account');
+      return;
+    }
+    isPinging = true;
+    refreshUI();
+    await Promise.all(nodes.map(n => pingNode(n)));
+    isPinging = false;
+    refreshUI();
+    if (typeof toast === 'function') toast('🔄 តេស្តស្ថានភាព Account Pool រួចរាល់!');
+  }
+
+  async function translateBatchWithNode(node, batch) {
+    const tgtName = (typeof getLangObj === 'function')
+      ? (getLangObj(document.getElementById('recapTargetLang')?.value || document.getElementById('vidTargetLang')?.value || 'km')?.name || 'Khmer')
+      : 'Khmer';
+    const payload = batch.map((c, idx) => `${idx}: ${(c.src || c.km || '').replace(/\n/g, ' ').trim()}`).join('\n');
+    const sys = `Translate each numbered subtitle line naturally into ${tgtName}. Return ONLY a JSON array of strings of length ${batch.length}. No markdown.`;
+
+    if (node.provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(node.model || 'gemini-2.5-flash')}:generateContent?key=${encodeURIComponent(node.rawKey)}`;
+      const t0 = performance.now();
+      runtimeState[node.id] = { status: 'running' };
+      scheduleRefresh();
+      const r = await _prevFetchRT(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: sys }] },
+          contents: [{ role: 'user', parts: [{ text: payload }] }],
+          generationConfig: { temperature: 0.35 }
+        })
+      });
+      const lat = Math.round(performance.now() - t0);
+      if (!r.ok) {
+        recordNodeHit(node.id, node.name, 0, false, r.status, lat);
+        const err = new Error('HTTP ' + r.status); err.status = r.status; throw err;
+      }
+      const data = await r.json();
+      const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const m = txt.replace(/```json|```/gi, '').match(/\[[\s\S]*\]/);
+      if (!m) throw new Error('Bad JSON');
+      const arr = JSON.parse(m[0]);
+      recordNodeHit(node.id, node.name, batch.length, true, 200, lat);
+      return arr;
+    } else {
+      const ep = node.rawKey.startsWith('gsk_') ? 'https://api.groq.com/openai/v1/chat/completions'
+        : (node.rawKey.startsWith('sk-or-') ? 'https://openrouter.ai/api/v1/chat/completions'
+        : (document.getElementById('openaiUrl')?.value?.trim() || 'https://api.openai.com/v1/chat/completions'));
+      const t0 = performance.now();
+      runtimeState[node.id] = { status: 'running' };
+      scheduleRefresh();
+      const r = await _prevFetchRT(ep, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + node.rawKey },
+        body: JSON.stringify({
+          model: node.model || 'llama-3.3-70b-versatile',
+          messages: [{ role: 'system', content: sys }, { role: 'user', content: payload }],
+          temperature: 0.35
+        })
+      });
+      const lat = Math.round(performance.now() - t0);
+      if (!r.ok) {
+        recordNodeHit(node.id, node.name, 0, false, r.status, lat);
+        const err = new Error('HTTP ' + r.status); err.status = r.status; throw err;
+      }
+      const data = await r.json();
+      const txt = data?.choices?.[0]?.message?.content || '';
+      const m = txt.replace(/```json|```/gi, '').match(/\[[\s\S]*\]/);
+      if (!m) throw new Error('Bad JSON');
+      const arr = JSON.parse(m[0]);
+      recordNodeHit(node.id, node.name, batch.length, true, 200, lat);
+      return arr;
+    }
+  }
+
+  async function runSplitTranslate() {
+    if (isSplitting) return;
+    const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+    if (!list.length) {
+      if (typeof toast === 'function') toast('⚠️ មិនទាន់មាន Subtitle Cues ដើម្បីបកប្រែទេ!');
+      return;
+    }
+    const readyNodes = collectNodes().filter(n => n.enabled && n.status !== 'cooldown');
+    if (!readyNodes.length) {
+      if (typeof toast === 'function') toast('⚠️ មិនមាន Account Ready ទេ! សូមបន្ថែម Key ឬ Refresh');
+      return;
+    }
+
+    const targets = list.filter(c => !(c.km || '').trim());
+    const workList = targets.length ? targets : list;
+    const B = 15;
+    const batches = [];
+    for (let i = 0; i < workList.length; i += B) batches.push(workList.slice(i, i + B));
+
+    isSplitting = true;
+    activeJob = { name: `Cues Batch (${workList.length} lines)`, done: 0, total: workList.length, state: 'running' };
+    addLog(`Started Split Route: ${workList.length} lines across ${cfg.splitAccounts ? readyNodes.length : 1} node(s)`, true);
+    refreshUI();
+
+    let nextIdx = 0;
+    let rr = 0;
+    const workers = cfg.splitAccounts ? Math.min(cfg.concurrency || 2, Math.max(1, readyNodes.length)) : 1;
+
+    async function workerLoop(wIdx) {
+      while (nextIdx < batches.length) {
+        const myBIdx = nextIdx++;
+        const batch = batches[myBIdx];
+        const pool = cfg.splitAccounts ? readyNodes : [readyNodes[0]];
+        let ok = false;
+        const maxTry = cfg.autoFallback ? pool.length : 1;
+        for (let t = 0; t < maxTry; t++) {
+          const nd = pool[(rr++) % pool.length];
+          if (runtimeState[nd.id]?.status === 'cooldown' && Date.now() < (runtimeState[nd.id].until || 0)) continue;
+          try {
+            const arr = await translateBatchWithNode(nd, batch);
+            batch.forEach((c, idx) => {
+              if (arr[idx]) c.km = String(arr[idx]).trim();
+            });
+            activeJob.done += batch.length;
+            ok = true;
+            break;
+          } catch (e) {
+            if (!cfg.autoFallback) break;
+          }
+        }
+        if (!ok) addLog(`Batch #${myBIdx + 1} skipped (all nodes busy)`, false);
+        refreshUI();
+      }
+    }
+
+    try {
+      await Promise.all(Array.from({ length: workers }, (_, i) => workerLoop(i)));
+      activeJob.state = 'done';
+      addLog(`Translation complete (${activeJob.done}/${activeJob.total} lines)`, true);
+      if (typeof renderAll === 'function') { try { renderAll(); } catch (e) {} }
+      if (typeof toast === 'function') toast(`🛰️ Router បកប្រែរួចរាល់ ${activeJob.done}/${activeJob.total} បន្ទាត់!`);
+    } finally {
+      isSplitting = false;
+      refreshUI();
+    }
+  }
+
+  function addAccountToRealPool(name, keyVal, modelVal) {
+    const k = String(keyVal || '').trim();
+    if (!k) {
+      if (typeof toast === 'function') toast('⚠️ សូមបញ្ចូល API Key!');
+      return false;
+    }
+    const prov = k.startsWith('AIza') ? 'gemini' : 'openai';
+    const id = keyIdOf(prov, k);
+    cfg.nodeMeta[id] = {
+      name: String(name || '').trim() || (prov === 'gemini' ? 'Gemini Account' : 'OpenAI/Groq Node'),
+      model: String(modelVal || '').trim() || (prov === 'gemini' ? 'gemini-2.5-flash' : 'llama-3.3-70b-versatile'),
+      enabled: true
+    };
+    saveCfg();
+
+    if (typeof apiKeyPool !== 'undefined' && Array.isArray(apiKeyPool)) {
+      if (!apiKeyPool.some(x => x.key === k)) {
+        const ep = k.startsWith('gsk_') ? 'https://api.groq.com/openai/v1/chat/completions'
+          : (k.startsWith('sk-or-') ? 'https://openrouter.ai/api/v1/chat/completions' : '');
+        apiKeyPool.push({
+          id: 'rt_' + Date.now() + '_' + Math.floor(Math.random() * 999),
+          provider: prov,
+          key: k,
+          url: ep,
+          model: cfg.nodeMeta[id].model,
+          active: apiKeyPool.length === 0
+        });
+        if (typeof safeSet === 'function') safeSet('cts_king_key_pool', apiKeyPool);
+        if (typeof renderKeyPool === 'function') { try { renderKeyPool(); } catch (e) {} }
+        if (typeof updateEngineBadge === 'function') { try { updateEngineBadge(); } catch (e) {} }
+      }
+    }
+    addLog(`Added Account: ${cfg.nodeMeta[id].name}`, true);
+    showAddBox = false;
+    refreshUI();
+    const added = collectNodes().find(n => n.id === id);
+    if (added) pingNode(added);
+    return true;
+  }
+
+  // Scoped CSS (ONLY inside #ctsRouterModal — zero leak to CTS KING TOOL PRO!)
+  const styleEl = document.createElement('style');
+  styleEl.textContent = `
+    #ctsRouterModal{position:fixed;inset:0;z-index:99998;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.78);backdrop-filter:blur(6px);padding:8px}
+    #ctsRouterModal.open{display:flex}
+    #ctsRouterShell{width:100%;max-width:1040px;max-height:94vh;display:flex;flex-direction:column;border-radius:16px;background:var(--rt-bg);color:var(--rt-text);border:1.5px solid var(--rt-border);box-shadow:0 20px 60px rgba(0,0,0,0.75);overflow:hidden;font-family:inherit}
+    .cts-rt-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--rt-border);background:rgba(0,0,0,0.28)}
+    .cts-rt-stats{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:7px 14px;font-size:11.5px;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(0,0,0,0.18)}
+    .cts-rt-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;background:var(--rt-card);border:1px solid var(--rt-border);font-weight:700}
+    .cts-rt-body{position:relative;flex:1;overflow-y:auto;padding:12px 14px;background-image:radial-gradient(rgba(255,255,255,0.06) 1px,transparent 1px);background-size:18px 18px}
+    .cts-rt-grid{position:relative;display:grid;grid-template-columns:1fr;gap:14px;align-items:center;z-index:2}
+    @media(min-width:760px){.cts-rt-grid{grid-template-columns:1.05fr 0.7fr 0.95fr;gap:18px;min-height:330px}}
+    .cts-rt-col{display:flex;flex-direction:column;gap:8px}
+    .cts-rt-node{padding:9px 11px;border-radius:11px;background:var(--rt-card);border:1.5px solid var(--rt-border);display:flex;align-items:center;justify-content:space-between;gap:8px;transition:transform .15s,box-shadow .2s}
+    .cts-rt-node.running{border-color:var(--rt-acc2);box-shadow:0 0 18px var(--rt-acc);transform:scale(1.015)}
+    .cts-rt-orb-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0}
+    .cts-rt-orb{width:92px;height:92px;border-radius:50%;background:var(--rt-orb);border:2px solid var(--rt-acc2);box-shadow:0 0 30px var(--rt-acc),inset 0 0 18px rgba(255,255,255,0.22);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;font-size:13px;letter-spacing:.3px}
+    .cts-rt-orb.active{animation:ctsRtPulse 1s infinite ease-in-out}
+    @keyframes ctsRtPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+    .cts-rt-job{padding:11px 12px;border-radius:12px;background:var(--rt-card);border:1.5px solid var(--rt-border)}
+    .cts-rt-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+    .cts-rt-flow{stroke-dasharray:6 6;animation:ctsRtFlow 1s linear infinite}
+    @keyframes ctsRtFlow{to{stroke-dashoffset:-24}}
+    .cts-rt-skins{display:flex;gap:5px;overflow-x:auto;padding:6px 14px;border-bottom:1px solid rgba(255,255,255,0.07);background:rgba(0,0,0,0.2)}
+    .cts-rt-skin-btn{flex-shrink:0;padding:4px 9px;border-radius:99px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.05);color:var(--rt-text);font-size:11px;font-weight:700;cursor:pointer}
+    .cts-rt-skin-btn.act{border-color:var(--rt-acc2);background:var(--rt-acc);color:#fff}
+    .cts-rt-btn{padding:6px 10px;border-radius:8px;border:1px solid var(--rt-border);background:var(--rt-card);color:var(--rt-text);font-size:11.5px;font-weight:700;cursor:pointer}
+    .cts-rt-btn.pri{background:var(--rt-acc);border-color:var(--rt-acc2);color:#fff}
+    .cts-rt-log{border-top:1px solid var(--rt-border);padding:8px 14px;background:rgba(0,0,0,0.34);max-height:110px;overflow-y:auto;font-size:11px}
+  `;
+  document.head.appendChild(styleEl);
+
+  let rafQueued = false;
+  function scheduleRefresh() {
+    if (rafQueued) return;
+    rafQueued = true;
+    setTimeout(() => { rafQueued = false; refreshUI(); }, 60);
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
+
+  function drawSvgLines() {
+    const svg = document.getElementById('cts-rt-svg');
+    const body = document.getElementById('cts-rt-body');
+    const orb = document.getElementById('cts-rt-orb');
+    const job = document.getElementById('cts-rt-job-card');
+    if (!svg || !body || !orb || !modalOpen) return;
+
+    const br = body.getBoundingClientRect();
+    const or = orb.getBoundingClientRect();
+    const ox = or.left - br.left + or.width / 2;
+    const oy = or.top - br.top + or.height / 2 + body.scrollTop;
+
+    svg.setAttribute('width', String(body.clientWidth));
+    svg.setAttribute('height', String(body.scrollHeight));
+
+    const sk = SKINS[cfg.skin] || SKINS.violet;
+    let paths = '';
+
+    body.querySelectorAll('.cts-rt-node').forEach(el => {
+      const r = el.getBoundingClientRect();
+      const x1 = r.right - br.left;
+      const y1 = r.top - br.top + r.height / 2 + body.scrollTop;
+      const isDesktop = body.clientWidth >= 760;
+      const sx = isDesktop ? x1 : (r.left - br.left + r.width / 2);
+      const sy = isDesktop ? y1 : (r.bottom - br.top + body.scrollTop);
+      const tx = isDesktop ? (ox - or.width / 2) : ox;
+      const ty = isDesktop ? oy : (oy - or.height / 2);
+      const mx = (sx + tx) / 2;
+      const my = (sy + ty) / 2;
+      const d = isDesktop
+        ? `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`
+        : `M ${sx} ${sy} C ${sx} ${my}, ${tx} ${my}, ${tx} ${ty}`;
+
+      const isRun = el.classList.contains('running');
+      const isPaused = el.getAttribute('data-st') === 'paused' || el.getAttribute('data-st') === 'cooldown';
+      const stroke = isRun ? sk.acc2 : (isPaused ? 'rgba(148,163,184,0.22)' : sk.acc);
+      const op = isRun ? '0.95' : (isPaused ? '0.35' : '0.45');
+      const cls = isRun ? ' class="cts-rt-flow"' : '';
+      paths += `<path d="${d}" fill="none" stroke="${stroke}" stroke-opacity="${op}" stroke-width="${isRun ? 2.6 : 1.5}"${cls}/>`;
+    });
+
+    if (job) {
+      const jr = job.getBoundingClientRect();
+      const isDesktop = body.clientWidth >= 760;
+      const sx = isDesktop ? (ox + or.width / 2) : ox;
+      const sy = isDesktop ? oy : (oy + or.height / 2);
+      const tx = isDesktop ? (jr.left - br.left) : (jr.left - br.left + jr.width / 2);
+      const ty = isDesktop ? (jr.top - br.top + jr.height / 2 + body.scrollTop) : (jr.top - br.top + body.scrollTop);
+      const mx = (sx + tx) / 2, my = (sy + ty) / 2;
+      const d = isDesktop
+        ? `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`
+        : `M ${sx} ${sy} C ${sx} ${my}, ${tx} ${my}, ${tx} ${ty}`;
+      const act = activeJob.state === 'running';
+      paths += `<path d="${d}" fill="none" stroke="${act ? sk.acc2 : sk.acc}" stroke-opacity="${act ? 0.95 : 0.45}" stroke-width="${act ? 2.6 : 1.6}"${act ? ' class="cts-rt-flow"' : ''}/>`;
+    }
+    svg.innerHTML = paths;
+  }
+
+  // Multi-language UI (6 languages, NO Thai!)
+  const T = {
+    km: {
+      cardTitle: '🛰️ AI Translation Router Studio (គ្រប់គ្រង Key & បែងចែកការងារ)',
+      cardDesc: 'មើលស្ថានភាព Account/Key ទាំងអស់, បំបែក Batch បកប្រែព្រមគ្នា និងប្តូរ Style Dashboard ១០ ម៉ូដ។',
+      openBtn: '🛰️ បើកផ្ទាំង AI Router Studio (១០ Styles)',
+      hdrTitle: '🛰️ AI Translation Router',
+      ready: 'Ready', running: 'កំពុងរត់', linesToday: 'បន្ទាត់ថ្ងៃនេះ', needAtt: 'ត្រូវពិនិត្យ',
+      allGood: 'ដំណើរការល្អ', conc: 'ព្រមគ្នា', autoFb: 'Auto Fallback', split: 'Split across accounts',
+      ping: '🔄 Ping / Refresh', addAcc: '+ បន្ថែម Account', splitRun: '⚡ Split Translate Cues ឥឡូវ',
+      accHdr: 'ACCOUNTS / API KEYS POOL', jobHdr: 'ACTIVE JOB & ROUTING', logHdr: 'Activity Log',
+      addTitle: 'បន្ថែម Account / API Key ថ្មីចូល Pool', namePh: 'ឈ្មោះ Account (ឧ. Gemini PRO 2)',
+      keyPh: 'Paste Key (AIza..., gsk_..., sk-or-...)', saveAcc: '✅ រក្សាទុក & តេស្ត', cancel: 'បោះបង់',
+      noAcc: 'មិនទាន់មាន API Key ទេ — ចុច "+ បន្ថែម Account" ខាងលើ'
+    },
+    en: {
+      cardTitle: '🛰️ AI Translation Router Studio (Multi-Key Hub)',
+      cardDesc: 'Monitor live API account nodes, split cue translation across keys, auto-failover, and switch 10 dashboard themes.',
+      openBtn: '🛰️ Open AI Router Studio (10 Styles)',
+      hdrTitle: '🛰️ AI Translation Router',
+      ready: 'ready', running: 'running', linesToday: 'lines today', needAtt: 'need attention',
+      allGood: 'all good', conc: 'Jobs at once', autoFb: 'Auto fallback', split: 'Split across accounts',
+      ping: '🔄 Refresh', addAcc: '+ Add account', splitRun: '⚡ Split Translate Cues Now',
+      accHdr: 'ACCOUNTS / API KEYS', jobHdr: 'JOBS & QUEUE', logHdr: 'Activity',
+      addTitle: 'Add Account / API Key to Real Pool', namePh: 'Account Label (e.g. Studio PRO)',
+      keyPh: 'Paste API Key (AIza..., gsk_..., sk-...)', saveAcc: '✅ Save & Ping', cancel: 'Cancel',
+      noAcc: 'No API keys yet — tap "+ Add account" above'
+    },
+    zh: {
+      cardTitle: '🛰️ AI 翻译路由工作室 (多账号/多Key分发)',
+      cardDesc: '实时监控 API 节点状态、多账号并发拆分翻译、自动故障转移及 10 款界面风格切换。',
+      openBtn: '🛰️ 打开 AI Router 控制台 (10 种风格)',
+      hdrTitle: '🛰️ AI 翻译路由器',
+      ready: '就绪', running: '运行中', linesToday: '今日行数', needAtt: '需关注',
+      allGood: '一切正常', conc: '并发数', autoFb: '自动容灾', split: '多账号分流',
+      ping: '🔄 刷新检测', addAcc: '+ 添加账号/Key', splitRun: '⚡ 立即并发拆分翻译',
+      accHdr: '账号 / API KEY 节点', jobHdr: '任务与队列', logHdr: '实时日志',
+      addTitle: '添加新账号 / API Key 到真实密钥池', namePh: '账号名称 (如 Gemini PRO)',
+      keyPh: '粘贴 Key (AIza..., gsk_..., sk-...)', saveAcc: '✅ 保存并测试', cancel: '取消',
+      noAcc: '暂无 Key — 请点击上方 "+ 添加账号/Key"'
+    },
+    vi: {
+      cardTitle: '🛰️ AI Translation Router Studio (Định tuyến Đa Key)',
+      cardDesc: 'Theo dõi node API trực tiếp, chia nhỏ dịch song song, tự chuyển dự phòng khi lỗi 429 và 10 giao diện.',
+      openBtn: '🛰️ Mở AI Router Studio (10 Giao diện)',
+      hdrTitle: '🛰️ AI Translation Router',
+      ready: 'sẵn sàng', running: 'đang chạy', linesToday: 'dòng hôm nay', needAtt: 'cần chú ý',
+      allGood: 'ổn định', conc: 'Luồng song song', autoFb: 'Auto fallback', split: 'Chia đều các tài khoản',
+      ping: '🔄 Kiểm tra', addAcc: '+ Thêm tài khoản', splitRun: '⚡ Chia luồng dịch ngay',
+      accHdr: 'DANH SÁCH TÀI KHOẢN / KEY', jobHdr: 'TIẾN TRÌNH DỊCH', logHdr: 'Nhật ký',
+      addTitle: 'Thêm Tài khoản / API Key mới', namePh: 'Tên tài khoản (VD: Gemini PRO)',
+      keyPh: 'Dán Key (AIza..., gsk_..., sk-...)', saveAcc: '✅ Lưu & Test', cancel: 'Hủy',
+      noAcc: 'Chưa có Key — bấm "+ Thêm tài khoản" ở trên'
+    },
+    ko: {
+      cardTitle: '🛰️ AI 번역 라우터 스튜디오 (멀티 키 허브)',
+      cardDesc: '실시간 API 계정 상태 모니터링, 다중 계정 병렬 분할 번역, 자동 장애 복구 및 10가지 테마 지원.',
+      openBtn: '🛰️ AI 라우터 스튜디오 열기 (10종 테마)',
+      hdrTitle: '🛰️ AI 번역 라우터',
+      ready: '준비됨', running: '실행중', linesToday: '오늘 번역 줄', needAtt: '주의 필요',
+      allGood: '모두 정상', conc: '동시 작업', autoFb: '자동 페일오버', split: '계정 분할 실행',
+      ping: '🔄 새로고침', addAcc: '+ 계정 추가', splitRun: '⚡ 지금 분할 번역 실행',
+      accHdr: '계정 / API 키 풀', jobHdr: '작업 상태', logHdr: '활동 로그',
+      addTitle: '실제 풀에 계정 / API 키 추가', namePh: '계정 이름',
+      keyPh: 'API 키 붙여넣기 (AIza..., gsk_...)', saveAcc: '✅ 저장 및 테스트', cancel: '취소',
+      noAcc: 'API 키가 없습니다 — "+ 계정 추가"를 눌러주세요'
+    },
+    ja: {
+      cardTitle: '🛰️ AI 翻訳ルータースタジオ (マルチキー管理)',
+      cardDesc: 'APIノード監視、複数アカウント並列分割翻訳、自動フェイルオーバー、10種類のテーマ切替。',
+      openBtn: '🛰️ AI ルーターを開く (10スタイル)',
+      hdrTitle: '🛰️ AI 翻訳ルーター',
+      ready: '待機中', running: '実行中', linesToday: '本日の行数', needAtt: '要注意',
+      allGood: 'すべて正常', conc: '同時数', autoFb: '自動切替', split: 'アカウント分散',
+      ping: '🔄 更新', addAcc: '+ アカウント追加', splitRun: '⚡ 分割翻訳を実行',
+      accHdr: 'アカウント / API キー', jobHdr: 'ジョブ状況', logHdr: 'アクティビティ',
+      addTitle: 'アカウント / API キーを追加', namePh: 'アカウント名',
+      keyPh: 'API キー (AIza..., gsk_...)', saveAcc: '✅ 保存してテスト', cancel: 'キャンセル',
+      noAcc: 'キーがありません — 上の "+ アカウント追加" を押してください'
+    }
+  };
+
+  function getLang() {
+    try { return localStorage.getItem('cts_tool_ui_lang') || 'km'; } catch (e) { return 'km'; }
+  }
+
+  function ensureModal() {
+    if (document.getElementById('ctsRouterModal')) return;
+    const m = document.createElement('div');
+    m.id = 'ctsRouterModal';
+    m.setAttribute('data-no-i18n', '1');
+    m.innerHTML = `<div id="ctsRouterShell"></div>`;
+    m.onclick = (e) => { if (e.target === m) closeModal(); };
+    document.body.appendChild(m);
+  }
+
+  function openModal() {
+    ensureModal();
+    modalOpen = true;
+    document.getElementById('ctsRouterModal').classList.add('open');
+    refreshUI();
+    setTimeout(drawSvgLines, 40);
+  }
+
+  function closeModal() {
+    modalOpen = false;
+    const m = document.getElementById('ctsRouterModal');
+    if (m) m.classList.remove('open');
+  }
+
+  function refreshUI() {
+    const t = T[getLang()] || T.km;
+    const nodes = collectNodes();
+    const readyCnt = nodes.filter(n => n.status === 'ready').length;
+    const runCnt = nodes.filter(n => n.status === 'running').length;
+    const attCnt = nodes.filter(n => n.status === 'cooldown' || n.status === 'error').length;
+
+    const cardTitle = document.getElementById('cts-rt-card-title');
+    if (cardTitle) cardTitle.textContent = t.cardTitle;
+    const cardDesc = document.getElementById('cts-rt-card-desc');
+    if (cardDesc) cardDesc.textContent = t.cardDesc;
+    const openBtn = document.getElementById('cts-rt-open');
+    if (openBtn) openBtn.textContent = t.openBtn;
+    const miniStat = document.getElementById('cts-rt-mini');
+    if (miniStat) {
+      miniStat.innerHTML = `🟢 <b>${readyCnt}/${nodes.length}</b> ${t.ready} &nbsp;|&nbsp; ⚡ <b>${runCnt}</b> ${t.running} &nbsp;|&nbsp; 📊 <b>${stats.totalLines}</b> ${t.linesToday}`;
+    }
+
+    const shell = document.getElementById('ctsRouterShell');
+    if (!shell || !modalOpen) return;
+
+    const sk = SKINS[cfg.skin] || SKINS.violet;
+    shell.style.setProperty('--rt-bg', sk.bg);
+    shell.style.setProperty('--rt-card', sk.card);
+    shell.style.setProperty('--rt-border', sk.border);
+    shell.style.setProperty('--rt-acc', sk.acc);
+    shell.style.setProperty('--rt-acc2', sk.acc2);
+    shell.style.setProperty('--rt-text', sk.text);
+    shell.style.setProperty('--rt-muted', sk.muted);
+    shell.style.setProperty('--rt-orb', sk.orb);
+
+    const anyRun = runCnt > 0 || isSplitting || isPinging;
+
+    shell.innerHTML = `
+      <div class="cts-rt-head">
+        <div style="display:flex;align-items:center;gap:8px;font-weight:900;font-size:14px">
+          <span>${t.hdrTitle}</span>
+          <span style="font-size:10.5px;padding:2px 7px;border-radius:99px;background:rgba(255,255,255,0.08);color:${anyRun ? sk.acc2 : sk.muted}">${anyRun ? '⚡ Active' : '● Ready'}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+          <div style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 7px;border-radius:8px;background:rgba(255,255,255,0.05)">
+            <span>${t.conc}:</span>
+            <button type="button" id="cts-rt-cminus" class="cts-rt-btn" style="padding:2px 7px">-</button>
+            <b>${cfg.concurrency}</b>
+            <button type="button" id="cts-rt-cplus" class="cts-rt-btn" style="padding:2px 7px">+</button>
+          </div>
+          <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cts-rt-fb" ${cfg.autoFallback ? 'checked' : ''}><span>${t.autoFb}</span></label>
+          <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer"><input type="checkbox" id="cts-rt-sp" ${cfg.splitAccounts ? 'checked' : ''}><span>${t.split}</span></label>
+          <button type="button" id="cts-rt-ping" class="cts-rt-btn">${isPinging ? '⏳...' : t.ping}</button>
+          <button type="button" id="cts-rt-addbtn" class="cts-rt-btn pri">${t.addAcc}</button>
+          <button type="button" id="cts-rt-close" class="cts-rt-btn" style="padding:5px 9px">✕</button>
+        </div>
+      </div>
+
+      <div class="cts-rt-stats">
+        <span class="cts-rt-pill">👥 ${nodes.length} • 🟢 ${readyCnt} ${t.ready}</span>
+        <span class="cts-rt-pill">⚡ ${runCnt} ${t.running}</span>
+        <span class="cts-rt-pill">✓ ${stats.totalLines} ${t.linesToday}</span>
+        <span class="cts-rt-pill">${attCnt ? `⚠️ ${attCnt} ${t.needAtt}` : `✅ 0 ${t.needAtt} • ${t.allGood}`}</span>
+      </div>
+
+      <div class="cts-rt-skins">
+        ${Object.keys(SKINS).map(k => `<button type="button" data-skin="${k}" class="cts-rt-skin-btn ${cfg.skin === k ? 'act' : ''}">${SKINS[k].name}</button>`).join('')}
+      </div>
+
+      ${showAddBox ? `
+      <div style="padding:10px 14px;background:rgba(0,0,0,0.42);border-bottom:1px solid var(--rt-border);display:grid;gap:6px">
+        <div style="font-size:12px;font-weight:800">${t.addTitle}</div>
+        <div style="display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:6px">
+          <input type="text" id="cts-rt-aname" placeholder="${t.namePh}" style="padding:6px 8px;border-radius:8px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.4);color:var(--rt-text);font-size:11.5px">
+          <input type="password" id="cts-rt-akey" placeholder="${t.keyPh}" style="padding:6px 8px;border-radius:8px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.4);color:var(--rt-text);font-size:11.5px">
+          <input type="text" id="cts-rt-amodel" value="gemini-2.5-flash" style="padding:6px 8px;border-radius:8px;border:1px solid var(--rt-border);background:rgba(0,0,0,0.4);color:var(--rt-text);font-size:11.5px">
+        </div>
+        <div style="display:flex;gap:6px">
+          <button type="button" id="cts-rt-asave" class="cts-rt-btn pri">${t.saveAcc}</button>
+          <button type="button" id="cts-rt-acancel" class="cts-rt-btn">${t.cancel}</button>
+        </div>
+      </div>` : ''}
+
+      <div class="cts-rt-body" id="cts-rt-body">
+        <svg class="cts-rt-svg" id="cts-rt-svg"></svg>
+        <div class="cts-rt-grid">
+          <div class="cts-rt-col">
+            <div style="font-size:10.5px;font-weight:800;color:var(--rt-muted);letter-spacing:.7px">${t.accHdr}</div>
+            ${nodes.length ? nodes.map(n => {
+              const stCol = n.status === 'running' ? sk.acc2 : (n.status === 'ready' ? '#4ade80' : (n.status === 'cooldown' ? '#fbbf24' : '#94a3b8'));
+              const stTxt = n.status === 'running' ? 'Running ⚡' : (n.status === 'ready' ? 'Ready' : (n.status === 'cooldown' ? 'Cooldown 429' : (n.status === 'paused' ? 'Paused' : 'Error')));
+              return `
+              <div class="cts-rt-node ${n.status === 'running' ? 'running' : ''}" data-st="${n.status}">
+                <div style="min-width:0">
+                  <div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:800">
+                    <span style="color:${stCol}">●</span>
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(n.name)}</span>
+                    <span style="font-size:9.5px;padding:1px 5px;border-radius:5px;background:rgba(255,255,255,0.09);color:var(--rt-acc2)">${escHtml(n.provider.toUpperCase())}</span>
+                  </div>
+                  <div style="font-size:10.5px;color:var(--rt-muted);margin-top:2px">
+                    <span style="color:${stCol};font-weight:700">${stTxt}</span> • ${escHtml(n.model)} • ${maskKey(n.rawKey)}
+                  </div>
+                  <div style="font-size:10px;opacity:0.78;margin-top:1px">📊 ${n.linesToday} lines (${n.reqsToday} req)${n.latency ? ` • ${n.latency}ms` : ''}</div>
+                </div>
+                <button type="button" data-toggle="${escHtml(n.id)}" class="cts-rt-btn" style="padding:4px 7px;font-size:10.5px">${n.enabled ? '⏸️' : '▶️'}</button>
+              </div>`;
+            }).join('') : `<div class="cts-rt-node" style="opacity:0.75;font-size:11.5px">${t.noAcc}</div>`}
+          </div>
+
+          <div class="cts-rt-orb-wrap">
+            <div class="cts-rt-orb ${anyRun ? 'active' : ''}" id="cts-rt-orb">
+              <div style="font-size:18px">🛰️</div>
+              <div>AI Router</div>
+            </div>
+            <div style="font-size:10.5px;color:var(--rt-muted);margin-top:6px;text-align:center">
+              ${cfg.splitAccounts ? 'Split Routing' : 'Single Node'} • ${cfg.autoFallback ? 'Failover ON' : 'Failover OFF'}
+            </div>
+          </div>
+
+          <div class="cts-rt-col">
+            <div style="font-size:10.5px;font-weight:800;color:var(--rt-muted);letter-spacing:.7px">${t.jobHdr}</div>
+            <div class="cts-rt-job" id="cts-rt-job-card">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:12px;font-weight:800">
+                <span>🎬 ${escHtml(activeJob.name)}</span>
+                <span style="color:${activeJob.state === 'done' ? '#4ade80' : (activeJob.state === 'running' ? sk.acc2 : sk.muted)}">${activeJob.total ? `${activeJob.done}/${activeJob.total}` : 'Idle'}</span>
+              </div>
+              <div style="height:7px;border-radius:99px;background:rgba(255,255,255,0.09);overflow:hidden;margin:8px 0">
+                <div style="height:100%;width:${activeJob.total ? Math.round((activeJob.done / activeJob.total) * 100) : 0}%;background:linear-gradient(90deg,var(--rt-acc),var(--rt-acc2));transition:width .2s"></div>
+              </div>
+              <button type="button" id="cts-rt-runsplit" class="cts-rt-btn pri" style="width:100%;padding:8px">${isSplitting ? '⏳ Splitting & Translating...' : t.splitRun}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cts-rt-log">
+        <div style="font-weight:800;color:var(--rt-muted);margin-bottom:3px">📋 ${t.logHdr}</div>
+        ${activityLog.length ? activityLog.map(l => `<div><span style="opacity:0.6">[${l.ts}]</span> <span style="color:${l.ok ? '#86efac' : '#fca5a5'}">${escHtml(l.text)}</span></div>`).join('') : '<div style="opacity:0.6">Ready — waiting for translation activity...</div>'}
+      </div>
+    `;
+
+    // Bind Modal events
+    document.getElementById('cts-rt-close').onclick = closeModal;
+    document.getElementById('cts-rt-cminus').onclick = () => { cfg.concurrency = Math.max(1, cfg.concurrency - 1); saveCfg(); refreshUI(); };
+    document.getElementById('cts-rt-cplus').onclick = () => { cfg.concurrency = Math.min(6, cfg.concurrency + 1); saveCfg(); refreshUI(); };
+    document.getElementById('cts-rt-fb').onchange = function() { cfg.autoFallback = this.checked; saveCfg(); refreshUI(); };
+    document.getElementById('cts-rt-sp').onchange = function() { cfg.splitAccounts = this.checked; saveCfg(); refreshUI(); };
+    document.getElementById('cts-rt-ping').onclick = pingAllNodes;
+    document.getElementById('cts-rt-addbtn').onclick = () => { showAddBox = !showAddBox; refreshUI(); };
+    document.getElementById('cts-rt-runsplit').onclick = runSplitTranslate;
+
+    shell.querySelectorAll('[data-skin]').forEach(btn => {
+      btn.onclick = () => { cfg.skin = btn.getAttribute('data-skin'); saveCfg(); refreshUI(); };
+    });
+    shell.querySelectorAll('[data-toggle]').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-toggle');
+        if (!cfg.nodeMeta[id]) cfg.nodeMeta[id] = {};
+        cfg.nodeMeta[id].enabled = cfg.nodeMeta[id].enabled === false ? true : false;
+        saveCfg();
+        refreshUI();
+      };
+    });
+
+    if (showAddBox) {
+      document.getElementById('cts-rt-asave').onclick = () => {
+        addAccountToRealPool(
+          document.getElementById('cts-rt-aname').value,
+          document.getElementById('cts-rt-akey').value,
+          document.getElementById('cts-rt-amodel').value
+        );
+      };
+      document.getElementById('cts-rt-acancel').onclick = () => { showAddBox = false; refreshUI(); };
+    }
+
+    requestAnimationFrame(drawSvgLines);
+  }
+
+  // Mount ONLY inside #tab-settings (AI & Export)
+  function mountSettingsCard() {
+    const tabSet = document.getElementById('tab-settings');
+    if (!tabSet || document.getElementById('ctsAiRouterCard')) return;
+
+    const card = document.createElement('div');
+    card.id = 'ctsAiRouterCard';
+    card.className = 'panel-card';
+    card.setAttribute('data-no-i18n', '1');
+    card.innerHTML = `
+      <div class="panel-title"><span id="cts-rt-card-title"></span></div>
+      <div id="cts-rt-card-desc" style="font-size:11.5px;opacity:0.8;margin-bottom:8px;line-height:1.45"></div>
+      <div id="cts-rt-mini" style="padding:7px 10px;border-radius:9px;background:rgba(0,0,0,0.32);border:1px solid rgba(139,92,246,0.35);font-size:11.5px;margin-bottom:8px"></div>
+      <button type="button" id="cts-rt-open" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(167,139,250,0.6);background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#f5f3ff;font-size:12.5px;font-weight:800;cursor:pointer"></button>`;
+
+    const firstCard = tabSet.querySelector('.panel-card');
+    if (firstCard) firstCard.insertAdjacentElement('afterend', card);
+    else tabSet.appendChild(card);
+
+    document.getElementById('cts-rt-open').onclick = openModal;
+    refreshUI();
+  }
+
+  window.addEventListener('resize', () => { if (modalOpen) drawSvgLines(); });
+  setTimeout(mountSettingsCard, 950);
+  setTimeout(mountSettingsCard, 2400);
+  setTimeout(mountSettingsCard, 4100);
+
+  if (typeof window.setCtsAppUiLang === 'function') {
+    const _prevLangFn = window.setCtsAppUiLang;
+    window.setCtsAppUiLang = function(code) {
+      _prevLangFn(code);
+      setTimeout(refreshUI, 70);
+    };
+  }
+})();
+</script>
+
 </body>
 </html>
