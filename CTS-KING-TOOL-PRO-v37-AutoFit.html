@@ -22549,5 +22549,576 @@ body.cts-desktop-mode #cueList .cue-card {
 })();
 </script>
 
+
+<script id="cts-addon-37-autofit">
+// === ADD-ON #37: SMART DUB AUTO-FIT (NON-DESTRUCTIVE WSOLA + OVERLAP SCANNER) ===
+(function() {
+  const CFG_KEY = 'cts_autofit_cfg';
+  let cfg = {
+    mode: 'flex',       // flex | exact | trim
+    maxSpeed: 1.65,     // 1.30 .. 1.85
+    trimSil: true,
+    autoAfterGen: true
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    if (saved && typeof saved === 'object') cfg = Object.assign(cfg, saved);
+  } catch (e) {}
+
+  function saveCfg() {
+    try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {}
+    window.__ctsAutoFitCfg = cfg;
+  }
+  window.__ctsAutoFitCfg = cfg;
+
+  let afAudioCtx = null;
+  function getAudioCtx() {
+    if (typeof sharedAudioCtx !== 'undefined' && sharedAudioCtx) return sharedAudioCtx;
+    if (!afAudioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) afAudioCtx = new AC();
+    }
+    return afAudioCtx;
+  }
+
+  async function decodeUrl(url) {
+    const ctx = getAudioCtx();
+    if (!ctx || !url) return null;
+    const resp = await fetch(url);
+    const arr = await resp.arrayBuffer();
+    return await ctx.decodeAudioData(arr);
+  }
+
+  function trimPcmSilence(pcm, sr) {
+    const win = Math.max(64, Math.round(sr * 0.012));
+    const nW = Math.floor(pcm.length / win);
+    if (nW < 6) return pcm;
+    let maxR = 0;
+    const rms = new Float32Array(nW);
+    for (let w = 0; w < nW; w++) {
+      let s = 0;
+      const b = w * win;
+      for (let k = 0; k < win; k++) { const v = pcm[b + k]; s += v * v; }
+      rms[w] = Math.sqrt(s / win);
+      if (rms[w] > maxR) maxR = rms[w];
+    }
+    if (maxR < 0.004) return pcm;
+    const th = Math.max(0.005, maxR * 0.032);
+    let fw = 0, lw = nW - 1;
+    while (fw < nW - 3 && rms[fw] < th) fw++;
+    while (lw > fw + 2 && rms[lw] < th) lw--;
+    const sIdx = Math.max(0, fw * win - Math.round(sr * 0.012));
+    const eIdx = Math.min(pcm.length, (lw + 1) * win + Math.round(sr * 0.025));
+    const out = pcm.slice(sIdx, eIdx);
+    if (out.length < sr * 0.14) return pcm;
+    const fade = Math.min(Math.round(sr * 0.006), Math.floor(out.length / 6));
+    for (let i = 0; i < fade; i++) {
+      const g = i / fade;
+      out[i] *= g;
+      out[out.length - 1 - i] *= g;
+    }
+    return out;
+  }
+
+  function wsolaStretch(pcm, sr, targetDur, maxSpd) {
+    const rawDur = pcm.length / sr;
+    const spd = Math.max(0.80, Math.min(maxSpd || 1.65, rawDur / Math.max(0.22, targetDur)));
+    if (!isFinite(spd) || Math.abs(spd - 1.0) < 0.035) return pcm;
+
+    const wL = Math.round(sr * 0.028) & ~1;
+    const hW = wL >> 1;
+    const sL = Math.round(sr * 0.012);
+    const outLen = Math.round(pcm.length / spd);
+    if (pcm.length <= wL * 3 || outLen <= wL) return pcm;
+
+    const hann = new Float32Array(wL);
+    for (let j = 0; j < wL; j++) hann[j] = 0.5 * (1 - Math.cos((2 * Math.PI * j) / (wL - 1)));
+
+    const out = new Float32Array(outLen + wL);
+    const norm = new Float32Array(outLen + wL);
+    for (let j = 0; j < wL; j++) {
+      out[j] += pcm[j] * hann[j];
+      norm[j] += hann[j];
+    }
+
+    let oP = hW, aP = hW * spd, lEnd = wL;
+    while (oP + wL <= out.length && aP < pcm.length - wL) {
+      const iS = Math.round(aP);
+      const rS = lEnd - hW;
+      let bS = iS;
+      if (rS >= 0 && rS + hW < pcm.length) {
+        let bC = -1e18;
+        const lo = Math.max(0, iS - sL);
+        const hi = Math.min(pcm.length - wL, iS + sL);
+        for (let ca = lo; ca <= hi; ca += 2) {
+          let num = 0, d1 = 1e-9, d2 = 1e-9;
+          for (let k = 0; k < hW; k += 2) {
+            const a = pcm[rS + k], b = pcm[ca + k];
+            num += a * b; d1 += a * a; d2 += b * b;
+          }
+          const co = num / Math.sqrt(d1 * d2);
+          if (co > bC) { bC = co; bS = ca; }
+        }
+      }
+      for (let j = 0; j < wL; j++) {
+        out[oP + j] += pcm[bS + j] * hann[j];
+        norm[oP + j] += hann[j];
+      }
+      lEnd = bS + wL;
+      oP += hW;
+      aP += hW * spd;
+    }
+
+    const res = new Float32Array(outLen);
+    for (let i = 0; i < outLen; i++) {
+      const v = norm[i] > 1e-4 ? (out[i] / norm[i]) : out[i];
+      res[i] = Math.max(-0.99, Math.min(0.99, v));
+    }
+    return res;
+  }
+
+  function pcmToWavBlob(pcm, sr) {
+    const len = pcm.length;
+    const buf = new ArrayBuffer(44 + len * 2);
+    const dv = new DataView(buf);
+    const ws = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+    ws(0, 'RIFF'); dv.setUint32(4, 36 + len * 2, true);
+    ws(8, 'WAVE'); ws(12, 'fmt ');
+    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+    dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true);
+    dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+    ws(36, 'data'); dv.setUint32(40, len * 2, true);
+    let off = 44;
+    for (let i = 0; i < len; i++) {
+      const s = Math.max(-1, Math.min(1, pcm[i]));
+      dv.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      off += 2;
+    }
+    return new Blob([buf], { type: 'audio/wav' });
+  }
+
+  function getGlobalTtsSpeed() {
+    const el = document.getElementById('ttsSpeed');
+    const v = el ? parseFloat(el.value) : 1.0;
+    return (!isNaN(v) && v > 0.4) ? v : 1.0;
+  }
+
+  let isBusy = false;
+  let lastScanSummary = null;
+
+  async function scanOverlaps(silent) {
+    const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+    const audCues = list.filter(c => c && c.audioUrl);
+    if (!audCues.length) {
+      lastScanSummary = { total: 0, ok: 0, boxOver: 0, cueOver: 0, badList: [] };
+      refreshUI();
+      return lastScanSummary;
+    }
+    const spd = getGlobalTtsSpeed();
+    let ok = 0, boxOver = 0, cueOver = 0;
+    const badList = [];
+
+    for (let i = 0; i < list.length; i++) {
+      const c = list[i];
+      if (!c || !c.audioUrl) continue;
+      let dur = (c._afDur && c._afDurUrl === c.audioUrl) ? c._afDur : 0;
+      if (!dur && c._audioBuf && c._bufUrl === c.audioUrl) dur = c._audioBuf.duration;
+      if (!dur) {
+        try {
+          const ab = await decodeUrl(c.audioUrl);
+          if (ab) {
+            dur = ab.duration;
+            c._afDur = dur;
+            c._afDurUrl = c.audioUrl;
+          }
+        } catch (e) {}
+      }
+      if (!dur) continue;
+      const effDur = dur / spd;
+      const slotDur = Math.max(0.25, (c.end || 0) - (c.start || 0));
+      const nextS = (i < list.length - 1 && list[i + 1]) ? list[i + 1].start : 999999;
+      const gapDur = Math.max(0.25, nextS - (c.start || 0) - 0.04);
+
+      if (effDur > gapDur + 0.05) {
+        cueOver++;
+        badList.push({ idx: i, start: c.start, over: +(effDur - gapDur).toFixed(2), type: 'overlap', txt: (c.km || c.src || '').slice(0, 26) });
+      } else if (effDur > slotDur + 0.05) {
+        boxOver++;
+        badList.push({ idx: i, start: c.start, over: +(effDur - slotDur).toFixed(2), type: 'overflow', txt: (c.km || c.src || '').slice(0, 26) });
+      } else {
+        ok++;
+      }
+      if (i % 15 === 14) await new Promise(r => setTimeout(r, 0));
+    }
+
+    lastScanSummary = { total: ok + boxOver + cueOver, ok, boxOver, cueOver, badList: badList.slice(0, 8) };
+    refreshUI();
+    if (!silent && typeof toast === 'function') {
+      toast(`🔍 Auto-Fit Scan: ✅ ${ok} OK | ⚠️ ${boxOver + cueOver} លើសពេល`);
+    }
+    return lastScanSummary;
+  }
+
+  async function runSmartAutoFit(onlyNew) {
+    if (isBusy) return;
+    const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+    if (!list.length) return;
+    isBusy = true;
+    refreshUI();
+
+    const spd = getGlobalTtsSpeed();
+    let fixed = 0;
+    try {
+      for (let i = 0; i < list.length; i++) {
+        const c = list[i];
+        if (!c || !c.audioUrl) continue;
+        if (onlyNew && c._afFittedUrl === c.audioUrl) continue;
+        if (onlyNew && c._afSkipAuto === c.audioUrl) continue;
+
+        if (!c._rawAudioUrl) c._rawAudioUrl = c.audioUrl;
+        if (c._origEnd === undefined) c._origEnd = c.end;
+
+        try {
+          const ab = await decodeUrl(c._rawAudioUrl);
+          if (!ab) continue;
+          const sr = ab.sampleRate;
+          let pcm = ab.getChannelData(0);
+          if (cfg.trimSil) pcm = trimPcmSilence(pcm, sr);
+
+          const rawDur = pcm.length / sr;
+          const playDur = rawDur / spd;
+          const slotDur = Math.max(0.30, (c._origEnd ?? c.end) - c.start);
+          const nextS = (i < list.length - 1 && list[i + 1]) ? list[i + 1].start : 999999;
+          const maxGapDur = Math.max(0.30, nextS - c.start - 0.05);
+
+          let outPcm = pcm;
+          if (cfg.mode === 'exact') {
+            if (playDur > slotDur - 0.01) {
+              const targetRaw = Math.max(0.25, (slotDur - 0.02) * spd);
+              outPcm = wsolaStretch(pcm, sr, targetRaw, cfg.maxSpeed);
+            }
+          } else if (cfg.mode === 'flex') {
+            let targetPlay = slotDur;
+            if (playDur > slotDur * 1.28 && maxGapDur > slotDur + 0.06) {
+              targetPlay = Math.min(maxGapDur, Math.max(slotDur, playDur / 1.28));
+            }
+            if (targetPlay > maxGapDur) targetPlay = maxGapDur;
+            if (playDur > targetPlay - 0.01) {
+              const targetRaw = Math.max(0.25, (targetPlay - 0.015) * spd);
+              outPcm = wsolaStretch(pcm, sr, targetRaw, cfg.maxSpeed);
+            }
+            const newEnd = Math.min(nextS - 0.04, Math.max(c.start + 0.35, c.start + (outPcm.length / sr) / spd + 0.02));
+            c.end = +newEnd.toFixed(2);
+          } else {
+            // trim only
+            outPcm = pcm;
+          }
+
+          const blob = pcmToWavBlob(outPcm, sr);
+          const newUrl = URL.createObjectURL(blob);
+          c.audioUrl = newUrl;
+          c._afFittedUrl = newUrl;
+          c._afSeenUrl = newUrl;
+          c._afDur = outPcm.length / sr;
+          c._afDurUrl = newUrl;
+          c._audioBuf = null;
+          c._bufUrl = null;
+          fixed++;
+        } catch (e) {}
+
+        if (i % 6 === 5) await new Promise(r => setTimeout(r, 0));
+      }
+
+      if (typeof sanitizeCueTimings === 'function') {
+        try { sanitizeCueTimings(); } catch (e) {}
+      }
+      if (typeof renderAll === 'function' && fixed > 0) {
+        try { renderAll(); } catch (e) {}
+      }
+      await scanOverlaps(true);
+      if (fixed > 0 && typeof toast === 'function') {
+        toast(`✂️ Smart Auto-Fit រួចរាល់ (${fixed} ប្រយោគ)!`);
+      }
+    } finally {
+      isBusy = false;
+      refreshUI();
+    }
+  }
+
+  async function restoreOriginalAudio() {
+    if (isBusy) return;
+    const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+    let restored = 0;
+    for (const c of list) {
+      if (!c) continue;
+      if (c._rawAudioUrl) {
+        c.audioUrl = c._rawAudioUrl;
+        c._afSkipAuto = c._rawAudioUrl;
+        c._afSeenUrl = c._rawAudioUrl;
+        c._afFittedUrl = null;
+        c._afDur = 0;
+        c._audioBuf = null;
+        c._bufUrl = null;
+        restored++;
+      }
+      if (c._origEnd !== undefined) {
+        c.end = c._origEnd;
+      }
+    }
+    if (typeof renderAll === 'function' && restored > 0) {
+      try { renderAll(); } catch (e) {}
+    }
+    await scanOverlaps(true);
+    if (typeof toast === 'function') {
+      toast(`🔓 ត្រឡប់សំឡេងដើម (${restored} ប្រយោគ)`);
+    }
+  }
+
+  // Non-intrusive Auto-Fit watcher after Gen Audio settles (1.4s idle)
+  let pendingTimer = null;
+  setInterval(function() {
+    if (!cfg.autoAfterGen || isBusy) return;
+    const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+    let hasUnseen = false;
+    for (const c of list) {
+      if (!c || !c.audioUrl) continue;
+      if (c._afSeenUrl !== c.audioUrl && c._afFittedUrl !== c.audioUrl && c._afSkipAuto !== c.audioUrl) {
+        c._afSeenUrl = c.audioUrl;
+        if (!c._rawAudioUrl || (c.audioUrl !== c._rawAudioUrl && !c._afFittedUrl)) {
+          c._rawAudioUrl = c.audioUrl;
+        }
+        hasUnseen = true;
+      }
+    }
+    if (hasUnseen) {
+      if (pendingTimer) clearTimeout(pendingTimer);
+      pendingTimer = setTimeout(() => {
+        pendingTimer = null;
+        if (cfg.autoAfterGen && !isBusy) runSmartAutoFit(true);
+      }, 1400);
+    }
+  }, 900);
+
+  // Multi-language UI (6 languages, NO Thai!)
+  const T = {
+    km: {
+      title: '✂️ Smart Dub Auto-Fit (កុំឱ្យសំឡេងលើស/ជាន់គ្នា)',
+      modeLbl: '🎯 របៀបសម្រួលសំឡេង',
+      m_flex: '🌊 Smart Flex', m_exact: '🎯 Fit Exact', m_trim: '✂️ កាត់ស្ងាត់',
+      maxLbl: '⚡ ល្បឿនបង្រួមអតិបរមា',
+      trimChk: '✂️ កាត់ចន្លោះស្ងាត់ក្បាល-កន្ទុយសំឡេង',
+      autoChk: '🤖 Auto-Fit ស្វ័យប្រវត្តិក្រោយ Gen Audio',
+      btnScan: '🔍 ពិនិត្យលើសពេល', btnFit: '✂️ Auto-Fit ឥឡូវ', btnRest: '🔓 សំឡេងដើម',
+      busy: '⏳ កំពុងសម្រួល...', empty: 'មិនទាន់មានសំឡេង Dub ទេ (ចុច Gen Audio ជាមុន)',
+      okTxt: 'ត្រូវពេល', overTxt: 'លើសប្រអប់', lapTxt: 'ជាន់គ្នា'
+    },
+    en: {
+      title: '✂️ Smart Dub Auto-Fit (Prevent Audio Overlap)',
+      modeLbl: '🎯 Fit Strategy',
+      m_flex: '🌊 Smart Flex', m_exact: '🎯 Fit Exact', m_trim: '✂️ Trim Only',
+      maxLbl: '⚡ Max Auto-Speed Limit',
+      trimChk: '✂️ Trim Leading & Trailing Silence',
+      autoChk: '🤖 Auto-Fit Automatically After Gen Audio',
+      btnScan: '🔍 Scan Overlaps', btnFit: '✂️ Auto-Fit Now', btnRest: '🔓 Original',
+      busy: '⏳ Fitting...', empty: 'No dub audio yet (run Gen Audio first)',
+      okTxt: 'On Time', overTxt: 'Overflow', lapTxt: 'Overlap'
+    },
+    zh: {
+      title: '✂️ 智能配音对齐 (Smart Dub Auto-Fit)',
+      modeLbl: '🎯 对齐模式',
+      m_flex: '🌊 智能弹性', m_exact: '🎯 严格卡点', m_trim: '✂️ 仅去静音',
+      maxLbl: '⚡ 最大自动语速',
+      trimChk: '✂️ 自动裁剪首尾静音',
+      autoChk: '🤖 生成配音后自动对齐',
+      btnScan: '🔍 检测超时', btnFit: '✂️ 立即对齐', btnRest: '🔓 还原原音',
+      busy: '⏳ 处理中...', empty: '暂无配音音频',
+      okTxt: '正常', overTxt: '超框', lapTxt: '重叠'
+    },
+    vi: {
+      title: '✂️ Smart Dub Auto-Fit (Chống đè tiếng)',
+      modeLbl: '🎯 Chế độ căn chỉnh',
+      m_flex: '🌊 Linh hoạt', m_exact: '🎯 Khớp chính xác', m_trim: '✂️ Cắt im lặng',
+      maxLbl: '⚡ Tốc độ nén tối đa',
+      trimChk: '✂️ Cắt khoảng lặng đầu/cuối',
+      autoChk: '🤖 Tự động Auto-Fit sau khi Gen Audio',
+      btnScan: '🔍 Kiểm tra lỗi', btnFit: '✂️ Auto-Fit Ngay', btnRest: '🔓 Âm gốc',
+      busy: '⏳ Đang xử lý...', empty: 'Chưa có âm thanh lồng tiếng',
+      okTxt: 'Chuẩn', overTxt: 'Dài hơn Sub', lapTxt: 'Đè câu sau'
+    },
+    ko: {
+      title: '✂️ 스마트 더빙 오토핏 (겹침 방지)',
+      modeLbl: '🎯 맞춤 방식',
+      m_flex: '🌊 스마트 플렉스', m_exact: '🎯 정확 맞춤', m_trim: '✂️ 무음만 제거',
+      maxLbl: '⚡ 최대 압축 속도',
+      trimChk: '✂️ 앞뒤 무음 자동 제거',
+      autoChk: '🤖 음성 생성 후 자동 맞춤',
+      btnScan: '🔍 겹침 검사', btnFit: '✂️ 지금 맞춤', btnRest: '🔓 원본 복구',
+      busy: '⏳ 처리 중...', empty: '생성된 더빙 음성이 없습니다',
+      okTxt: '정상', overTxt: '초과', lapTxt: '겹침'
+    },
+    ja: {
+      title: '✂️ スマート吹替オートフィット (重複防止)',
+      modeLbl: '🎯 調整モード',
+      m_flex: '🌊 スマート', m_exact: '🎯 厳密フィット', m_trim: '✂️ 無音カットのみ',
+      maxLbl: '⚡ 最大圧縮スピード',
+      trimChk: '✂️ 前後の無音を自動カット',
+      autoChk: '🤖 音声生成後に自動フィット',
+      btnScan: '🔍 重複チェック', btnFit: '✂️ 今すぐ実行', btnRest: '🔓 元に戻す',
+      busy: '⏳ 処理中...', empty: '吹替音声がまだありません',
+      okTxt: '正常', overTxt: '枠超過', lapTxt: '重複'
+    }
+  };
+
+  const MODES = ['flex', 'exact', 'trim'];
+  const PREFIXES = ['cts-af', 'cts-afb'];
+
+  function getLang() {
+    try { return localStorage.getItem('cts_tool_ui_lang') || 'km'; } catch (e) { return 'km'; }
+  }
+
+  function buildHtml(p) {
+    return `
+      <div class="panel-title"><span id="${p}-title"></span></div>
+      <div class="field">
+        <label id="${p}-mode-lbl"></label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+          ${MODES.map(m => `<button type="button" id="${p}-m-${m}" style="padding:7px 4px;border-radius:9px;border:1.5px solid;font-size:11.5px;font-weight:700;cursor:pointer"></button>`).join('')}
+        </div>
+      </div>
+      <div class="range-row">
+        <span id="${p}-max-lbl" style="min-width:115px"></span>
+        <input type="range" id="${p}-max" min="1.30" max="1.85" step="0.05">
+        <b id="${p}-max-val" style="min-width:42px;text-align:right;font-size:11.5px"></b>
+      </div>
+      <label class="chk-row"><input type="checkbox" id="${p}-trim"><span id="${p}-trim-lbl"></span></label>
+      <label class="chk-row"><input type="checkbox" id="${p}-auto"><span id="${p}-auto-lbl"></span></label>
+      <div style="display:grid;grid-template-columns:1fr 1.2fr 0.9fr;gap:6px;margin-top:8px">
+        <button type="button" id="${p}-scan" style="padding:8px 6px;border-radius:9px;border:1px solid rgba(56,189,248,0.45);background:rgba(14,116,144,0.25);color:#bae6fd;font-size:11.5px;font-weight:700;cursor:pointer"></button>
+        <button type="button" id="${p}-fit" style="padding:8px 6px;border-radius:9px;border:1px solid rgba(251,191,36,0.55);background:linear-gradient(135deg,#92400e,#d97706);color:#fffbeb;font-size:11.5px;font-weight:800;cursor:pointer"></button>
+        <button type="button" id="${p}-rest" style="padding:8px 6px;border-radius:9px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:inherit;font-size:11px;font-weight:700;cursor:pointer"></button>
+      </div>
+      <div id="${p}-status" style="margin-top:8px;padding:7px 9px;border-radius:9px;background:rgba(0,0,0,0.32);border:1px solid rgba(255,255,255,0.08);font-size:11px;line-height:1.45"></div>`;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
+
+  function refreshUI() {
+    const t = T[getLang()] || T.km;
+    PREFIXES.forEach(p => {
+      const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      setTxt(p + '-title', t.title);
+      setTxt(p + '-mode-lbl', t.modeLbl);
+      setTxt(p + '-max-lbl', t.maxLbl);
+      setTxt(p + '-trim-lbl', t.trimChk);
+      setTxt(p + '-auto-lbl', t.autoChk);
+      setTxt(p + '-scan', t.btnScan);
+      setTxt(p + '-fit', isBusy ? t.busy : t.btnFit);
+      setTxt(p + '-rest', t.btnRest);
+
+      MODES.forEach(m => {
+        const b = document.getElementById(p + '-m-' + m);
+        if (!b) return;
+        b.textContent = t['m_' + m];
+        const act = cfg.mode === m;
+        b.style.borderColor = act ? '#fbbf24' : 'rgba(255,255,255,0.16)';
+        b.style.background = act ? 'linear-gradient(135deg,#78350f,#b45309)' : 'rgba(255,255,255,0.04)';
+        b.style.color = act ? '#fffbeb' : 'inherit';
+      });
+
+      const mx = document.getElementById(p + '-max');
+      if (mx) mx.value = cfg.maxSpeed || 1.65;
+      setTxt(p + '-max-val', (cfg.maxSpeed || 1.65).toFixed(2) + 'x');
+      const tr = document.getElementById(p + '-trim'); if (tr) tr.checked = !!cfg.trimSil;
+      const au = document.getElementById(p + '-auto'); if (au) au.checked = !!cfg.autoAfterGen;
+
+      const stEl = document.getElementById(p + '-status');
+      if (stEl) {
+        if (!lastScanSummary || lastScanSummary.total === 0) {
+          stEl.innerHTML = `<span style="opacity:0.72">${t.empty}</span>`;
+        } else {
+          const s = lastScanSummary;
+          let html = `<div>🟢 <b>${s.ok}</b> ${t.okTxt} &nbsp;|&nbsp; 🟡 <b>${s.boxOver}</b> ${t.overTxt} &nbsp;|&nbsp; 🔴 <b>${s.cueOver}</b> ${t.lapTxt}</div>`;
+          if (s.badList.length) {
+            html += `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">` +
+              s.badList.map(b => {
+                const badgeCol = b.type === 'overlap' ? '#f87171' : '#facc15';
+                return `<button type="button" data-jump="${b.start}" style="padding:2px 6px;border-radius:6px;border:1px solid ${badgeCol};background:rgba(0,0,0,0.4);color:${badgeCol};font-size:10px;cursor:pointer">#${b.idx + 1} (+${b.over}s)</button>`;
+              }).join('') + `</div>`;
+          }
+          stEl.innerHTML = html;
+          stEl.querySelectorAll('button[data-jump]').forEach(btn => {
+            btn.onclick = function() {
+              const v = document.getElementById('videoPlayer');
+              if (v) v.currentTime = parseFloat(this.getAttribute('data-jump')) || 0;
+            };
+          });
+        }
+      }
+    });
+  }
+
+  function bindCard(p) {
+    MODES.forEach(m => {
+      const b = document.getElementById(p + '-m-' + m);
+      if (b) b.onclick = function() { cfg.mode = m; saveCfg(); refreshUI(); };
+    });
+    const mx = document.getElementById(p + '-max');
+    if (mx) mx.oninput = function() { cfg.maxSpeed = parseFloat(this.value) || 1.65; saveCfg(); refreshUI(); };
+    const tr = document.getElementById(p + '-trim');
+    if (tr) tr.onchange = function() { cfg.trimSil = this.checked; saveCfg(); refreshUI(); };
+    const au = document.getElementById(p + '-auto');
+    if (au) au.onchange = function() { cfg.autoAfterGen = this.checked; saveCfg(); refreshUI(); };
+
+    const sc = document.getElementById(p + '-scan');
+    if (sc) sc.onclick = function() { scanOverlaps(false); };
+    const ft = document.getElementById(p + '-fit');
+    if (ft) ft.onclick = function() { runSmartAutoFit(false); };
+    const rs = document.getElementById(p + '-rest');
+    if (rs) rs.onclick = function() { restoreOriginalAudio(); };
+  }
+
+  function mountCards() {
+    const dubAnchor = document.getElementById('ctsAudioStudioCard') || document.getElementById('ctsVoiceCard');
+    if (dubAnchor && !document.getElementById('ctsAutoFitCard')) {
+      const card = document.createElement('div');
+      card.id = 'ctsAutoFitCard';
+      card.className = 'panel-card';
+      card.setAttribute('data-no-i18n', '1');
+      card.innerHTML = buildHtml('cts-af');
+      dubAnchor.insertAdjacentElement('afterend', card);
+      bindCard('cts-af');
+    }
+
+    const bigTab = document.getElementById('tab-recap');
+    const bigAnchor = document.getElementById('ctsAudioStudioBigCard');
+    if (bigTab && !document.getElementById('ctsAutoFitBigCard')) {
+      const card2 = document.createElement('div');
+      card2.id = 'ctsAutoFitBigCard';
+      card2.className = 'panel-card';
+      card2.setAttribute('data-no-i18n', '1');
+      card2.innerHTML = buildHtml('cts-afb');
+      if (bigAnchor) bigAnchor.insertAdjacentElement('afterend', card2);
+      else bigTab.appendChild(card2);
+      bindCard('cts-afb');
+    }
+    refreshUI();
+  }
+
+  setTimeout(() => { mountCards(); scanOverlaps(true); }, 650);
+  setTimeout(mountCards, 1800);
+  setTimeout(mountCards, 3500);
+
+  if (typeof window.setCtsAppUiLang === 'function') {
+    const _prevLangFn = window.setCtsAppUiLang;
+    window.setCtsAppUiLang = function(code) {
+      _prevLangFn(code);
+      setTimeout(refreshUI, 70);
+    };
+  }
+})();
+</script>
+
 </body>
 </html>
