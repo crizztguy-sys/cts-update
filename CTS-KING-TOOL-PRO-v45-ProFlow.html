@@ -21753,21 +21753,18 @@ body.cts-desktop-mode #cueList .cue-card {
     body.cts-pf-on.cts-pf-show-preview.cts-pf-preview-only #playerSection { max-height: none !important; flex: 1 !important; }
     body.cts-pf-on.cts-pf-show-preview.cts-pf-preview-only #videoBox.r-916 { height: 55vh !important; max-height: 520px !important; }
 
-    /* Isolation Rule: Hide Hub or ALL non-selected panels completely! */
-    body.cts-pf-on.cts-pf-in-hub .app-body,
+    /* Isolation Rule: Hide Hub or ALL non-selected panels cleanly using :not() */
     body.cts-pf-on.cts-pf-in-hub main.tab-content { display: none !important; }
     body.cts-pf-on.cts-pf-in-panel #ctsPfHub { display: none !important; }
-    body.cts-pf-on.cts-pf-in-panel main.tab-content { display: none !important; }
-    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab { display: block !important; flex: 1 !important; overflow-y: auto !important; padding-bottom: 24px !important; }
-    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab > div,
-    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab > .panel-card,
-    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab .d-pane,
-    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab .panel-card { display: none !important; }
-    body.cts-pf-on.cts-pf-in-panel .cts-pf-open-ancestor { display: block !important; }
-    body.cts-pf-on.cts-pf-in-panel .cts-pf-open-card { display: block !important; }
+    body.cts-pf-on.cts-pf-in-panel main.tab-content:not(.cts-pf-open-tab) { display: none !important; }
+    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab { display: block !important; width: 100% !important; flex: 1 1 auto !important; overflow-y: auto !important; padding: 10px 10px 28px !important; box-sizing: border-box !important; }
+    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab > :not(.cts-pf-open-card):not(.cts-pf-open-ancestor),
+    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab .d-pane:not(.cts-pf-open-ancestor),
+    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab .panel-card:not(.cts-pf-open-card):not(.cts-pf-open-ancestor) { display: none !important; }
+    body.cts-pf-on.cts-pf-in-panel .d-pane.cts-pf-open-ancestor { display: block !important; }
 
     /* ProFlow Workspace Home Hub */
-    #ctsPfHub { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:12px; }
+    #ctsPfHub { width:100%; flex:1 1 auto; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:12px; box-sizing:border-box; }
     .cts-pf-hub-hero { padding:12px 14px; border-radius:14px; background:linear-gradient(135deg,rgba(127,29,29,0.28),rgba(30,27,75,0.45)); border:1px solid rgba(251,191,36,0.35); display:flex; align-items:center; justify-content:space-between; gap:10px; }
     .cts-pf-sec { font-size:11px; font-weight:900; color:#fbbf24; letter-spacing:.6px; display:flex; align-items:center; gap:6px; margin-top:2px; }
     .cts-pf-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
@@ -22310,8 +22307,8 @@ body.cts-desktop-mode #cueList .cue-card {
     const hub = document.createElement('div');
     hub.id = 'ctsPfHub';
     hub.setAttribute('data-no-i18n', '1');
-    const appBody = document.querySelector('.app-body') || document.getElementById('tab-recap')?.parentElement;
-    if (appBody) appBody.insertAdjacentElement('beforebegin', hub);
+    const firstTab = document.getElementById('tab-recap');
+    if (firstTab) firstTab.insertAdjacentElement('beforebegin', hub);
     else bar.insertAdjacentElement('afterend', hub);
 
     // Command Hub Overlay
