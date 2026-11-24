@@ -21676,16 +21676,18 @@ body.cts-desktop-mode #cueList .cue-card {
 </script>
 
 
-<script id="cts-addon-44-cleanstudio">
-// === ADD-ON #44: CLEAN STUDIO (0% CORE TOUCH, HIDE-ALL MENU, 10 LAYOUTS, CLEAR/REFRESH, MULTI-BLUR, NO DASHED LINES, FAST DRAG) ===
+<script id="cts-addon-45-proflow">
+// === ADD-ON #45: CTS PROFLOW (ISOLATED VIEWS, SMART PREVIEW, <- & <> SWITCHER WITH 4 LIGHT-TRAIL STYLES, 0% CORE TOUCH) ===
 (function() {
-  const CFG_KEY = 'cts_clean_studio_v44';
+  const CFG_KEY = 'cts_proflow_v45_cfg';
   let cfg = {
-    layout: 'clean_menu', // 10 workspace layouts
-    hideAllPanels: true,
+    animStyle: 'laser', // laser | plasma | fire | gold
+    viewMode: 'hub',    // hub | panel
+    activeKey: '',      // active isolated tool key
     dragLocked: false,
-    blurStyle: 'soft',    // soft | heavy | black | frosted | mosaic
-    blurPower: 14
+    blurStyle: 'soft',  // soft | heavy | black | frosted | mosaic
+    blurPower: 14,
+    dubShowPreview: false
   };
   try {
     const s = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
@@ -21696,17 +21698,11 @@ body.cts-desktop-mode #cueList .cue-card {
     try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {}
   }
 
-  const LAYOUTS = [
-    { id: 'clean_menu',   name: '1. ☰ Hidden Menu (ស្អាត)' },
-    { id: 'big_cinema',   name: '2. 🎬 Big Cinema Preview' },
-    { id: 'tiktok_stage', name: '3. 📱 TikTok Vertical Pro' },
-    { id: 'split_studio', name: '4. 🖥️ Split Studio' },
-    { id: 'float_orb',    name: '5. 🧭 Floating Menu Dock' },
-    { id: 'sub_focus',    name: '6. ✂️ Subtitle Focus' },
-    { id: 'voice_booth',  name: '7. 🎙️ Voice Booth' },
-    { id: 'oled_minimal', name: '8. 🌙 OLED Minimal' },
-    { id: 'quick_cmd',    name: '9. ⚡ Quick Command Bar' },
-    { id: 'classic_all',  name: '10. 📋 Show All Classic' }
+  const ANIM_STYLES = [
+    { id: 'laser',  name: '⚡ Neon Laser Sweep',  cls: 'pf-anim-laser',  c1: '#38bdf8', c2: '#a855f7' },
+    { id: 'plasma', name: '🌊 Plasma Hologram',   cls: 'pf-anim-plasma', c1: '#2dd4bf', c2: '#3b82f6' },
+    { id: 'fire',   name: '🔥 Crimson Afterburn', cls: 'pf-anim-fire',   c1: '#ef4444', c2: '#f59e0b' },
+    { id: 'gold',   name: '✨ Royal Gold Pulse',  cls: 'pf-anim-gold',   c1: '#fbbf24', c2: '#fef08a' }
   ];
 
   const BLUR_STYLES = [
@@ -21717,18 +21713,18 @@ body.cts-desktop-mode #cueList .cue-card {
     { id: 'mosaic',  name: '👾 Mosaic' }
   ];
 
-  // 1. Clean CSS: Removes ALL static yellow/red dashed lines + 10 Workspace Layouts + Clean Menu Drawer
+  // 1. Scoped ProFlow CSS (removes dashed lines, enables smart isolated view + 4 animated transition styles)
   const styleEl = document.createElement('style');
-  styleEl.id = 'cts-v44-style';
+  styleEl.id = 'cts-v45-style';
   styleEl.textContent = `
-    /* Point 4: Remove persistent yellow/red dashed lines on Preview! */
+    /* Remove persistent yellow/red dashed guide lines on Preview */
     .cts-selected-el { outline: none !important; }
     #ctsTransformGizmo { display: none !important; opacity: 0 !important; }
     #blurBox { border: none !important; }
     #videoBox.cts-dragging-now .cts-selected-el { outline: 1px solid rgba(255,255,255,0.45) !important; }
     #videoBox.cts-dragging-now #blurBox.on { border: 1px solid rgba(255,255,255,0.35) !important; }
 
-    /* Point 5: Direct touch-through on preview layers unless locked */
+    /* Direct touch drag on preview elements unless locked */
     body.cts-drag-free #wmContainer,
     body.cts-drag-free #subOverlay,
     body.cts-drag-free #blurBox,
@@ -21736,89 +21732,113 @@ body.cts-desktop-mode #cueList .cue-card {
     body.cts-drag-free #ctsSponsorOverlay { pointer-events: auto !important; touch-action: none !important; cursor: move; }
     body.cts-drag-locked #videoBox * { pointer-events: none !important; }
 
-    /* Top Clean Studio Quick Bar */
-    #ctsV44TopBar { display:flex; align-items:center; justify-content:space-between; gap:5px; padding:5px 8px; background:rgba(12,6,12,0.92); border-bottom:1px solid rgba(255,255,255,0.1); flex-shrink:0; z-index:40; }
-    .cts-v44-pill { padding:5px 9px; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:#f8fafc; font-size:11px; font-weight:800; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:4px; }
-    .cts-v44-pill.acc { border-color:#f59e0b; background:linear-gradient(135deg,#78350f,#b45309); color:#fffbeb; }
-    .cts-v44-pill.red { border-color:rgba(239,68,68,0.55); background:rgba(127,29,29,0.45); color:#fecaca; }
-    .cts-v44-pill.ok  { border-color:rgba(34,197,94,0.55); background:rgba(20,83,45,0.45); color:#bbf7d0; }
+    /* Hide native cluttered bottom nav & sub-tab bars in ProFlow isolated mode */
+    body.cts-pf-on .bottom-nav { display: none !important; }
+    body.cts-pf-on #ctsTouchLayerBar { display: none !important; }
+    body.cts-pf-on .d-stabs { display: none !important; }
 
-    /* Hide-All Panels Mode */
-    body.cts-hide-panels .tab-content .panel-card { display: none !important; }
-    body.cts-hide-panels .tab-content .panel-card.cts-v44-active-card { display: block !important; animation: ctsV44Fade .18s ease; }
-    body.cts-hide-panels #ctsTouchLayerBar { display: none !important; }
-    body.cts-hide-panels .cts-sub-tabs,
-    body.cts-hide-panels [id*="SubTabs"] { display: none !important; }
+    /* ProFlow Top Switcher Bar (<- Title < >) */
+    #ctsPfTopBar { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:7px 10px; background:linear-gradient(180deg,rgba(16,8,18,0.98),rgba(10,6,14,0.96)); border-bottom:1.5px solid var(--pf-c1, rgba(251,191,36,0.4)); flex-shrink:0; position:relative; z-index:45; overflow:hidden; }
+    #ctsPfTopBar::after { content:''; position:absolute; left:-40%; bottom:0; width:40%; height:2px; background:linear-gradient(90deg,transparent,var(--pf-c1,#38bdf8),var(--pf-c2,#f59e0b),transparent); animation:ctsPfBeam 2.6s linear infinite; pointer-events:none; }
+    .cts-pf-iconbtn { height:34px; min-width:34px; padding:0 10px; border-radius:10px; border:1.5px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:#f8fafc; font-size:13px; font-weight:900; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:4px; transition:transform .12s,border-color .2s,box-shadow .2s; }
+    .cts-pf-iconbtn:active { transform:scale(0.93); }
+    .cts-pf-iconbtn.glow { border-color:var(--pf-c1,#38bdf8); box-shadow:0 0 12px rgba(56,189,248,0.35); background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)); }
+    #ctsPfTitle { flex:1; text-align:center; font-size:12.5px; font-weight:800; color:#fef3c7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-    /* Make Preview BIGGER & Easier to Tap when Panels are Hidden or Cinema Modes active */
-    body.cts-big-preview #playerSection { flex: 1 1 auto !important; max-height: none !important; display: flex !important; flex-direction: column !important; }
-    body.cts-big-preview #playerSection.collapsed { display: flex !important; }
-    body.cts-big-preview .stage-wrap { flex: 1 !important; min-height: 290px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
-    body.cts-big-preview #videoBox.r-916 { height: 48vh !important; max-height: 440px !important; width: auto !important; aspect-ratio: 9/16 !important; }
-    body.cts-big-preview #videoBox.r-169 { width: 96% !important; max-width: 560px !important; height: auto !important; }
+    /* Smart Preview Rule: Hide #playerSection completely when not in a Preview tool! */
+    body.cts-pf-on.cts-pf-hide-preview #playerSection { display: none !important; }
+    body.cts-pf-on.cts-pf-show-preview #playerSection { display: flex !important; flex-direction: column !important; flex-shrink: 0 !important; max-height: 46vh !important; }
+    body.cts-pf-on.cts-pf-show-preview #playerSection.collapsed { display: flex !important; }
+    body.cts-pf-on.cts-pf-show-preview #videoBox.r-916 { height: 34vh !important; max-height: 310px !important; width: auto !important; }
+    body.cts-pf-on.cts-pf-show-preview.cts-pf-preview-only #playerSection { max-height: none !important; flex: 1 !important; }
+    body.cts-pf-on.cts-pf-show-preview.cts-pf-preview-only #videoBox.r-916 { height: 55vh !important; max-height: 520px !important; }
 
-    /* 10 Distinct Workspace Layout Styles */
-    body.cts-ly-big_cinema #videoBox.r-916 { height: 56vh !important; max-height: 520px !important; }
-    body.cts-ly-big_cinema #videoBox.r-169 { width: 100% !important; }
-    body.cts-ly-tiktok_stage #videoBox.r-916 { height: 54vh !important; border-radius: 14px !important; box-shadow: 0 0 24px rgba(239,68,68,0.28) !important; }
-    body.cts-ly-tiktok_stage .mini-timeline { height: 38px !important; }
-    body.cts-ly-oled_minimal, body.cts-ly-oled_minimal .app-header, body.cts-ly-oled_minimal .player-bar, body.cts-ly-oled_minimal .bottom-nav { background: #000000 !important; }
-    body.cts-ly-split_studio .app-body, body.cts-ly-split_studio main.tab-content.active { max-width: 100%; }
-    @media (min-width: 680px) {
-      body.cts-ly-split_studio #playerSection { position: sticky; top: 0; }
-    }
-    body.cts-ly-sub_focus #playerSection { max-height: 36vh !important; }
-    body.cts-ly-voice_booth .mini-timeline { height: 64px !important; }
-    body.cts-ly-float_orb #ctsV44FloatBtn { display: flex !important; }
-    body.cts-ly-quick_cmd .bottom-nav { padding: 2px 0 !important; }
+    /* Isolation Rule: Hide Hub or ALL non-selected panels completely! */
+    body.cts-pf-on.cts-pf-in-hub .app-body,
+    body.cts-pf-on.cts-pf-in-hub main.tab-content { display: none !important; }
+    body.cts-pf-on.cts-pf-in-panel #ctsPfHub { display: none !important; }
+    body.cts-pf-on.cts-pf-in-panel main.tab-content { display: none !important; }
+    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab { display: block !important; flex: 1 !important; overflow-y: auto !important; padding-bottom: 24px !important; }
+    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab > div,
+    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab > .panel-card,
+    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab .d-pane,
+    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab .panel-card { display: none !important; }
+    body.cts-pf-on.cts-pf-in-panel .cts-pf-open-ancestor { display: block !important; }
+    body.cts-pf-on.cts-pf-in-panel .cts-pf-open-card { display: block !important; }
 
-    /* Floating Orb Button (optional / visible in Floating Dock layout) */
-    #ctsV44FloatBtn { display:none; position:fixed; right:12px; bottom:66px; z-index:9990; width:48px; height:48px; border-radius:50%; align-items:center; justify-content:center; border:2px solid #fbbf24; background:linear-gradient(135deg,#92400e,#dc2626); color:#fff; font-size:20px; box-shadow:0 6px 20px rgba(0,0,0,0.65); cursor:pointer; }
+    /* ProFlow Workspace Home Hub */
+    #ctsPfHub { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:12px; }
+    .cts-pf-hub-hero { padding:12px 14px; border-radius:14px; background:linear-gradient(135deg,rgba(127,29,29,0.28),rgba(30,27,75,0.45)); border:1px solid rgba(251,191,36,0.35); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .cts-pf-sec { font-size:11px; font-weight:900; color:#fbbf24; letter-spacing:.6px; display:flex; align-items:center; gap:6px; margin-top:2px; }
+    .cts-pf-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+    @media(min-width:680px){ .cts-pf-grid { grid-template-columns:repeat(3,1fr); } }
+    .cts-pf-tile { position:relative; overflow:hidden; padding:11px 10px; border-radius:13px; border:1px solid rgba(255,255,255,0.13); background:rgba(255,255,255,0.04); color:#f8fafc; text-align:left; cursor:pointer; display:flex; flex-direction:column; gap:4px; transition:transform .14s,border-color .2s,box-shadow .2s; }
+    .cts-pf-tile:active { transform:scale(0.96); }
+    .cts-pf-tile.pv { border-color:rgba(56,189,248,0.35); background:linear-gradient(145deg,rgba(14,116,144,0.16),rgba(15,23,42,0.55)); }
+    .cts-pf-tile.full { border-color:rgba(251,191,36,0.3); background:linear-gradient(145deg,rgba(120,53,15,0.18),rgba(15,23,42,0.55)); }
+    .cts-pf-tile b { font-size:12px; line-height:1.25; }
+    .cts-pf-tile span { font-size:10px; opacity:.72; }
 
-    /* Active Single Card Close Banner */
-    #ctsV44CardCloser { display:none; align-items:center; justify-content:space-between; gap:8px; padding:6px 10px; margin:6px 8px 0; border-radius:9px; background:rgba(180,83,9,0.28); border:1px solid #f59e0b; font-size:11.5px; font-weight:800; color:#fef3c7; }
-    body.cts-hide-panels.cts-has-active-card #ctsV44CardCloser { display:flex; }
+    /* Preview Quick Control Strip (when Preview is visible) */
+    #ctsPfPreviewStrip { display:none; align-items:center; justify-content:space-between; gap:6px; padding:5px 10px; background:rgba(15,23,42,0.85); border-bottom:1px solid rgba(255,255,255,0.1); flex-shrink:0; }
+    body.cts-pf-on.cts-pf-show-preview #ctsPfPreviewStrip { display:flex; }
 
-    /* Pro Menu Drawer Overlay */
-    #ctsV44Drawer { position:fixed; inset:0; z-index:99990; display:none; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); }
-    #ctsV44Drawer.open { display:flex; }
-    #ctsV44DrawerPanel { width:90%; max-width:390px; height:100%; background:#0f0a14; color:#f8fafc; border-right:1.5px solid rgba(251,191,36,0.45); display:flex; flex-direction:column; overflow:hidden; box-shadow:10px 0 36px rgba(0,0,0,0.8); }
-    .cts-v44-dhead { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,0.1); background:rgba(127,29,29,0.22); }
-    .cts-v44-dbody { flex:1; overflow-y:auto; padding:10px 12px 24px; display:flex; flex-direction:column; gap:10px; }
-    .cts-v44-sec { font-size:10.5px; font-weight:800; color:#fbbf24; letter-spacing:.6px; text-transform:uppercase; margin-top:4px; }
-    .cts-v44-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-    .cts-v44-mbtn { padding:8px 9px; border-radius:9px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); color:#f1f5f9; font-size:11.5px; font-weight:700; text-align:left; cursor:pointer; }
-    .cts-v44-mbtn.act { border-color:#fbbf24; background:linear-gradient(135deg,#78350f,#b45309); color:#fffbeb; }
-    .cts-v44-mbtn.danger { border-color:rgba(239,68,68,0.45); background:rgba(127,29,29,0.28); color:#fecaca; }
+    /* <> Command Hub Modal Overlay */
+    #ctsPfCmdModal { position:fixed; inset:0; z-index:99992; display:none; align-items:flex-start; justify-content:flex-end; padding:48px 10px 10px; background:rgba(0,0,0,0.68); backdrop-filter:blur(6px); }
+    #ctsPfCmdModal.open { display:flex; }
+    #ctsPfCmdBox { width:100%; max-width:360px; max-height:84vh; overflow-y:auto; border-radius:15px; background:#0e0a16; color:#f8fafc; border:1.5px solid var(--pf-c1,#38bdf8); box-shadow:0 14px 44px rgba(0,0,0,0.85),0 0 24px rgba(56,189,248,0.25); padding:12px; display:flex; flex-direction:column; gap:10px; animation:ctsPfPop .16s ease; }
+    .cts-pf-cbtn { padding:8px 9px; border-radius:9px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.05); color:#f1f5f9; font-size:11.5px; font-weight:700; cursor:pointer; text-align:left; }
+    .cts-pf-cbtn.act { border-color:var(--pf-c1,#38bdf8); background:linear-gradient(135deg,rgba(56,189,248,0.25),rgba(168,85,247,0.25)); color:#fff; }
+    .cts-pf-cbtn.danger { border-color:rgba(239,68,68,0.45); background:rgba(127,29,29,0.28); color:#fecaca; }
 
-    @keyframes ctsV44Fade { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    /* 4 Attractive Transition Light-Sweep Overlay & Animations */
+    #ctsPfFxOverlay { position:fixed; inset:0; pointer-events:none; z-index:99999; opacity:0; }
+    #ctsPfFxOverlay.go-laser { opacity:1; background:linear-gradient(90deg,transparent,rgba(56,189,248,0.45),rgba(168,85,247,0.55),transparent); animation:ctsSweepX .38s ease-out forwards; }
+    #ctsPfFxOverlay.go-plasma { opacity:1; background:radial-gradient(circle,rgba(45,212,191,0.45),rgba(59,130,246,0.25),transparent 70%); animation:ctsPulsePop .38s ease-out forwards; }
+    #ctsPfFxOverlay.go-fire { opacity:1; background:linear-gradient(180deg,transparent,rgba(239,68,68,0.45),rgba(245,158,11,0.5),transparent); animation:ctsSweepY .38s ease-out forwards; }
+    #ctsPfFxOverlay.go-gold { opacity:1; box-shadow:inset 0 0 60px rgba(251,191,36,0.75); background:radial-gradient(circle,rgba(254,240,138,0.28),transparent 70%); animation:ctsPulsePop .38s ease-out forwards; }
+
+    .pf-anim-laser .cts-pf-open-card { animation:ctsSlideL .26s cubic-bezier(.2,.8,.2,1); }
+    .pf-anim-plasma .cts-pf-open-card { animation:ctsZoomIn .26s cubic-bezier(.2,.8,.2,1); }
+    .pf-anim-fire .cts-pf-open-card { animation:ctsRiseUp .26s cubic-bezier(.2,.8,.2,1); }
+    .pf-anim-gold .cts-pf-open-card { animation:ctsFadeGold .28s ease-out; }
+
+    @keyframes ctsPfBeam { 0%{left:-45%} 100%{left:105%} }
+    @keyframes ctsPfPop { from{opacity:0;transform:translateY(-8px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+    @keyframes ctsSweepX { 0%{transform:translateX(-100%);opacity:1} 100%{transform:translateX(100%);opacity:0} }
+    @keyframes ctsSweepY { 0%{transform:translateY(100%);opacity:1} 100%{transform:translateY(-100%);opacity:0} }
+    @keyframes ctsPulsePop { 0%{transform:scale(.75);opacity:.95} 100%{transform:scale(1.25);opacity:0} }
+    @keyframes ctsSlideL { from{opacity:0;transform:translateX(18px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes ctsZoomIn { from{opacity:0;transform:scale(.95)} to{opacity:1;transform:scale(1)} }
+    @keyframes ctsRiseUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes ctsFadeGold { from{opacity:0;filter:brightness(1.3)} to{opacity:1;filter:brightness(1)} }
   `;
   document.head.appendChild(styleEl);
 
-  // 2. Point 4 & 5: Drag active visual hint + Fast 1-Tap Free/Lock Toggle
-  function updateLockBodyClass() {
+  // 2. Preview Free-Drag + Remove Dashed Lines
+  function updateLockUI() {
     document.body.classList.toggle('cts-drag-free', !cfg.dragLocked);
     document.body.classList.toggle('cts-drag-locked', !!cfg.dragLocked);
-    const lb = document.getElementById('cts-v44-lockbtn');
-    if (lb) {
-      lb.textContent = cfg.dragLocked ? '🔒 Locked' : '🔓 Free Drag';
-      lb.className = 'cts-v44-pill ' + (cfg.dragLocked ? 'red' : 'ok');
+    const b = document.getElementById('ctsPfLockBtn');
+    if (b) {
+      b.textContent = cfg.dragLocked ? '🔒 Locked' : '🔓 Free Drag';
+      b.style.borderColor = cfg.dragLocked ? '#ef4444' : '#22c55e';
     }
   }
 
   function installFastPreviewDrag() {
     const vb = document.getElementById('videoBox');
-    if (!vb || vb.__ctsV44Drag) return;
-    vb.__ctsV44Drag = true;
+    if (!vb || vb.__ctsV45Drag) return;
+    vb.__ctsV45Drag = true;
     vb.addEventListener('pointerdown', () => {
       if (!cfg.dragLocked) vb.classList.add('cts-dragging-now');
     }, true);
-    const stopDragHint = () => vb.classList.remove('cts-dragging-now');
-    window.addEventListener('pointerup', stopDragHint, true);
-    window.addEventListener('pointercancel', stopDragHint, true);
+    const off = () => vb.classList.remove('cts-dragging-now');
+    window.addEventListener('pointerup', off, true);
+    window.addEventListener('pointercancel', off, true);
   }
 
-  // 3. Point 3: Multi-Style Blur (Preview + Export MP4 — zero touch to translation/audio/lip-sync!)
+  // 3. Multi-Style Blur (Preview + Export MP4 — zero touch to translation/lip-sync/audio!)
   function applyBlurPreviewStyle() {
     const bb = document.getElementById('blurBox');
     if (!bb) return;
@@ -21826,40 +21846,38 @@ body.cts-desktop-mode #cueList .cue-card {
     const st = cfg.blurStyle || 'soft';
     bb.style.backgroundImage = '';
     if (st === 'black') {
-      bb.style.backdropFilter = 'none';
-      bb.style.webkitBackdropFilter = 'none';
-      bb.style.background = 'rgba(0, 0, 0, 0.96)';
+      bb.style.backdropFilter = 'none'; bb.style.webkitBackdropFilter = 'none';
+      bb.style.background = 'rgba(0,0,0,0.96)';
     } else if (st === 'frosted') {
       bb.style.backdropFilter = `blur(${Math.max(8, pwr)}px) saturate(1.2)`;
       bb.style.webkitBackdropFilter = `blur(${Math.max(8, pwr)}px) saturate(1.2)`;
-      bb.style.background = 'rgba(18, 18, 28, 0.58)';
+      bb.style.background = 'rgba(18,18,28,0.58)';
     } else if (st === 'mosaic') {
       bb.style.backdropFilter = `blur(${Math.max(4, Math.round(pwr * 0.45))}px)`;
       bb.style.webkitBackdropFilter = `blur(${Math.max(4, Math.round(pwr * 0.45))}px)`;
-      bb.style.background = 'rgba(20, 20, 28, 0.25)';
-      bb.style.backgroundImage = 'repeating-linear-gradient(0deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 6px), repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 6px)';
+      bb.style.background = 'rgba(20,20,28,0.25)';
+      bb.style.backgroundImage = 'repeating-linear-gradient(0deg,rgba(255,255,255,0.08) 0 1px,transparent 1px 6px),repeating-linear-gradient(90deg,rgba(255,255,255,0.08) 0 1px,transparent 1px 6px)';
     } else if (st === 'heavy') {
       bb.style.backdropFilter = `blur(${Math.max(14, pwr + 6)}px)`;
       bb.style.webkitBackdropFilter = `blur(${Math.max(14, pwr + 6)}px)`;
-      bb.style.background = 'rgba(20, 6, 10, 0.35)';
+      bb.style.background = 'rgba(20,6,10,0.35)';
     } else {
       bb.style.backdropFilter = `blur(${Math.max(4, Math.round(pwr * 0.6))}px)`;
       bb.style.webkitBackdropFilter = `blur(${Math.max(4, Math.round(pwr * 0.6))}px)`;
-      bb.style.background = 'rgba(20, 6, 10, 0.28)';
+      bb.style.background = 'rgba(20,6,10,0.28)';
     }
   }
 
   let mosaicTmpCvs = null;
   function installBlurExportHook() {
-    if (window.__ctsV44BlurHooked || typeof window.renderExportFrame !== 'function') return;
+    if (window.__ctsV45BlurHooked || typeof window.renderExportFrame !== 'function') return;
     const _origEF = window.renderExportFrame;
-    window.__ctsV44BlurHooked = true;
+    window.__ctsV45BlurHooked = true;
     window.renderExportFrame = function(ctx, cw, ch, el, activeCue, efCfg, bgObj) {
       const st = cfg.blurStyle || 'soft';
       if (!efCfg || !efCfg.incBlur || st === 'soft') {
         return _origEF(ctx, cw, ch, el, activeCue, efCfg, bgObj);
       }
-      // Render clean frame without default blur, then paint chosen blur style accurately
       _origEF(ctx, cw, ch, el, activeCue, Object.assign({}, efCfg, { incBlur: false }), bgObj);
       try {
         const p = (typeof pro !== 'undefined' && pro) ? pro : { blurX: 6, blurY: 80, blurW: 88 };
@@ -21867,7 +21885,6 @@ body.cts-desktop-mode #cueList .cue-card {
         const bw = Math.max(20, Math.round(((p.blurW ?? 88) / 100) * cw));
         const bh = Math.max(16, Math.round(efCfg.bH || Math.round(ch * 0.14)));
         const by = Math.max(0, Math.min(ch - bh, Math.round(((p.blurY ?? 80) / 100) * ch)));
-
         ctx.save();
         if (st === 'black') {
           ctx.fillStyle = 'rgba(0,0,0,0.97)';
@@ -21877,11 +21894,8 @@ body.cts-desktop-mode #cueList .cue-card {
           if (!mosaicTmpCvs) mosaicTmpCvs = document.createElement('canvas');
           const dw = Math.max(4, Math.round(bw / factor));
           const dh = Math.max(3, Math.round(bh / factor));
-          if (mosaicTmpCvs.width !== dw || mosaicTmpCvs.height !== dh) {
-            mosaicTmpCvs.width = dw; mosaicTmpCvs.height = dh;
-          }
-          const tctx = mosaicTmpCvs.getContext('2d');
-          tctx.drawImage(ctx.canvas, bx, by, bw, bh, 0, 0, dw, dh);
+          if (mosaicTmpCvs.width !== dw || mosaicTmpCvs.height !== dh) { mosaicTmpCvs.width = dw; mosaicTmpCvs.height = dh; }
+          mosaicTmpCvs.getContext('2d').drawImage(ctx.canvas, bx, by, bw, bh, 0, 0, dw, dh);
           ctx.imageSmoothingEnabled = (st !== 'mosaic');
           ctx.drawImage(mosaicTmpCvs, 0, 0, dw, dh, bx, by, bw, bh);
           ctx.imageSmoothingEnabled = true;
@@ -21893,7 +21907,38 @@ body.cts-desktop-mode #cueList .cue-card {
     };
   }
 
-  // 4. Point 1: Clear Everything (per feature + Clear Video Preview + Refresh!)
+  function enhanceNativeBlurCard() {
+    const bBtn = document.getElementById('blurToggleBtn');
+    const card = bBtn ? bBtn.closest('.panel-card') : null;
+    if (!card || document.getElementById('ctsV45BlurExtra')) return;
+    const box = document.createElement('div');
+    box.id = 'ctsV45BlurExtra';
+    box.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1)';
+    box.innerHTML = `
+      <div style="font-size:11px;font-weight:700;margin-bottom:5px">🌫️ ម៉ូដ Blur (៥ ជម្រើស • Preview & Export MP4)៖</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+        ${BLUR_STYLES.map(b => `<button type="button" id="ctsV45NBs-${b.id}" style="padding:6px 4px;border-radius:8px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.05);color:inherit;font-size:11px;font-weight:700;cursor:pointer">${b.name}</button>`).join('')}
+      </div>`;
+    card.appendChild(box);
+    const syncBtns = () => {
+      BLUR_STYLES.forEach(b => {
+        const el = document.getElementById('ctsV45NBs-' + b.id);
+        if (!el) return;
+        const act = cfg.blurStyle === b.id;
+        el.style.borderColor = act ? '#fbbf24' : 'rgba(255,255,255,0.18)';
+        el.style.background = act ? 'linear-gradient(135deg,#78350f,#b45309)' : 'rgba(255,255,255,0.05)';
+        el.style.color = act ? '#fffbeb' : 'inherit';
+      });
+    };
+    BLUR_STYLES.forEach(b => {
+      document.getElementById('ctsV45NBs-' + b.id).onclick = () => {
+        cfg.blurStyle = b.id; saveCfg(); applyBlurPreviewStyle(); syncBtns();
+      };
+    });
+    syncBtns();
+  }
+
+  // 4. Clear Everything + Refresh
   function clearVideoPreview() {
     try {
       const vid = document.getElementById('videoPlayer');
@@ -21908,7 +21953,6 @@ body.cts-desktop-mode #cueList .cue-card {
       if (typeof toast === 'function') toast('🗑️ លុប Video Preview រួចរាល់!');
     } catch (e) {}
   }
-
   function clearCuesAll() {
     try {
       if (typeof cues !== 'undefined' && Array.isArray(cues)) cues.length = 0;
@@ -21916,7 +21960,6 @@ body.cts-desktop-mode #cueList .cue-card {
       if (typeof toast === 'function') toast('🗑️ លុប Subtitles ទាំងអស់រួចរាល់!');
     } catch (e) {}
   }
-
   function clearDubAudioOnly() {
     try {
       if (typeof cues !== 'undefined' && Array.isArray(cues)) {
@@ -21926,7 +21969,6 @@ body.cts-desktop-mode #cueList .cue-card {
       if (typeof toast === 'function') toast('🗑️ លុបសំឡេង Dub ទាំងអស់រួចរាល់!');
     } catch (e) {}
   }
-
   function clearBgmOnly() {
     try {
       if (typeof bgmAudio !== 'undefined' && bgmAudio) { bgmAudio.pause(); bgmAudio.src = ''; }
@@ -21934,7 +21976,6 @@ body.cts-desktop-mode #cueList .cue-card {
       if (typeof toast === 'function') toast('🗑️ លុបភ្លេង BGM រួចរាល់!');
     } catch (e) {}
   }
-
   function clearEffectsAndLogo() {
     try {
       const wm = document.getElementById('wmImgEl');
@@ -21948,287 +21989,365 @@ body.cts-desktop-mode #cueList .cue-card {
       if (typeof toast === 'function') toast('🗑️ លុប Logo / Blur / Effects រួចរាល់!');
     } catch (e) {}
   }
-
-  function clearEverythingNewProject() {
-    clearVideoPreview();
-    clearCuesAll();
-    clearBgmOnly();
-    clearEffectsAndLogo();
+  function clearAllNewProject() {
+    clearVideoPreview(); clearCuesAll(); clearBgmOnly(); clearEffectsAndLogo();
     if (typeof toast === 'function') toast('🧹 សម្អាត Project ទាំងអស់រួចរាល់ (រក្សា API Keys ទុកដដែល)!');
   }
 
-  // 5. Collect ALL existing .panel-card tools dynamically so NOTHING is lost & everything hides into Menu!
-  let activeMenuCard = null;
-
-  function scanToolCards() {
+  // 5. Catalog ALL Tools cleanly with Smart Preview flag (needsPreview: true vs false)
+  function buildCatalog() {
     const items = [];
+    // Special pure Preview mode (no panel clutter!)
+    items.push({ key: 'preview_only', tabId: 'tab-design', nav: 'design', needsPreview: true, previewOnly: true, icon: '👁️', title: 'Video Preview & Play', sub: 'មើល & អូសកែលើ Video ផ្ទាល់' });
+
     const tabs = [
-      { id: 'tab-recap',    nav: 'recap',    grp: '🎬 Big Project' },
-      { id: 'tab-cues',     nav: 'cues',     grp: '🎙️ Dubber & AI' },
-      { id: 'tab-design',   nav: 'design',   grp: '🎨 Edit Video' },
-      { id: 'tab-settings', nav: 'settings', grp: '⚙️ AI & Export' }
+      { id: 'tab-recap',    nav: 'recap',    defPv: false, grp: 'Big Project' },
+      { id: 'tab-cues',     nav: 'cues',     defPv: false, grp: 'Dubber & AI' },
+      { id: 'tab-design',   nav: 'design',   defPv: true,  grp: 'Edit Video' },
+      { id: 'tab-settings', nav: 'settings', defPv: false, grp: 'AI & Export' }
     ];
+
     tabs.forEach(t => {
       const root = document.getElementById(t.id);
       if (!root) return;
-      root.querySelectorAll('.panel-card').forEach((card, idx) => {
-        if (card.id === 'ctsV44BlurExtra') return;
-        const titleEl = card.querySelector('.panel-title');
-        let label = titleEl ? titleEl.textContent.replace(/\s+/g, ' ').trim() : '';
-        if (!label) {
-          const btn = card.querySelector('button');
-          label = btn ? btn.textContent.replace(/\s+/g, ' ').trim() : `${t.grp} #${idx + 1}`;
-        }
-        if (label.length > 36) label = label.slice(0, 35) + '…';
-        items.push({ tabId: t.id, nav: t.nav, grp: t.grp, card, label });
+
+      // Capture direct cards AND nested .panel-card inside .d-pane (like Copyright Pro!)
+      const seen = new Set();
+      const candidates = [...root.querySelectorAll('.panel-card'), ...Array.from(root.children)];
+      candidates.forEach((el, idx) => {
+        if (!el || seen.has(el)) return;
+        // Skip wrapper containers that hold .panel-card children (e.g. .d-pane, .d-stabs)
+        if (el.classList.contains('d-stabs') || el.classList.contains('d-pane') || (!el.classList.contains('panel-card') && el.querySelector('.panel-card'))) return;
+        if (el.id === 'ctsV45BlurExtra' || el.style.display === 'none' && !el.classList.contains('panel-card')) return;
+        seen.add(el);
+
+        const txtRaw = (el.querySelector('.panel-title')?.textContent || el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!txtRaw) return;
+        let label = txtRaw.slice(0, 34);
+        let icon = t.defPv ? '🎨' : (t.nav === 'recap' ? '🎬' : (t.nav === 'cues' ? '🎙️' : '⚙️'));
+        if (/Blur/i.test(txtRaw)) icon = '🌫️';
+        else if (/Subtitle|អក្សរ/i.test(txtRaw)) icon = '💬';
+        else if (/Logo/i.test(txtRaw)) icon = '👑';
+        else if (/Ticker|រត់/i.test(txtRaw)) icon = '📜';
+        else if (/Sponsor/i.test(txtRaw)) icon = '📢';
+        else if (/Copyright/i.test(txtRaw)) icon = '🛡️';
+        else if (/Zoom|ប្លង់/i.test(txtRaw)) icon = '📐';
+        else if (/API|Gemini|Key/i.test(txtRaw)) icon = '🔑';
+        else if (/Export/i.test(txtRaw)) icon = '📤';
+        else if (/Language|ភាសា/i.test(txtRaw)) icon = '🌐';
+        else if (/Theme|Dark|Classic/i.test(txtRaw)) icon = '🎨';
+        else if (/Glossary|វចនានុក្រម/i.test(txtRaw)) icon = '📚';
+
+        items.push({
+          key: `${t.id}_${idx}`,
+          tabId: t.id,
+          nav: t.nav,
+          needsPreview: t.defPv,
+          el,
+          icon,
+          title: label,
+          sub: t.defPv ? 'មាន Video Preview' : 'បើកពេញអេក្រង់ (គ្មាន Preview)'
+        });
       });
     });
     return items;
   }
 
-  function openSingleCardFromMenu(item) {
-    document.querySelectorAll('.panel-card.cts-v44-active-card').forEach(el => el.classList.remove('cts-v44-active-card'));
+  function triggerTransitionFx() {
+    const fx = document.getElementById('ctsPfFxOverlay');
+    if (!fx) return;
+    fx.className = '';
+    void fx.offsetWidth;
+    fx.className = 'go-' + (cfg.animStyle || 'laser');
+  }
+
+  function applyAnimColors() {
+    const st = ANIM_STYLES.find(a => a.id === cfg.animStyle) || ANIM_STYLES[0];
+    document.documentElement.style.setProperty('--pf-c1', st.c1);
+    document.documentElement.style.setProperty('--pf-c2', st.c2);
+    ANIM_STYLES.forEach(a => document.body.classList.remove(a.cls));
+    document.body.classList.add(st.cls);
+  }
+
+  function clearOpenClasses() {
+    document.querySelectorAll('.cts-pf-open-tab').forEach(x => x.classList.remove('cts-pf-open-tab'));
+    document.querySelectorAll('.cts-pf-open-card').forEach(x => x.classList.remove('cts-pf-open-card'));
+    document.querySelectorAll('.cts-pf-open-ancestor').forEach(x => x.classList.remove('cts-pf-open-ancestor'));
+  }
+
+  function goHub(withFx) {
+    if (withFx) triggerTransitionFx();
+    cfg.viewMode = 'hub';
+    cfg.activeKey = '';
+    saveCfg();
+    clearOpenClasses();
+    document.body.classList.add('cts-pf-on', 'cts-pf-in-hub', 'cts-pf-hide-preview');
+    document.body.classList.remove('cts-pf-in-panel', 'cts-pf-show-preview', 'cts-pf-preview-only');
+    const ttl = document.getElementById('ctsPfTitle');
+    if (ttl) ttl.textContent = '🏠 CTS ProFlow Studio';
+    renderHubTiles();
+  }
+
+  function openItem(key, withFx) {
+    const list = buildCatalog();
+    const item = list.find(x => x.key === key) || list[0];
+    if (!item) return;
+    if (withFx) triggerTransitionFx();
+
+    cfg.viewMode = 'panel';
+    cfg.activeKey = item.key;
+    saveCfg();
+    clearOpenClasses();
+
     if (typeof switchTab === 'function') {
       try { switchTab(item.nav); } catch (e) {}
-    } else {
-      const navBtn = document.getElementById('nav-' + item.nav);
-      if (navBtn) navBtn.click();
     }
-    // Ensure any parent sub-tab wrapper inside #tab-design is also visible
-    let p = item.card.parentElement;
-    while (p && !p.classList.contains('tab-content')) {
-      if (p.style && p.style.display === 'none') p.style.display = 'block';
-      p = p.parentElement;
+
+    document.body.classList.add('cts-pf-on', 'cts-pf-in-panel');
+    document.body.classList.remove('cts-pf-in-hub');
+
+    const showPv = !!item.needsPreview || (item.nav === 'cues' && cfg.dubShowPreview);
+    document.body.classList.toggle('cts-pf-show-preview', showPv);
+    document.body.classList.toggle('cts-pf-hide-preview', !showPv);
+    document.body.classList.toggle('cts-pf-preview-only', !!item.previewOnly);
+
+    const tabEl = document.getElementById(item.tabId);
+    if (tabEl && !item.previewOnly) tabEl.classList.add('cts-pf-open-tab');
+
+    if (item.el) {
+      // Activate matching .d-pane tab if inside #tab-design!
+      const dp = item.el.closest('.d-pane');
+      if (dp) {
+        const dpId = dp.id ? dp.id.replace(/^dpane-/, '') : (dp.dataset?.dpane || '');
+        if (dpId) {
+          const stab = document.querySelector(`.d-stab[data-dpane="${dpId}"]`);
+          if (stab) { try { stab.click(); } catch (e) {} }
+        }
+        dp.classList.add('cts-pf-open-ancestor');
+      }
+      let p = item.el.parentElement;
+      while (p && !p.classList.contains('tab-content')) {
+        p.classList.add('cts-pf-open-ancestor');
+        p = p.parentElement;
+      }
+      item.el.classList.add('cts-pf-open-card');
     }
-    item.card.classList.add('cts-v44-active-card');
-    activeMenuCard = item;
-    document.body.classList.add('cts-has-active-card');
-    const lbl = document.getElementById('ctsV44ActiveLbl');
-    if (lbl) lbl.textContent = item.label;
-    closeDrawer();
-    setTimeout(() => item.card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+
+    const ttl = document.getElementById('ctsPfTitle');
+    if (ttl) ttl.textContent = `${item.icon} ${item.title}`;
+    closeCmdModal();
   }
 
-  function closeActiveMenuCard() {
-    document.querySelectorAll('.panel-card.cts-v44-active-card').forEach(el => el.classList.remove('cts-v44-active-card'));
-    activeMenuCard = null;
-    document.body.classList.remove('cts-has-active-card');
-  }
-
-  function applyWorkspaceLayout() {
-    LAYOUTS.forEach(l => document.body.classList.remove('cts-ly-' + l.id));
-    document.body.classList.add('cts-ly-' + cfg.layout);
-
-    const hide = cfg.layout !== 'classic_all' && cfg.hideAllPanels;
-    document.body.classList.toggle('cts-hide-panels', hide);
-    document.body.classList.toggle('cts-big-preview', hide || ['big_cinema', 'tiktok_stage'].includes(cfg.layout));
-
-    if (!hide) closeActiveMenuCard();
-    updateLockBodyClass();
-    applyBlurPreviewStyle();
-  }
-
-  function openDrawer() {
-    const d = document.getElementById('ctsV44Drawer');
-    if (!d) return;
-    renderDrawerContent();
-    d.classList.add('open');
-  }
-  function closeDrawer() {
-    const d = document.getElementById('ctsV44Drawer');
-    if (d) d.classList.remove('open');
+  function stepItem(dir) {
+    const list = buildCatalog();
+    if (!list.length) return;
+    if (cfg.viewMode === 'hub') {
+      openItem(dir > 0 ? list[0].key : list[list.length - 1].key, true);
+      return;
+    }
+    const idx = list.findIndex(x => x.key === cfg.activeKey);
+    const nextIdx = (idx === -1) ? 0 : (idx + dir + list.length) % list.length;
+    openItem(list[nextIdx].key, true);
   }
 
   function escHtml(s) {
     return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
   }
 
-  function renderDrawerContent() {
-    const body = document.getElementById('ctsV44DrawerBody');
-    if (!body) return;
-    const tools = scanToolCards();
+  function renderHubTiles() {
+    const hub = document.getElementById('ctsPfHub');
+    if (!hub) return;
+    const list = buildCatalog();
+    const pvList = list.filter(x => x.needsPreview);
+    const fullList = list.filter(x => !x.needsPreview);
 
-    body.innerHTML = `
-      <div class="cts-v44-sec">📐 10 Workspace Layouts (រូបគំរូរៀបចំ Tool)</div>
-      <div class="cts-v44-grid2">
-        ${LAYOUTS.map(l => `<button type="button" data-ly="${l.id}" class="cts-v44-mbtn ${cfg.layout === l.id ? 'act' : ''}">${escHtml(l.name)}</button>`).join('')}
-      </div>
-      <label class="chk-row" style="margin:2px 0"><input type="checkbox" id="ctsV44HideChk" ${cfg.hideAllPanels ? 'checked' : ''}><span>🙈 លាក់ប្រអប់មុខងារទាំងអស់ (បើកតែតាម Menu)</span></label>
-
-      <div class="cts-v44-sec">🌫️ ម៉ូដ Blur (៥ ជម្រើស • Preview & Export)</div>
-      <div class="cts-v44-grid2">
-        ${BLUR_STYLES.map(b => `<button type="button" data-bs="${b.id}" class="cts-v44-mbtn ${cfg.blurStyle === b.id ? 'act' : ''}">${b.name}</button>`).join('')}
-      </div>
-      <div class="range-row">
-        <span style="min-width:85px;font-size:11px">កម្រិត Blur</span>
-        <input type="range" id="ctsV44BlurPwr" min="4" max="28" step="2" value="${cfg.blurPower || 14}">
-        <b style="min-width:34px;text-align:right;font-size:11px">${cfg.blurPower || 14}px</b>
+    hub.innerHTML = `
+      <div class="cts-pf-hub-hero">
+        <div>
+          <div style="font-size:13.5px;font-weight:900;color:#fde68a">🎬 CTS ProFlow Workspace</div>
+          <div style="font-size:11px;opacity:.78;margin-top:2px">ជ្រើសរើសផ្ទាំងការងារ (ដាច់ដោយឡែកពីគ្នា ១០០%)</div>
+        </div>
+        <button type="button" id="ctsPfHubAddVid" class="cts-pf-iconbtn glow" style="font-size:11.5px;padding:0 12px">📥 ដាក់ Video</button>
       </div>
 
-      <div class="cts-v44-sec">🗑️ លុបតាមផ្នែក & 🔄 Refresh</div>
-      <div class="cts-v44-grid2">
-        <button type="button" id="ctsV44ClrVid" class="cts-v44-mbtn danger">🗑️ លុប Video Preview</button>
-        <button type="button" id="ctsV44ClrSub" class="cts-v44-mbtn danger">🗑️ លុប Subtitles</button>
-        <button type="button" id="ctsV44ClrDub" class="cts-v44-mbtn danger">🗑️ លុបសំឡេង Dub</button>
-        <button type="button" id="ctsV44ClrBgm" class="cts-v44-mbtn danger">🗑️ លុបភ្លេង BGM</button>
-        <button type="button" id="ctsV44ClrFx"  class="cts-v44-mbtn danger">🗑️ លុប Logo / Blur</button>
-        <button type="button" id="ctsV44ClrAll" class="cts-v44-mbtn danger">🧹 លុបទាំងអស់ (ថ្មី)</button>
+      <div class="cts-pf-sec">🖥️ មុខងារពេញអេក្រង់ (មិនបង្ហាញ Preview)</div>
+      <div class="cts-pf-grid">
+        ${fullList.map(it => `<button type="button" data-open="${escHtml(it.key)}" class="cts-pf-tile full"><b>${it.icon} ${escHtml(it.title)}</b><span>${escHtml(it.sub)}</span></button>`).join('')}
       </div>
-      <button type="button" id="ctsV44Reload" class="cts-v44-mbtn" style="text-align:center;border-color:#38bdf8;color:#bae6fd">🔄 Refresh App (ផ្ទុកឡើងវិញ — រក្សា API Keys)</button>
 
-      <div class="cts-v44-sec">🧰 មុខងារទាំងអស់ក្នុង Tool (ចុចដើម្បីបើកប្រើ)</div>
-      <div style="display:flex;flex-direction:column;gap:5px">
-        ${tools.map((it, idx) => `<button type="button" data-tidx="${idx}" class="cts-v44-mbtn ${activeMenuCard && activeMenuCard.card === it.card ? 'act' : ''}">${escHtml(it.grp)} ▸ ${escHtml(it.label)}</button>`).join('')}
+      <div class="cts-pf-sec">🎞️ មុខងារកែវីដេអូ (បង្ហាញ Video Preview រួមគ្នា)</div>
+      <div class="cts-pf-grid">
+        ${pvList.map(it => `<button type="button" data-open="${escHtml(it.key)}" class="cts-pf-tile pv"><b>${it.icon} ${escHtml(it.title)}</b><span>${escHtml(it.sub)}</span></button>`).join('')}
       </div>
     `;
 
-    body.querySelectorAll('[data-ly]').forEach(b => {
-      b.onclick = () => {
-        cfg.layout = b.getAttribute('data-ly');
-        if (cfg.layout === 'classic_all') cfg.hideAllPanels = false;
-        else cfg.hideAllPanels = true;
-        saveCfg();
-        applyWorkspaceLayout();
-        renderDrawerContent();
-      };
-    });
-    document.getElementById('ctsV44HideChk').onchange = function() {
-      cfg.hideAllPanels = this.checked;
-      saveCfg();
-      applyWorkspaceLayout();
-    };
-    body.querySelectorAll('[data-bs]').forEach(b => {
-      b.onclick = () => {
-        cfg.blurStyle = b.getAttribute('data-bs');
-        saveCfg();
-        applyBlurPreviewStyle();
-        renderDrawerContent();
-      };
-    });
-    document.getElementById('ctsV44BlurPwr').oninput = function() {
-      cfg.blurPower = parseInt(this.value, 10) || 14;
-      saveCfg();
-      applyBlurPreviewStyle();
-      renderDrawerContent();
-    };
-
-    document.getElementById('ctsV44ClrVid').onclick = () => { clearVideoPreview(); closeDrawer(); };
-    document.getElementById('ctsV44ClrSub').onclick = () => { clearCuesAll(); closeDrawer(); };
-    document.getElementById('ctsV44ClrDub').onclick = () => { clearDubAudioOnly(); closeDrawer(); };
-    document.getElementById('ctsV44ClrBgm').onclick = () => { clearBgmOnly(); closeDrawer(); };
-    document.getElementById('ctsV44ClrFx').onclick  = () => { clearEffectsAndLogo(); closeDrawer(); };
-    document.getElementById('ctsV44ClrAll').onclick = () => { clearEverythingNewProject(); closeDrawer(); };
-    document.getElementById('ctsV44Reload').onclick = () => location.reload();
-
-    body.querySelectorAll('[data-tidx]').forEach(b => {
-      b.onclick = () => openSingleCardFromMenu(tools[parseInt(b.getAttribute('data-tidx'), 10)]);
+    document.getElementById('ctsPfHubAddVid').onclick = () => document.getElementById('videoInput')?.click();
+    hub.querySelectorAll('[data-open]').forEach(b => {
+      b.onclick = () => openItem(b.getAttribute('data-open'), true);
     });
   }
 
-  // Also inject 5-Blur Selector right inside the native Blur card (#blurToggleBtn)
-  function enhanceNativeBlurCard() {
-    const bBtn = document.getElementById('blurToggleBtn');
-    const card = bBtn ? bBtn.closest('.panel-card') : null;
-    if (!card || document.getElementById('ctsV44BlurExtra')) return;
-    const box = document.createElement('div');
-    box.id = 'ctsV44BlurExtra';
-    box.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1)';
+  function openCmdModal() {
+    const m = document.getElementById('ctsPfCmdModal');
+    if (!m) return;
+    renderCmdModal();
+    m.classList.add('open');
+  }
+  function closeCmdModal() {
+    const m = document.getElementById('ctsPfCmdModal');
+    if (m) m.classList.remove('open');
+  }
+
+  function renderCmdModal() {
+    const box = document.getElementById('ctsPfCmdBox');
+    if (!box) return;
+    const list = buildCatalog();
+
     box.innerHTML = `
-      <div style="font-size:11px;font-weight:700;margin-bottom:5px">🌫️ ជម្រើសម៉ូដ Blur (៥ បែប)៖</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
-        ${BLUR_STYLES.map(b => `<button type="button" id="ctsV44NBs-${b.id}" style="padding:6px 4px;border-radius:8px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.05);color:inherit;font-size:11px;font-weight:700;cursor:pointer">${b.name}</button>`).join('')}
-      </div>`;
-    card.appendChild(box);
-    const syncBtns = () => {
-      BLUR_STYLES.forEach(b => {
-        const el = document.getElementById('ctsV44NBs-' + b.id);
-        if (!el) return;
-        const act = cfg.blurStyle === b.id;
-        el.style.borderColor = act ? '#fbbf24' : 'rgba(255,255,255,0.18)';
-        el.style.background = act ? 'linear-gradient(135deg,#78350f,#b45309)' : 'rgba(255,255,255,0.05)';
-        el.style.color = act ? '#fffbeb' : 'inherit';
-      });
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <b style="font-size:13px;color:#fbbf24">⟨ ⟩ CTS Quick Command Hub</b>
+        <button type="button" id="ctsPfCmdClose" class="cts-pf-iconbtn" style="height:28px;min-width:28px">✕</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button type="button" id="ctsPfCmdVid" class="cts-pf-cbtn">📥 ដាក់ Video</button>
+        <button type="button" id="ctsPfCmdExp" class="cts-pf-cbtn">📤 Export Video</button>
+        <button type="button" id="ctsPfCmdLang" class="cts-pf-cbtn">🌐 ប្តូរភាសា</button>
+        <button type="button" id="ctsPfCmdHub" class="cts-pf-cbtn">🏠 ត្រឡប់ Hub</button>
+      </div>
+
+      <div style="font-size:10.5px;font-weight:800;color:#94a3b8">✨ 4 Style ចលនាពេលប្តូរ Tab (ភ្លើងរត់)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        ${ANIM_STYLES.map(a => `<button type="button" data-anim="${a.id}" class="cts-pf-cbtn ${cfg.animStyle === a.id ? 'act' : ''}">${a.name}</button>`).join('')}
+      </div>
+
+      <div style="font-size:10.5px;font-weight:800;color:#94a3b8">🗑️ លុបតាមផ្នែក & 🔄 Refresh</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        <button type="button" id="ctsPfClrVid" class="cts-pf-cbtn danger">🗑️ លុប Video</button>
+        <button type="button" id="ctsPfClrSub" class="cts-pf-cbtn danger">🗑️ លុប Subtitles</button>
+        <button type="button" id="ctsPfClrDub" class="cts-pf-cbtn danger">🗑️ លុប Dub Audio</button>
+        <button type="button" id="ctsPfClrBgm" class="cts-pf-cbtn danger">🗑️ លុប BGM</button>
+        <button type="button" id="ctsPfClrFx"  class="cts-pf-cbtn danger">🗑️ លុប Logo/Blur</button>
+        <button type="button" id="ctsPfClrAll" class="cts-pf-cbtn danger">🧹 លុបទាំងអស់</button>
+      </div>
+      <button type="button" id="ctsPfReload" class="cts-pf-cbtn" style="text-align:center;border-color:#38bdf8;color:#bae6fd">🔄 Refresh App (រក្សា API Keys)</button>
+
+      <div style="font-size:10.5px;font-weight:800;color:#94a3b8">🧭 ផ្លាស់ទីទៅមុខងារផ្ទាល់</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${list.map(it => `<button type="button" data-jump="${escHtml(it.key)}" class="cts-pf-cbtn ${cfg.activeKey === it.key ? 'act' : ''}">${it.icon} ${escHtml(it.title)}</button>`).join('')}
+      </div>
+    `;
+
+    document.getElementById('ctsPfCmdClose').onclick = closeCmdModal;
+    document.getElementById('ctsPfCmdVid').onclick = () => { closeCmdModal(); document.getElementById('videoInput')?.click(); };
+    document.getElementById('ctsPfCmdHub').onclick = () => { closeCmdModal(); goHub(true); };
+    document.getElementById('ctsPfCmdLang').onclick = () => {
+      closeCmdModal();
+      const langCard = list.find(x => /Language|ភាសា/i.test(x.title));
+      if (langCard) openItem(langCard.key, true);
     };
-    BLUR_STYLES.forEach(b => {
-      document.getElementById('ctsV44NBs-' + b.id).onclick = () => {
-        cfg.blurStyle = b.id;
+    document.getElementById('ctsPfCmdExp').onclick = () => {
+      closeCmdModal();
+      const expCard = list.find(x => /Export/i.test(x.title));
+      if (expCard) openItem(expCard.key, true);
+    };
+
+    box.querySelectorAll('[data-anim]').forEach(b => {
+      b.onclick = () => {
+        cfg.animStyle = b.getAttribute('data-anim');
         saveCfg();
-        applyBlurPreviewStyle();
-        syncBtns();
+        applyAnimColors();
+        triggerTransitionFx();
+        renderCmdModal();
       };
     });
-    syncBtns();
+
+    document.getElementById('ctsPfClrVid').onclick = () => { clearVideoPreview(); closeCmdModal(); };
+    document.getElementById('ctsPfClrSub').onclick = () => { clearCuesAll(); closeCmdModal(); };
+    document.getElementById('ctsPfClrDub').onclick = () => { clearDubAudioOnly(); closeCmdModal(); };
+    document.getElementById('ctsPfClrBgm').onclick = () => { clearBgmOnly(); closeCmdModal(); };
+    document.getElementById('ctsPfClrFx').onclick  = () => { clearEffectsAndLogo(); closeCmdModal(); };
+    document.getElementById('ctsPfClrAll').onclick = () => { clearAllNewProject(); closeCmdModal(); };
+    document.getElementById('ctsPfReload').onclick = () => location.reload();
+
+    box.querySelectorAll('[data-jump]').forEach(b => {
+      b.onclick = () => openItem(b.getAttribute('data-jump'), true);
+    });
   }
 
-  function mountCleanStudioUI() {
-    if (document.getElementById('ctsV44TopBar')) return;
+  function mountProFlow() {
+    if (document.getElementById('ctsPfTopBar')) return;
 
     const header = document.querySelector('.app-header');
     const bar = document.createElement('div');
-    bar.id = 'ctsV44TopBar';
+    bar.id = 'ctsPfTopBar';
     bar.setAttribute('data-no-i18n', '1');
     bar.innerHTML = `
-      <div style="display:flex;align-items:center;gap:5px">
-        <button type="button" id="cts-v44-menubtn" class="cts-v44-pill acc">☰ Menu</button>
-        <button type="button" id="cts-v44-lockbtn" class="cts-v44-pill ok">🔓 Free Drag</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:5px">
-        <button type="button" id="cts-v44-clrvid" class="cts-v44-pill red">🗑️ លុប Video</button>
-        <button type="button" id="cts-v44-refresh" class="cts-v44-pill">🔄</button>
+      <button type="button" id="ctsPfBackBtn" class="cts-pf-iconbtn">←</button>
+      <div id="ctsPfTitle">🏠 CTS ProFlow Studio</div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <button type="button" id="ctsPfPrevBtn" class="cts-pf-iconbtn" style="padding:0 8px">‹</button>
+        <button type="button" id="ctsPfCmdBtn" class="cts-pf-iconbtn glow" style="padding:0 9px">⟨ ⟩</button>
+        <button type="button" id="ctsPfNextBtn" class="cts-pf-iconbtn" style="padding:0 8px">›</button>
       </div>`;
     if (header) header.insertAdjacentElement('afterend', bar);
     else document.body.prepend(bar);
 
-    // Active card closer bar (shown when user picks 1 tool from Menu)
-    const closer = document.createElement('div');
-    closer.id = 'ctsV44CardCloser';
-    closer.setAttribute('data-no-i18n', '1');
-    closer.innerHTML = `<span id="ctsV44ActiveLbl">Tool</span><button type="button" id="ctsV44CloseCardBtn" class="cts-v44-pill red" style="padding:3px 8px">✕ បិទ</button>`;
+    // Compact Preview Controls Strip (only visible when Preview is shown)
+    const pStrip = document.createElement('div');
+    pStrip.id = 'ctsPfPreviewStrip';
+    pStrip.setAttribute('data-no-i18n', '1');
+    pStrip.innerHTML = `
+      <div style="display:flex;gap:5px">
+        <button type="button" id="ctsPfLockBtn" class="cts-pf-iconbtn" style="height:28px;font-size:11px">🔓 Free Drag</button>
+        <button type="button" id="ctsPfResetPos" class="cts-pf-iconbtn" style="height:28px;font-size:11px">↺ Reset</button>
+      </div>
+      <button type="button" id="ctsPfClrVidTop" class="cts-pf-iconbtn" style="height:28px;font-size:11px;border-color:rgba(239,68,68,0.5);color:#fecaca">🗑️ លុប Video</button>`;
     const playerSec = document.getElementById('playerSection');
-    if (playerSec) playerSec.insertAdjacentElement('afterend', closer);
+    if (playerSec) playerSec.insertAdjacentElement('beforebegin', pStrip);
 
-    // Floating Menu Orb (for Layout #5)
-    const fBtn = document.createElement('button');
-    fBtn.id = 'ctsV44FloatBtn';
-    fBtn.type = 'button';
-    fBtn.textContent = '☰';
-    fBtn.onclick = openDrawer;
-    document.body.appendChild(fBtn);
+    // Workspace Home Hub
+    const hub = document.createElement('div');
+    hub.id = 'ctsPfHub';
+    hub.setAttribute('data-no-i18n', '1');
+    const appBody = document.querySelector('.app-body') || document.getElementById('tab-recap')?.parentElement;
+    if (appBody) appBody.insertAdjacentElement('beforebegin', hub);
+    else bar.insertAdjacentElement('afterend', hub);
 
-    // Slide-out Menu Drawer
-    const drawer = document.createElement('div');
-    drawer.id = 'ctsV44Drawer';
-    drawer.setAttribute('data-no-i18n', '1');
-    drawer.innerHTML = `
-      <div id="ctsV44DrawerPanel">
-        <div class="cts-v44-dhead">
-          <b style="font-size:13.5px;color:#fbbf24">☰ CTS Clean Studio Menu</b>
-          <button type="button" id="ctsV44DClose" class="cts-v44-pill red" style="padding:4px 9px">✕</button>
-        </div>
-        <div class="cts-v44-dbody" id="ctsV44DrawerBody"></div>
-      </div>`;
-    drawer.onclick = (e) => { if (e.target === drawer) closeDrawer(); };
-    document.body.appendChild(drawer);
+    // Command Hub Overlay
+    const cmdM = document.createElement('div');
+    cmdM.id = 'ctsPfCmdModal';
+    cmdM.setAttribute('data-no-i18n', '1');
+    cmdM.innerHTML = `<div id="ctsPfCmdBox"></div>`;
+    cmdM.onclick = (e) => { if (e.target === cmdM) closeCmdModal(); };
+    document.body.appendChild(cmdM);
 
-    document.getElementById('cts-v44-menubtn').onclick = openDrawer;
-    document.getElementById('ctsV44DClose').onclick = closeDrawer;
-    document.getElementById('ctsV44CloseCardBtn').onclick = closeActiveMenuCard;
-    document.getElementById('cts-v44-lockbtn').onclick = () => {
-      cfg.dragLocked = !cfg.dragLocked;
-      saveCfg();
-      updateLockBodyClass();
-    };
-    document.getElementById('cts-v44-clrvid').onclick = clearVideoPreview;
-    document.getElementById('cts-v44-refresh').onclick = () => location.reload();
+    // Transition Light-Sweep FX Layer
+    const fx = document.createElement('div');
+    fx.id = 'ctsPfFxOverlay';
+    document.body.appendChild(fx);
 
+    document.getElementById('ctsPfBackBtn').onclick = () => goHub(true);
+    document.getElementById('ctsPfPrevBtn').onclick = () => stepItem(-1);
+    document.getElementById('ctsPfNextBtn').onclick = () => stepItem(1);
+    document.getElementById('ctsPfCmdBtn').onclick = openCmdModal;
+    document.getElementById('ctsPfLockBtn').onclick = () => { cfg.dragLocked = !cfg.dragLocked; saveCfg(); updateLockUI(); };
+    document.getElementById('ctsPfResetPos').onclick = () => document.getElementById('ctsResetPosBtn')?.click();
+    document.getElementById('ctsPfClrVidTop').onclick = clearVideoPreview;
+
+    applyAnimColors();
+    updateLockUI();
     installFastPreviewDrag();
     installBlurExportHook();
     enhanceNativeBlurCard();
-    applyWorkspaceLayout();
+    applyBlurPreviewStyle();
+
+    if (cfg.viewMode === 'panel' && cfg.activeKey) openItem(cfg.activeKey, false);
+    else goHub(false);
   }
 
-  setTimeout(mountCleanStudioUI, 350);
-  setTimeout(() => { installBlurExportHook(); enhanceNativeBlurCard(); applyWorkspaceLayout(); }, 1500);
+  setTimeout(mountProFlow, 450);
+  setTimeout(() => { installBlurExportHook(); enhanceNativeBlurCard(); if (cfg.viewMode === 'hub') renderHubTiles(); }, 1700);
 })();
 </script>
 
