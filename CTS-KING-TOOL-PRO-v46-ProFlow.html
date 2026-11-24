@@ -21744,7 +21744,7 @@ body.cts-desktop-mode #cueList .cue-card {
 
     /* Hide native bottom nav & old touch layer bar */
     body.cts-v46-on .bottom-nav { display: none !important; }
-    body.cts-v46-on #ctsTouchLayerBar { display: none !important; }
+    #ctsTouchLayerBar { padding: 4px 6px !important; }
 
     /* Top ProFlow Bar (<- Title < <> >) */
     #ctsPf46Bar { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:6px 10px; background:linear-gradient(180deg,rgba(16,8,18,0.98),rgba(10,6,14,0.96)); border-bottom:1.5px solid var(--pf-c1,#38bdf8); flex-shrink:0; position:relative; z-index:50; overflow:hidden; }
@@ -22473,6 +22473,8 @@ body.cts-desktop-mode #cueList .cue-card {
     document.getElementById('ctsPf46ClrVid').onclick = clearVideoPreview;
     document.getElementById('ctsPf46PvTog').onclick = () => { cfg.cuesShowPv = !cfg.cuesShowPv; saveCfg(); setView('cues', false); };
 
+    const vidLayerPill = document.querySelector('#ctsTouchLayerBar [data-layer="vid"]');
+    if (vidLayerPill) vidLayerPill.innerHTML = '🎬 Video';
     applyAnimColors();
     updateLockUI();
     installFastPreviewDrag();
