@@ -21757,7 +21757,11 @@ body.cts-desktop-mode #cueList .cue-card {
     /* Preview Control Strip */
     #ctsPf46PvStrip { display:none; align-items:center; justify-content:space-between; gap:5px; padding:5px 10px; background:rgba(12,18,32,0.88); border-bottom:1px solid rgba(255,255,255,0.1); flex-shrink:0; }
     body.cts-v46-with-pv #ctsPf46PvStrip,
-    body.cts-v46-preview #ctsPf46PvStrip { display:flex; }
+    body.cts-v46-preview #ctsPf46PvStrip,
+    body.cts-v46-cues-nopv #ctsPf46PvStrip { display:flex !important; }
+    body.cts-v46-cues-nopv #ctsPf46LockBtn,
+    body.cts-v46-cues-nopv #ctsPf46ResetPos,
+    body.cts-v46-cues-nopv #ctsPf46ClrVid { display:none !important; }
 
     /* Smart Preview Sizing (overrides .collapsed & fixed .stage-wrap height cleanly!) */
     body.cts-v46-no-pv #playerSection { display: none !important; }
@@ -22275,6 +22279,7 @@ body.cts-desktop-mode #cueList .cue-card {
     const showPv = (v === 'design') || (v === 'cues' && cfg.cuesShowPv);
     document.body.classList.toggle('cts-v46-with-pv', showPv);
     document.body.classList.toggle('cts-v46-no-pv', !showPv && v !== 'preview');
+    document.body.classList.toggle('cts-v46-cues-nopv', v === 'cues' && !cfg.cuesShowPv);
 
     if (['recap', 'cues', 'design', 'settings'].includes(v)) {
       if (typeof switchTab === 'function') { try { switchTab(v); } catch (e) {} }
@@ -22289,6 +22294,8 @@ body.cts-desktop-mode #cueList .cue-card {
     if (pvToggle) {
       pvToggle.style.display = (v === 'cues') ? 'inline-flex' : 'none';
       pvToggle.textContent = cfg.cuesShowPv ? '👁️ លាក់ Preview' : '👁️ បើក Preview';
+      pvToggle.style.borderColor = cfg.cuesShowPv ? 'rgba(255,255,255,0.22)' : '#38bdf8';
+      pvToggle.style.color = cfg.cuesShowPv ? '#f8fafc' : '#bae6fd';
     }
 
     closeCmdModal();
