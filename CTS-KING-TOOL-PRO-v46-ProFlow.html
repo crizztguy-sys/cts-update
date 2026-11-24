@@ -21676,22 +21676,26 @@ body.cts-desktop-mode #cueList .cue-card {
 </script>
 
 
-<script id="cts-addon-45-proflow">
-// === ADD-ON #45: CTS PROFLOW (ISOLATED VIEWS, SMART PREVIEW, <- & <> SWITCHER WITH 4 LIGHT-TRAIL STYLES, 0% CORE TOUCH) ===
+<script id="cts-addon-46-proflow">
+// === ADD-ON #46: CTS PROFLOW (VERIFIED IDs #cueCountTxt/#cueList/#bpSplitResCount, 0% CORE TOUCH) ===
 (function() {
-  const CFG_KEY = 'cts_proflow_v45_cfg';
+  const CFG_KEY = 'cts_proflow_v46_cfg';
   let cfg = {
-    animStyle: 'laser', // laser | plasma | fire | gold
-    viewMode: 'hub',    // hub | panel
-    activeKey: '',      // active isolated tool key
+    view: 'hub',          // hub | recap | cues | design | settings | preview
+    animStyle: 'laser',   // laser | plasma | fire | gold
+    cuesShowPv: true,
+    compactCore: true,
     dragLocked: false,
-    blurStyle: 'soft',  // soft | heavy | black | frosted | mosaic
+    blurStyle: 'soft',    // soft | heavy | black | frosted | mosaic
     blurPower: 14,
-    dubShowPreview: false
+    addedWidgets: { recap: [], cues: [], design: [], settings: [] }
   };
   try {
     const s = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
-    if (s && typeof s === 'object') cfg = Object.assign(cfg, s);
+    if (s && typeof s === 'object') {
+      cfg = Object.assign(cfg, s);
+      cfg.addedWidgets = Object.assign({ recap: [], cues: [], design: [], settings: [] }, s.addedWidgets || {});
+    }
   } catch (e) {}
 
   function saveCfg() {
@@ -21699,10 +21703,10 @@ body.cts-desktop-mode #cueList .cue-card {
   }
 
   const ANIM_STYLES = [
-    { id: 'laser',  name: '⚡ Neon Laser Sweep',  cls: 'pf-anim-laser',  c1: '#38bdf8', c2: '#a855f7' },
-    { id: 'plasma', name: '🌊 Plasma Hologram',   cls: 'pf-anim-plasma', c1: '#2dd4bf', c2: '#3b82f6' },
-    { id: 'fire',   name: '🔥 Crimson Afterburn', cls: 'pf-anim-fire',   c1: '#ef4444', c2: '#f59e0b' },
-    { id: 'gold',   name: '✨ Royal Gold Pulse',  cls: 'pf-anim-gold',   c1: '#fbbf24', c2: '#fef08a' }
+    { id: 'laser',  name: '⚡ Neon Laser Sweep',  c1: '#38bdf8', c2: '#a855f7' },
+    { id: 'plasma', name: '🌊 Plasma Hologram',   c1: '#2dd4bf', c2: '#3b82f6' },
+    { id: 'fire',   name: '🔥 Crimson Afterburn', c1: '#ef4444', c2: '#f59e0b' },
+    { id: 'gold',   name: '✨ Royal Gold Pulse',  c1: '#fbbf24', c2: '#fef08a' }
   ];
 
   const BLUR_STYLES = [
@@ -21713,18 +21717,24 @@ body.cts-desktop-mode #cueList .cue-card {
     { id: 'mosaic',  name: '👾 Mosaic' }
   ];
 
-  // 1. Scoped ProFlow CSS (removes dashed lines, enables smart isolated view + 4 animated transition styles)
+  const WIDGET_CATALOG = [
+    { id: 'blur5', icon: '🌫️', title: 'Blur ៥ ជម្រើស (Preview & MP4)', desc: 'Soft / Heavy / Black Bar / Frosted / Mosaic' },
+    { id: 'clear', icon: '🗑️', title: 'លុបតាមផ្នែក & 🔄 Refresh',     desc: 'លុប Video / Subtitles / Dub / BGM / Clear All' },
+    { id: 'thumb', icon: '🖼️', title: 'Thumbnail / Cover Maker',       desc: 'ចាប់ Frame វីដេអូ + អក្សរធំ + Save HD PNG' },
+    { id: 'viral', icon: '🧠', title: 'AI Viral Title & Hashtags',     desc: 'សរសេរចំណងជើង Caption & Hashtags ១ ចុច' }
+  ];
+
   const styleEl = document.createElement('style');
-  styleEl.id = 'cts-v45-style';
+  styleEl.id = 'cts-v46-style';
   styleEl.textContent = `
-    /* Remove persistent yellow/red dashed guide lines on Preview */
+    /* Point 4: Remove persistent yellow/red dashed guide lines on Preview */
     .cts-selected-el { outline: none !important; }
     #ctsTransformGizmo { display: none !important; opacity: 0 !important; }
     #blurBox { border: none !important; }
     #videoBox.cts-dragging-now .cts-selected-el { outline: 1px solid rgba(255,255,255,0.45) !important; }
     #videoBox.cts-dragging-now #blurBox.on { border: 1px solid rgba(255,255,255,0.35) !important; }
 
-    /* Direct touch drag on preview elements unless locked */
+    /* Point 5: Instant touch-drag on Preview unless locked */
     body.cts-drag-free #wmContainer,
     body.cts-drag-free #subOverlay,
     body.cts-drag-free #blurBox,
@@ -21732,91 +21742,96 @@ body.cts-desktop-mode #cueList .cue-card {
     body.cts-drag-free #ctsSponsorOverlay { pointer-events: auto !important; touch-action: none !important; cursor: move; }
     body.cts-drag-locked #videoBox * { pointer-events: none !important; }
 
-    /* Hide native cluttered bottom nav & sub-tab bars in ProFlow isolated mode */
-    body.cts-pf-on .bottom-nav { display: none !important; }
-    body.cts-pf-on #ctsTouchLayerBar { display: none !important; }
-    body.cts-pf-on .d-stabs { display: none !important; }
+    /* Hide native bottom nav & old touch layer bar */
+    body.cts-v46-on .bottom-nav { display: none !important; }
+    body.cts-v46-on #ctsTouchLayerBar { display: none !important; }
 
-    /* ProFlow Top Switcher Bar (<- Title < >) */
-    #ctsPfTopBar { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:7px 10px; background:linear-gradient(180deg,rgba(16,8,18,0.98),rgba(10,6,14,0.96)); border-bottom:1.5px solid var(--pf-c1, rgba(251,191,36,0.4)); flex-shrink:0; position:relative; z-index:45; overflow:hidden; }
-    #ctsPfTopBar::after { content:''; position:absolute; left:-40%; bottom:0; width:40%; height:2px; background:linear-gradient(90deg,transparent,var(--pf-c1,#38bdf8),var(--pf-c2,#f59e0b),transparent); animation:ctsPfBeam 2.6s linear infinite; pointer-events:none; }
-    .cts-pf-iconbtn { height:34px; min-width:34px; padding:0 10px; border-radius:10px; border:1.5px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:#f8fafc; font-size:13px; font-weight:900; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:4px; transition:transform .12s,border-color .2s,box-shadow .2s; }
-    .cts-pf-iconbtn:active { transform:scale(0.93); }
-    .cts-pf-iconbtn.glow { border-color:var(--pf-c1,#38bdf8); box-shadow:0 0 12px rgba(56,189,248,0.35); background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)); }
-    #ctsPfTitle { flex:1; text-align:center; font-size:12.5px; font-weight:800; color:#fef3c7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    /* Top ProFlow Bar (<- Title < <> >) */
+    #ctsPf46Bar { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:6px 10px; background:linear-gradient(180deg,rgba(16,8,18,0.98),rgba(10,6,14,0.96)); border-bottom:1.5px solid var(--pf-c1,#38bdf8); flex-shrink:0; position:relative; z-index:50; overflow:hidden; }
+    #ctsPf46Bar::after { content:''; position:absolute; left:-45%; bottom:0; width:45%; height:2px; background:linear-gradient(90deg,transparent,var(--pf-c1,#38bdf8),var(--pf-c2,#f59e0b),transparent); animation:ctsPf46Beam 2.5s linear infinite; pointer-events:none; }
+    .cts-pf46-btn { height:33px; min-width:33px; padding:0 10px; border-radius:9px; border:1.5px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:#f8fafc; font-size:12.5px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:4px; transition:transform .12s,border-color .2s; white-space:nowrap; }
+    .cts-pf46-btn:active { transform:scale(0.94); }
+    .cts-pf46-btn.glow { border-color:var(--pf-c1,#38bdf8); box-shadow:0 0 12px rgba(56,189,248,0.32); }
+    #ctsPf46Title { flex:1; text-align:center; font-size:12.5px; font-weight:800; color:#fef3c7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-    /* Smart Preview Rule: Hide #playerSection completely when not in a Preview tool! */
-    body.cts-pf-on.cts-pf-hide-preview #playerSection { display: none !important; }
-    body.cts-pf-on.cts-pf-show-preview #playerSection { display: flex !important; flex-direction: column !important; flex-shrink: 0 !important; max-height: 46vh !important; }
-    body.cts-pf-on.cts-pf-show-preview #playerSection.collapsed { display: flex !important; }
-    body.cts-pf-on.cts-pf-show-preview #videoBox.r-916 { height: 34vh !important; max-height: 310px !important; width: auto !important; }
-    body.cts-pf-on.cts-pf-show-preview.cts-pf-preview-only #playerSection { max-height: none !important; flex: 1 !important; }
-    body.cts-pf-on.cts-pf-show-preview.cts-pf-preview-only #videoBox.r-916 { height: 55vh !important; max-height: 520px !important; }
+    /* Preview Control Strip */
+    #ctsPf46PvStrip { display:none; align-items:center; justify-content:space-between; gap:5px; padding:5px 10px; background:rgba(12,18,32,0.88); border-bottom:1px solid rgba(255,255,255,0.1); flex-shrink:0; }
+    body.cts-v46-with-pv #ctsPf46PvStrip,
+    body.cts-v46-preview #ctsPf46PvStrip { display:flex; }
 
-    /* Isolation Rule: Hide Hub or ALL non-selected panels cleanly using :not() */
-    body.cts-pf-on.cts-pf-in-hub main.tab-content { display: none !important; }
-    body.cts-pf-on.cts-pf-in-panel #ctsPfHub { display: none !important; }
-    body.cts-pf-on.cts-pf-in-panel main.tab-content:not(.cts-pf-open-tab) { display: none !important; }
-    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab { display: block !important; width: 100% !important; flex: 1 1 auto !important; overflow-y: auto !important; padding: 10px 10px 28px !important; box-sizing: border-box !important; }
-    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab > :not(.cts-pf-open-card):not(.cts-pf-open-ancestor),
-    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab .d-pane:not(.cts-pf-open-ancestor),
-    body.cts-pf-on.cts-pf-in-panel main.tab-content.cts-pf-open-tab .panel-card:not(.cts-pf-open-card):not(.cts-pf-open-ancestor) { display: none !important; }
-    body.cts-pf-on.cts-pf-in-panel .d-pane.cts-pf-open-ancestor { display: block !important; }
+    /* Smart Preview Sizing (overrides .collapsed & fixed .stage-wrap height cleanly!) */
+    body.cts-v46-no-pv #playerSection { display: none !important; }
+    body.cts-v46-with-pv #playerSection,
+    body.cts-v46-with-pv #playerSection.collapsed { display: flex !important; flex-direction: column !important; flex-shrink: 0 !important; height: auto !important; max-height: none !important; opacity: 1 !important; overflow: visible !important; }
+    body.cts-v46-with-pv .stage-wrap { height: 31vh !important; min-height: 215px !important; max-height: 300px !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 4px !important; }
+    body.cts-v46-with-pv #videoBox.r-916 { height: 100% !important; width: auto !important; aspect-ratio: 9/16 !important; }
+    body.cts-v46-with-pv #videoBox.r-169 { width: 92% !important; max-width: 460px !important; height: auto !important; }
+    body.cts-v46-with-pv #videoBox.r-11  { height: 100% !important; width: auto !important; aspect-ratio: 1/1 !important; }
 
-    /* ProFlow Workspace Home Hub */
-    #ctsPfHub { width:100%; flex:1 1 auto; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:12px; box-sizing:border-box; }
-    .cts-pf-hub-hero { padding:12px 14px; border-radius:14px; background:linear-gradient(135deg,rgba(127,29,29,0.28),rgba(30,27,75,0.45)); border:1px solid rgba(251,191,36,0.35); display:flex; align-items:center; justify-content:space-between; gap:10px; }
-    .cts-pf-sec { font-size:11px; font-weight:900; color:#fbbf24; letter-spacing:.6px; display:flex; align-items:center; gap:6px; margin-top:2px; }
-    .cts-pf-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
-    @media(min-width:680px){ .cts-pf-grid { grid-template-columns:repeat(3,1fr); } }
-    .cts-pf-tile { position:relative; overflow:hidden; padding:11px 10px; border-radius:13px; border:1px solid rgba(255,255,255,0.13); background:rgba(255,255,255,0.04); color:#f8fafc; text-align:left; cursor:pointer; display:flex; flex-direction:column; gap:4px; transition:transform .14s,border-color .2s,box-shadow .2s; }
-    .cts-pf-tile:active { transform:scale(0.96); }
-    .cts-pf-tile.pv { border-color:rgba(56,189,248,0.35); background:linear-gradient(145deg,rgba(14,116,144,0.16),rgba(15,23,42,0.55)); }
-    .cts-pf-tile.full { border-color:rgba(251,191,36,0.3); background:linear-gradient(145deg,rgba(120,53,15,0.18),rgba(15,23,42,0.55)); }
-    .cts-pf-tile b { font-size:12px; line-height:1.25; }
-    .cts-pf-tile span { font-size:10px; opacity:.72; }
+    body.cts-v46-preview #playerSection,
+    body.cts-v46-preview #playerSection.collapsed { display: flex !important; flex-direction: column !important; flex: 1 1 auto !important; height: auto !important; max-height: none !important; opacity: 1 !important; overflow: visible !important; }
+    body.cts-v46-preview .stage-wrap { flex: 1 1 auto !important; height: auto !important; min-height: 50vh !important; max-height: 65vh !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 6px !important; }
+    body.cts-v46-preview #videoBox.r-916 { height: 50vh !important; max-height: 62vh !important; width: auto !important; max-width: 94vw !important; aspect-ratio: 9/16 !important; }
+    body.cts-v46-preview #videoBox.r-169 { width: 96% !important; max-width: 680px !important; height: auto !important; }
+    body.cts-v46-preview #videoBox.r-11  { height: 48vh !important; width: auto !important; aspect-ratio: 1/1 !important; }
+    body.cts-v46-preview main.tab-content { display: none !important; }
 
-    /* Preview Quick Control Strip (when Preview is visible) */
-    #ctsPfPreviewStrip { display:none; align-items:center; justify-content:space-between; gap:6px; padding:5px 10px; background:rgba(15,23,42,0.85); border-bottom:1px solid rgba(255,255,255,0.1); flex-shrink:0; }
-    body.cts-pf-on.cts-pf-show-preview #ctsPfPreviewStrip { display:flex; }
+    /* Intact Core Tabs */
+    body.cts-v46-hub main.tab-content { display: none !important; }
+    body.cts-v46-tab #ctsPf46Hub { display: none !important; }
+    body.cts-v46-tab main.tab-content.active { flex: 1 1 auto !important; overflow-y: auto !important; padding-bottom: 24px !important; }
 
-    /* <> Command Hub Modal Overlay */
-    #ctsPfCmdModal { position:fixed; inset:0; z-index:99992; display:none; align-items:flex-start; justify-content:flex-end; padding:48px 10px 10px; background:rgba(0,0,0,0.68); backdrop-filter:blur(6px); }
-    #ctsPfCmdModal.open { display:flex; }
-    #ctsPfCmdBox { width:100%; max-width:360px; max-height:84vh; overflow-y:auto; border-radius:15px; background:#0e0a16; color:#f8fafc; border:1.5px solid var(--pf-c1,#38bdf8); box-shadow:0 14px 44px rgba(0,0,0,0.85),0 0 24px rgba(56,189,248,0.25); padding:12px; display:flex; flex-direction:column; gap:10px; animation:ctsPfPop .16s ease; }
-    .cts-pf-cbtn { padding:8px 9px; border-radius:9px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.05); color:#f1f5f9; font-size:11.5px; font-weight:700; cursor:pointer; text-align:left; }
-    .cts-pf-cbtn.act { border-color:var(--pf-c1,#38bdf8); background:linear-gradient(135deg,rgba(56,189,248,0.25),rgba(168,85,247,0.25)); color:#fff; }
-    .cts-pf-cbtn.danger { border-color:rgba(239,68,68,0.45); background:rgba(127,29,29,0.28); color:#fecaca; }
+    /* Compact Core Functions */
+    body.cts-v46-compact .panel-card { padding: 9px 10px !important; margin-bottom: 8px !important; }
+    body.cts-v46-compact .panel-title { margin-bottom: 6px !important; font-size: 12.5px !important; }
+    body.cts-v46-compact .field { margin-bottom: 6px !important; }
+    body.cts-v46-compact .range-row { margin: 4px 0 !important; }
+    body.cts-v46-compact .chk-row { margin: 3px 0 !important; font-size: 11.5px !important; }
 
-    /* 4 Attractive Transition Light-Sweep Overlay & Animations */
-    #ctsPfFxOverlay { position:fixed; inset:0; pointer-events:none; z-index:99999; opacity:0; }
-    #ctsPfFxOverlay.go-laser { opacity:1; background:linear-gradient(90deg,transparent,rgba(56,189,248,0.45),rgba(168,85,247,0.55),transparent); animation:ctsSweepX .38s ease-out forwards; }
-    #ctsPfFxOverlay.go-plasma { opacity:1; background:radial-gradient(circle,rgba(45,212,191,0.45),rgba(59,130,246,0.25),transparent 70%); animation:ctsPulsePop .38s ease-out forwards; }
-    #ctsPfFxOverlay.go-fire { opacity:1; background:linear-gradient(180deg,transparent,rgba(239,68,68,0.45),rgba(245,158,11,0.5),transparent); animation:ctsSweepY .38s ease-out forwards; }
-    #ctsPfFxOverlay.go-gold { opacity:1; box-shadow:inset 0 0 60px rgba(251,191,36,0.75); background:radial-gradient(circle,rgba(254,240,138,0.28),transparent 70%); animation:ctsPulsePop .38s ease-out forwards; }
+    /* Hub Home Workspace */
+    #ctsPf46Hub { width:100%; flex:1 1 auto; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px; box-sizing:border-box; }
+    .cts-pf46-hero { padding:12px 14px; border-radius:14px; background:linear-gradient(135deg,rgba(127,29,29,0.32),rgba(15,23,42,0.8)); border:1px solid rgba(251,191,36,0.38); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .cts-pf46-hubgrid { display:grid; grid-template-columns:1fr; gap:8px; }
+    @media(min-width:640px){ .cts-pf46-hubgrid { grid-template-columns:repeat(2,1fr); } }
+    .cts-pf46-tabcard { padding:13px 14px; border-radius:13px; border:1.5px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); color:#f8fafc; text-align:left; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px; transition:transform .12s,border-color .2s; }
+    .cts-pf46-tabcard:active { transform:scale(0.97); }
+    .cts-pf46-tabcard.pv { border-color:rgba(56,189,248,0.4); background:linear-gradient(135deg,rgba(14,116,144,0.18),rgba(15,23,42,0.55)); }
+    .cts-pf46-tabcard.full { border-color:rgba(251,191,36,0.35); background:linear-gradient(135deg,rgba(120,53,15,0.2),rgba(15,23,42,0.55)); }
 
-    .pf-anim-laser .cts-pf-open-card { animation:ctsSlideL .26s cubic-bezier(.2,.8,.2,1); }
-    .pf-anim-plasma .cts-pf-open-card { animation:ctsZoomIn .26s cubic-bezier(.2,.8,.2,1); }
-    .pf-anim-fire .cts-pf-open-card { animation:ctsRiseUp .26s cubic-bezier(.2,.8,.2,1); }
-    .pf-anim-gold .cts-pf-open-card { animation:ctsFadeGold .28s ease-out; }
+    /* + Add Bar & Unlimited Removable Widgets */
+    .cts-add-slot { margin: 8px 0; display:flex; flex-direction:column; gap:8px; }
+    .cts-add-bar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 10px; border-radius:10px; border:1px dashed rgba(251,191,36,0.55); background:rgba(180,83,9,0.14); }
+    .cts-widget-box { position:relative; padding:10px 11px; border-radius:12px; border:1.5px solid rgba(56,189,248,0.42); background:rgba(10,16,32,0.86); box-shadow:0 4px 16px rgba(0,0,0,0.35); animation:ctsV46Pop .18s ease; }
+    .cts-widget-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.1); }
+    .cts-widget-x { width:26px; height:26px; border-radius:7px; border:1px solid rgba(239,68,68,0.6); background:rgba(127,29,29,0.55); color:#fecaca; font-size:13px; font-weight:900; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
 
-    @keyframes ctsPfBeam { 0%{left:-45%} 100%{left:105%} }
-    @keyframes ctsPfPop { from{opacity:0;transform:translateY(-8px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-    @keyframes ctsSweepX { 0%{transform:translateX(-100%);opacity:1} 100%{transform:translateX(100%);opacity:0} }
-    @keyframes ctsSweepY { 0%{transform:translateY(100%);opacity:1} 100%{transform:translateY(-100%);opacity:0} }
-    @keyframes ctsPulsePop { 0%{transform:scale(.75);opacity:.95} 100%{transform:scale(1.25);opacity:0} }
-    @keyframes ctsSlideL { from{opacity:0;transform:translateX(18px)} to{opacity:1;transform:translateX(0)} }
-    @keyframes ctsZoomIn { from{opacity:0;transform:scale(.95)} to{opacity:1;transform:scale(1)} }
-    @keyframes ctsRiseUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes ctsFadeGold { from{opacity:0;filter:brightness(1.3)} to{opacity:1;filter:brightness(1)} }
+    /* Modals */
+    .cts-pf46-modal { position:fixed; inset:0; z-index:99992; display:none; align-items:center; justify-content:center; padding:12px; background:rgba(0,0,0,0.74); backdrop-filter:blur(6px); }
+    .cts-pf46-modal.open { display:flex; }
+    .cts-pf46-mbox { width:100%; max-width:380px; max-height:86vh; overflow-y:auto; border-radius:15px; background:#0e0a16; color:#f8fafc; border:1.5px solid var(--pf-c1,#38bdf8); box-shadow:0 16px 48px rgba(0,0,0,0.85); padding:13px; display:flex; flex-direction:column; gap:10px; animation:ctsV46Pop .16s ease; }
+    .cts-pf46-mitem { padding:9px 10px; border-radius:9px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.05); color:#f1f5f9; font-size:11.5px; font-weight:700; cursor:pointer; text-align:left; }
+    .cts-pf46-mitem.act { border-color:var(--pf-c1,#38bdf8); background:linear-gradient(135deg,rgba(56,189,248,0.25),rgba(168,85,247,0.25)); color:#fff; }
+    .cts-pf46-mitem.danger { border-color:rgba(239,68,68,0.45); background:rgba(127,29,29,0.28); color:#fecaca; }
+
+    /* 4 Light-Sweep Transition Effects */
+    #ctsPf46Fx { position:fixed; inset:0; pointer-events:none; z-index:99999; opacity:0; }
+    #ctsPf46Fx.go-laser { opacity:1; background:linear-gradient(90deg,transparent,rgba(56,189,248,0.45),rgba(168,85,247,0.5),transparent); animation:cts46SweepX .36s ease-out forwards; }
+    #ctsPf46Fx.go-plasma { opacity:1; background:radial-gradient(circle,rgba(45,212,191,0.42),rgba(59,130,246,0.22),transparent 70%); animation:cts46Pulse .36s ease-out forwards; }
+    #ctsPf46Fx.go-fire { opacity:1; background:linear-gradient(180deg,transparent,rgba(239,68,68,0.42),rgba(245,158,11,0.48),transparent); animation:cts46SweepY .36s ease-out forwards; }
+    #ctsPf46Fx.go-gold { opacity:1; box-shadow:inset 0 0 60px rgba(251,191,36,0.72); background:radial-gradient(circle,rgba(254,240,138,0.25),transparent 70%); animation:cts46Pulse .36s ease-out forwards; }
+
+    @keyframes ctsPf46Beam { 0%{left:-45%} 100%{left:105%} }
+    @keyframes ctsV46Pop { from{opacity:0;transform:translateY(6px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+    @keyframes cts46SweepX { 0%{transform:translateX(-100%);opacity:1} 100%{transform:translateX(100%);opacity:0} }
+    @keyframes cts46SweepY { 0%{transform:translateY(100%);opacity:1} 100%{transform:translateY(-100%);opacity:0} }
+    @keyframes cts46Pulse { 0%{transform:scale(.78);opacity:.95} 100%{transform:scale(1.22);opacity:0} }
   `;
   document.head.appendChild(styleEl);
 
-  // 2. Preview Free-Drag + Remove Dashed Lines
   function updateLockUI() {
     document.body.classList.toggle('cts-drag-free', !cfg.dragLocked);
     document.body.classList.toggle('cts-drag-locked', !!cfg.dragLocked);
-    const b = document.getElementById('ctsPfLockBtn');
+    const b = document.getElementById('ctsPf46LockBtn');
     if (b) {
       b.textContent = cfg.dragLocked ? '🔒 Locked' : '🔓 Free Drag';
       b.style.borderColor = cfg.dragLocked ? '#ef4444' : '#22c55e';
@@ -21825,17 +21840,14 @@ body.cts-desktop-mode #cueList .cue-card {
 
   function installFastPreviewDrag() {
     const vb = document.getElementById('videoBox');
-    if (!vb || vb.__ctsV45Drag) return;
-    vb.__ctsV45Drag = true;
-    vb.addEventListener('pointerdown', () => {
-      if (!cfg.dragLocked) vb.classList.add('cts-dragging-now');
-    }, true);
+    if (!vb || vb.__ctsV46Drag) return;
+    vb.__ctsV46Drag = true;
+    vb.addEventListener('pointerdown', () => { if (!cfg.dragLocked) vb.classList.add('cts-dragging-now'); }, true);
     const off = () => vb.classList.remove('cts-dragging-now');
     window.addEventListener('pointerup', off, true);
     window.addEventListener('pointercancel', off, true);
   }
 
-  // 3. Multi-Style Blur (Preview + Export MP4 — zero touch to translation/lip-sync/audio!)
   function applyBlurPreviewStyle() {
     const bb = document.getElementById('blurBox');
     if (!bb) return;
@@ -21867,14 +21879,12 @@ body.cts-desktop-mode #cueList .cue-card {
 
   let mosaicTmpCvs = null;
   function installBlurExportHook() {
-    if (window.__ctsV45BlurHooked || typeof window.renderExportFrame !== 'function') return;
+    if (window.__ctsV46BlurHooked || typeof window.renderExportFrame !== 'function') return;
     const _origEF = window.renderExportFrame;
-    window.__ctsV45BlurHooked = true;
+    window.__ctsV46BlurHooked = true;
     window.renderExportFrame = function(ctx, cw, ch, el, activeCue, efCfg, bgObj) {
       const st = cfg.blurStyle || 'soft';
-      if (!efCfg || !efCfg.incBlur || st === 'soft') {
-        return _origEF(ctx, cw, ch, el, activeCue, efCfg, bgObj);
-      }
+      if (!efCfg || !efCfg.incBlur || st === 'soft') return _origEF(ctx, cw, ch, el, activeCue, efCfg, bgObj);
       _origEF(ctx, cw, ch, el, activeCue, Object.assign({}, efCfg, { incBlur: false }), bgObj);
       try {
         const p = (typeof pro !== 'undefined' && pro) ? pro : { blurX: 6, blurY: 80, blurW: 88 };
@@ -21904,38 +21914,6 @@ body.cts-desktop-mode #cueList .cue-card {
     };
   }
 
-  function enhanceNativeBlurCard() {
-    const bBtn = document.getElementById('blurToggleBtn');
-    const card = bBtn ? bBtn.closest('.panel-card') : null;
-    if (!card || document.getElementById('ctsV45BlurExtra')) return;
-    const box = document.createElement('div');
-    box.id = 'ctsV45BlurExtra';
-    box.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1)';
-    box.innerHTML = `
-      <div style="font-size:11px;font-weight:700;margin-bottom:5px">🌫️ ម៉ូដ Blur (៥ ជម្រើស • Preview & Export MP4)៖</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
-        ${BLUR_STYLES.map(b => `<button type="button" id="ctsV45NBs-${b.id}" style="padding:6px 4px;border-radius:8px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.05);color:inherit;font-size:11px;font-weight:700;cursor:pointer">${b.name}</button>`).join('')}
-      </div>`;
-    card.appendChild(box);
-    const syncBtns = () => {
-      BLUR_STYLES.forEach(b => {
-        const el = document.getElementById('ctsV45NBs-' + b.id);
-        if (!el) return;
-        const act = cfg.blurStyle === b.id;
-        el.style.borderColor = act ? '#fbbf24' : 'rgba(255,255,255,0.18)';
-        el.style.background = act ? 'linear-gradient(135deg,#78350f,#b45309)' : 'rgba(255,255,255,0.05)';
-        el.style.color = act ? '#fffbeb' : 'inherit';
-      });
-    };
-    BLUR_STYLES.forEach(b => {
-      document.getElementById('ctsV45NBs-' + b.id).onclick = () => {
-        cfg.blurStyle = b.id; saveCfg(); applyBlurPreviewStyle(); syncBtns();
-      };
-    });
-    syncBtns();
-  }
-
-  // 4. Clear Everything + Refresh
   function clearVideoPreview() {
     try {
       const vid = document.getElementById('videoPlayer');
@@ -21991,67 +21969,285 @@ body.cts-desktop-mode #cueList .cue-card {
     if (typeof toast === 'function') toast('🧹 សម្អាត Project ទាំងអស់រួចរាល់ (រក្សា API Keys ទុកដដែល)!');
   }
 
-  // 5. Catalog ALL Tools cleanly with Smart Preview flag (needsPreview: true vs false)
-  function buildCatalog() {
-    const items = [];
-    // Special pure Preview mode (no panel clutter!)
-    items.push({ key: 'preview_only', tabId: 'tab-design', nav: 'design', needsPreview: true, previewOnly: true, icon: '👁️', title: 'Video Preview & Play', sub: 'មើល & អូសកែលើ Video ផ្ទាល់' });
-
-    const tabs = [
-      { id: 'tab-recap',    nav: 'recap',    defPv: false, grp: 'Big Project' },
-      { id: 'tab-cues',     nav: 'cues',     defPv: false, grp: 'Dubber & AI' },
-      { id: 'tab-design',   nav: 'design',   defPv: true,  grp: 'Edit Video' },
-      { id: 'tab-settings', nav: 'settings', defPv: false, grp: 'AI & Export' }
-    ];
-
-    tabs.forEach(t => {
-      const root = document.getElementById(t.id);
-      if (!root) return;
-
-      // Capture direct cards AND nested .panel-card inside .d-pane (like Copyright Pro!)
-      const seen = new Set();
-      const candidates = [...root.querySelectorAll('.panel-card'), ...Array.from(root.children)];
-      candidates.forEach((el, idx) => {
-        if (!el || seen.has(el)) return;
-        // Skip wrapper containers that hold .panel-card children (e.g. .d-pane, .d-stabs)
-        if (el.classList.contains('d-stabs') || el.classList.contains('d-pane') || (!el.classList.contains('panel-card') && el.querySelector('.panel-card'))) return;
-        if (el.id === 'ctsV45BlurExtra' || el.style.display === 'none' && !el.classList.contains('panel-card')) return;
-        seen.add(el);
-
-        const txtRaw = (el.querySelector('.panel-title')?.textContent || el.textContent || '').replace(/\s+/g, ' ').trim();
-        if (!txtRaw) return;
-        let label = txtRaw.slice(0, 34);
-        let icon = t.defPv ? '🎨' : (t.nav === 'recap' ? '🎬' : (t.nav === 'cues' ? '🎙️' : '⚙️'));
-        if (/Blur/i.test(txtRaw)) icon = '🌫️';
-        else if (/Subtitle|អក្សរ/i.test(txtRaw)) icon = '💬';
-        else if (/Logo/i.test(txtRaw)) icon = '👑';
-        else if (/Ticker|រត់/i.test(txtRaw)) icon = '📜';
-        else if (/Sponsor/i.test(txtRaw)) icon = '📢';
-        else if (/Copyright/i.test(txtRaw)) icon = '🛡️';
-        else if (/Zoom|ប្លង់/i.test(txtRaw)) icon = '📐';
-        else if (/API|Gemini|Key/i.test(txtRaw)) icon = '🔑';
-        else if (/Export/i.test(txtRaw)) icon = '📤';
-        else if (/Language|ភាសា/i.test(txtRaw)) icon = '🌐';
-        else if (/Theme|Dark|Classic/i.test(txtRaw)) icon = '🎨';
-        else if (/Glossary|វចនានុក្រម/i.test(txtRaw)) icon = '📚';
-
-        items.push({
-          key: `${t.id}_${idx}`,
-          tabId: t.id,
-          nav: t.nav,
-          needsPreview: t.defPv,
-          el,
-          icon,
-          title: label,
-          sub: t.defPv ? 'មាន Video Preview' : 'បើកពេញអេក្រង់ (គ្មាន Preview)'
-        });
-      });
-    });
-    return items;
+  function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
   }
 
-  function triggerTransitionFx() {
-    const fx = document.getElementById('ctsPfFxOverlay');
+  function renderWidgetBody(typeId, uid, tabKey) {
+    const wrap = document.getElementById(uid + '-body');
+    if (!wrap) return;
+
+    if (typeId === 'blur5') {
+      wrap.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px">
+          ${BLUR_STYLES.map(b => `<button type="button" data-bs="${b.id}" class="cts-pf46-mitem ${cfg.blurStyle === b.id ? 'act' : ''}" style="text-align:center;padding:6px 4px">${b.name}</button>`).join('')}
+        </div>
+        <div class="range-row">
+          <span style="min-width:75px;font-size:11px">កម្រិត Blur</span>
+          <input type="range" id="${uid}-bpwr" min="4" max="28" step="2" value="${cfg.blurPower || 14}">
+          <b style="min-width:34px;text-align:right;font-size:11px">${cfg.blurPower || 14}px</b>
+        </div>
+        <button type="button" id="${uid}-btog" class="cts-pf46-mitem" style="width:100%;text-align:center;margin-top:4px;border-color:#38bdf8">👁️ បើក / បិទ ប្រអប់ Blur លើ Video</button>`;
+      wrap.querySelectorAll('[data-bs]').forEach(b => {
+        b.onclick = () => { cfg.blurStyle = b.getAttribute('data-bs'); saveCfg(); applyBlurPreviewStyle(); renderTabSlot(tabKey); };
+      });
+      document.getElementById(uid + '-bpwr').oninput = function() {
+        cfg.blurPower = parseInt(this.value, 10) || 14; saveCfg(); applyBlurPreviewStyle();
+        this.nextElementSibling.textContent = cfg.blurPower + 'px';
+      };
+      document.getElementById(uid + '-btog').onclick = () => {
+        if (typeof toggleBlur === 'function') toggleBlur();
+        else document.getElementById('blurToggleBtn')?.click();
+        applyBlurPreviewStyle();
+      };
+    } else if (typeId === 'clear') {
+      wrap.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+          <button type="button" data-act="vid" class="cts-pf46-mitem danger">🗑️ លុប Video Preview</button>
+          <button type="button" data-act="sub" class="cts-pf46-mitem danger">🗑️ លុប Subtitles</button>
+          <button type="button" data-act="dub" class="cts-pf46-mitem danger">🗑️ លុបសំឡេង Dub</button>
+          <button type="button" data-act="bgm" class="cts-pf46-mitem danger">🗑️ លុបភ្លេង BGM</button>
+          <button type="button" data-act="fx"  class="cts-pf46-mitem danger">🗑️ លុប Logo / Blur</button>
+          <button type="button" data-act="all" class="cts-pf46-mitem danger">🧹 លុបទាំងអស់ (ថ្មី)</button>
+        </div>
+        <button type="button" data-act="rel" class="cts-pf46-mitem" style="width:100%;text-align:center;margin-top:6px;border-color:#38bdf8;color:#bae6fd">🔄 Refresh App (ផ្ទុកឡើងវិញ — រក្សា API Keys)</button>`;
+      wrap.querySelector('[data-act="vid"]').onclick = clearVideoPreview;
+      wrap.querySelector('[data-act="sub"]').onclick = clearCuesAll;
+      wrap.querySelector('[data-act="dub"]').onclick = clearDubAudioOnly;
+      wrap.querySelector('[data-act="bgm"]').onclick = clearBgmOnly;
+      wrap.querySelector('[data-act="fx"]').onclick  = clearEffectsAndLogo;
+      wrap.querySelector('[data-act="all"]').onclick = clearAllNewProject;
+      wrap.querySelector('[data-act="rel"]').onclick = () => location.reload();
+    } else if (typeId === 'thumb') {
+      wrap.innerHTML = `
+        <div style="text-align:center;margin-bottom:6px"><canvas id="${uid}-cv" style="max-width:100%;max-height:150px;border-radius:8px;border:1px solid rgba(255,255,255,0.15)"></canvas></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">
+          <button type="button" id="${uid}-grab" class="cts-pf46-mitem">📸 ចាប់ Frame វីដេអូ</button>
+          <button type="button" id="${uid}-up" class="cts-pf46-mitem">🖼️ រើសរូបផ្ទាល់</button>
+        </div>
+        <input type="file" id="${uid}-file" accept="image/*" style="display:none">
+        <input type="text" id="${uid}-txt" value="រឿងល្អមើលកំពូលប្រចាំឆ្នាំ!" placeholder="ចំណងជើងលើគម្រប..." style="width:100%;padding:6px 8px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.4);color:#fff;font-size:11.5px;margin-bottom:6px">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:6px">
+          <button type="button" data-rt="16:9" class="cts-pf46-mitem act" style="text-align:center">16:9 YT</button>
+          <button type="button" data-rt="9:16" class="cts-pf46-mitem" style="text-align:center">9:16 TT</button>
+          <button type="button" data-rt="1:1"  class="cts-pf46-mitem" style="text-align:center">1:1 SQ</button>
+        </div>
+        <button type="button" id="${uid}-save" class="cts-pf46-mitem" style="width:100%;text-align:center;border-color:#22c55e;background:rgba(22,101,52,0.45);color:#dcfce7">💾 Save HD PNG</button>`;
+      let thRatio = '16:9', thImg = null;
+      const drawTh = (targetCv, W, H) => {
+        const ctx = targetCv.getContext('2d');
+        targetCv.width = W; targetCv.height = H;
+        const vid = document.getElementById('videoPlayer');
+        const bg = document.getElementById('bgImagePreview');
+        const src = thImg || (vid && vid.readyState >= 2 && vid.videoWidth > 0 ? vid : (bg && bg.naturalWidth > 0 && bg.style.display !== 'none' ? bg : null));
+        if (src) {
+          const sw = src.videoWidth || src.naturalWidth || src.width;
+          const sh = src.videoHeight || src.naturalHeight || src.height;
+          const sc = Math.max(W / sw, H / sh);
+          ctx.drawImage(src, (W - sw * sc) / 2, (H - sh * sc) / 2, sw * sc, sh * sc);
+        } else {
+          const g = ctx.createLinearGradient(0, 0, W, H);
+          g.addColorStop(0, '#1e1b4b'); g.addColorStop(1, '#450a0a');
+          ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+        }
+        const vg = ctx.createLinearGradient(0, H * 0.4, 0, H);
+        vg.addColorStop(0, 'rgba(0,0,0,0.05)'); vg.addColorStop(1, 'rgba(0,0,0,0.86)');
+        ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+        const title = (document.getElementById(uid + '-txt')?.value || '').trim();
+        if (title) {
+          const fs = Math.round(Math.min(W, H) * 0.085);
+          ctx.font = `900 ${fs}px "Kantumruy Pro", sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.lineWidth = Math.max(5, fs * 0.18);
+          ctx.strokeStyle = '#000';
+          ctx.strokeText(title, W / 2, H - fs * 0.85, W * 0.9);
+          ctx.fillStyle = '#fde047';
+          ctx.fillText(title, W / 2, H - fs * 0.85, W * 0.9);
+        }
+      };
+      const refreshTh = () => {
+        const cv = document.getElementById(uid + '-cv');
+        if (!cv) return;
+        const [W, H] = thRatio === '9:16' ? [360, 640] : (thRatio === '1:1' ? [480, 480] : [640, 360]);
+        drawTh(cv, W, H);
+      };
+      document.getElementById(uid + '-grab').onclick = () => { thImg = null; refreshTh(); };
+      document.getElementById(uid + '-up').onclick = () => document.getElementById(uid + '-file').click();
+      document.getElementById(uid + '-file').onchange = (e) => {
+        const f = e.target.files?.[0]; if (!f) return;
+        const im = new Image(); im.onload = () => { thImg = im; refreshTh(); }; im.src = URL.createObjectURL(f);
+      };
+      document.getElementById(uid + '-txt').oninput = refreshTh;
+      wrap.querySelectorAll('[data-rt]').forEach(b => {
+        b.onclick = () => {
+          thRatio = b.getAttribute('data-rt');
+          wrap.querySelectorAll('[data-rt]').forEach(x => x.classList.toggle('act', x === b));
+          refreshTh();
+        };
+      });
+      document.getElementById(uid + '-save').onclick = () => {
+        const hd = document.createElement('canvas');
+        const [W, H] = thRatio === '9:16' ? [1080, 1920] : (thRatio === '1:1' ? [1080, 1080] : [1280, 720]);
+        drawTh(hd, W, H);
+        hd.toBlob(b => {
+          if (!b) return;
+          const u = URL.createObjectURL(b), a = document.createElement('a');
+          a.href = u; a.download = `CTS-Cover-${Date.now()}.png`; a.click();
+          setTimeout(() => URL.revokeObjectURL(u), 3000);
+        }, 'image/png');
+      };
+      setTimeout(refreshTh, 50);
+    } else if (typeId === 'viral') {
+      wrap.innerHTML = `
+        <button type="button" id="${uid}-gen" class="cts-pf46-mitem act" style="width:100%;text-align:center;margin-bottom:6px">✨ AI បង្កើត Title + Caption + Hashtags</button>
+        <textarea id="${uid}-out" rows="4" placeholder="លទ្ធផល Title, Description & Hashtags..." style="width:100%;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,0.18);background:rgba(0,0,0,0.4);color:#fff;font-size:11.5px"></textarea>
+        <button type="button" id="${uid}-cp" class="cts-pf46-mitem" style="width:100%;text-align:center;margin-top:5px;border-color:#22c55e">📋 Copy ទាំងអស់</button>`;
+      document.getElementById(uid + '-gen').onclick = async function() {
+        if (typeof callAI !== 'function') return;
+        const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+        const ctxTxt = list.slice(0, 20).map(c => c.km || c.src || '').filter(Boolean).join('\n') || document.getElementById('recapKm')?.value?.slice(0, 1200) || '';
+        if (!ctxTxt) { if (typeof toast === 'function') toast('⚠️ មិនទាន់មានសាច់រឿងទេ!'); return; }
+        this.textContent = '⏳ AI កំពុងសរសេរ...';
+        try {
+          const res = await callAI('Create 2 viral titles, 2-line engaging caption, and 8 hashtags in Khmer for TikTok/Facebook/YouTube.', ctxTxt);
+          document.getElementById(uid + '-out').value = String(res || '').trim();
+        } catch (e) { if (typeof toast === 'function') toast('⚠️ ' + (e.message || e)); }
+        this.textContent = '✨ AI បង្កើត Title + Caption + Hashtags';
+      };
+      document.getElementById(uid + '-cp').onclick = () => {
+        const v = document.getElementById(uid + '-out').value;
+        if (v && navigator.clipboard) navigator.clipboard.writeText(v).then(() => { if (typeof toast === 'function') toast('📋 Copy រួចរាល់!'); });
+      };
+    }
+  }
+
+  // Verified exact anchor IDs from v34-Desktop (#cueCountTxt / #cueList / #bpSplitResCount)
+  function findAddAnchorInTab(tabKey) {
+    if (tabKey === 'cues') {
+      const tab = document.getElementById('tab-cues');
+      if (!tab) return null;
+      const anchorNode = document.getElementById('cueCountTxt') || document.getElementById('cueList');
+      if (anchorNode) {
+        let blk = anchorNode;
+        while (blk && blk.parentElement !== tab) blk = blk.parentElement;
+        return { parent: tab, beforeEl: blk };
+      }
+      return { parent: tab, beforeEl: null };
+    }
+    if (tabKey === 'recap') {
+      const tab = document.getElementById('tab-recap');
+      if (!tab) return null;
+      const splitNode = document.getElementById('bpSplitResCount') || document.getElementById('recapExportBanner');
+      if (splitNode) {
+        let blk = splitNode;
+        while (blk && blk.parentElement !== tab) blk = blk.parentElement;
+        return { parent: tab, beforeEl: blk };
+      }
+      return { parent: tab, beforeEl: null };
+    }
+    if (tabKey === 'design') {
+      const tab = document.getElementById('tab-design');
+      return tab ? { parent: tab, beforeEl: null } : null;
+    }
+    if (tabKey === 'settings') {
+      const tab = document.getElementById('tab-settings');
+      if (!tab) return null;
+      const exp = Array.from(tab.children).find(el => /Export/i.test(el.querySelector('.panel-title')?.textContent || ''));
+      return { parent: tab, beforeEl: exp || null };
+    }
+    return null;
+  }
+
+  function renderTabSlot(tabKey) {
+    const slotId = 'cts-addslot-' + tabKey;
+    let slot = document.getElementById(slotId);
+    if (!slot) {
+      const anc = findAddAnchorInTab(tabKey);
+      if (!anc) return;
+      slot = document.createElement('div');
+      slot.id = slotId;
+      slot.className = 'cts-add-slot';
+      slot.setAttribute('data-no-i18n', '1');
+      if (anc.beforeEl) anc.beforeEl.insertAdjacentElement('beforebegin', slot);
+      else anc.parent.appendChild(slot);
+    }
+
+    const list = cfg.addedWidgets[tabKey] || [];
+    slot.innerHTML = `
+      <div class="cts-add-bar">
+        <span style="font-size:11.5px;font-weight:800;color:#fde68a">➕ មុខងារបន្ថែម (${list.length})</span>
+        <button type="button" data-openadd="${tabKey}" class="cts-pf46-btn glow" style="height:28px;font-size:11.5px;padding:0 11px">+ Add មុខងារ</button>
+      </div>
+      ${list.map((w, idx) => {
+        const meta = WIDGET_CATALOG.find(x => x.id === w.type) || { icon: '✨', title: w.type };
+        const uid = `cts-w-${tabKey}-${idx}`;
+        return `
+          <div class="cts-widget-box" id="${uid}">
+            <div class="cts-widget-head">
+              <b style="font-size:12px;color:#e0f2fe">${meta.icon} ${escHtml(meta.title)}</b>
+              <button type="button" data-rm="${idx}" class="cts-widget-x" title="ដកចេញ">×</button>
+            </div>
+            <div id="${uid}-body"></div>
+          </div>`;
+      }).join('')}
+    `;
+
+    slot.querySelector('[data-openadd]').onclick = () => openAddModal(tabKey);
+    slot.querySelectorAll('[data-rm]').forEach(b => {
+      b.onclick = () => {
+        const idx = parseInt(b.getAttribute('data-rm'), 10);
+        cfg.addedWidgets[tabKey].splice(idx, 1);
+        saveCfg();
+        renderTabSlot(tabKey);
+      };
+    });
+
+    list.forEach((w, idx) => renderWidgetBody(w.type, `cts-w-${tabKey}-${idx}`, tabKey));
+  }
+
+  let addModalTargetTab = 'cues';
+  function openAddModal(tabKey) {
+    addModalTargetTab = tabKey;
+    const m = document.getElementById('ctsPf46AddModal');
+    const box = document.getElementById('ctsPf46AddBox');
+    if (!m || !box) return;
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <b style="font-size:13px;color:#fbbf24">➕ រើសមុខងារបន្ថែម (គ្មានកំណត់)</b>
+        <button type="button" id="ctsPf46AddX" class="cts-pf46-btn" style="height:28px;min-width:28px">✕</button>
+      </div>
+      ${WIDGET_CATALOG.map(w => `
+        <button type="button" data-pick="${w.id}" class="cts-pf46-mitem">
+          <div style="font-size:12px;font-weight:800">${w.icon} ${escHtml(w.title)}</div>
+          <div style="font-size:10px;opacity:.75;margin-top:2px">${escHtml(w.desc)}</div>
+        </button>`).join('')}
+    `;
+    document.getElementById('ctsPf46AddX').onclick = () => m.classList.remove('open');
+    box.querySelectorAll('[data-pick]').forEach(b => {
+      b.onclick = () => {
+        const t = b.getAttribute('data-pick');
+        if (!cfg.addedWidgets[addModalTargetTab]) cfg.addedWidgets[addModalTargetTab] = [];
+        cfg.addedWidgets[addModalTargetTab].push({ type: t, ts: Date.now() });
+        saveCfg();
+        m.classList.remove('open');
+        renderTabSlot(addModalTargetTab);
+      };
+    });
+    m.classList.add('open');
+  }
+
+  const VIEW_ORDER = ['hub', 'recap', 'cues', 'design', 'settings', 'preview'];
+  const VIEW_LABELS = {
+    hub:      '🏠 CTS ProFlow Hub',
+    recap:    '🎬 Big Project',
+    cues:     '🎙️ Dubber & AI',
+    design:   '🎨 Edit Video',
+    settings: '⚙️ AI & Export',
+    preview:  '👁️ Video Preview & Play'
+  };
+
+  function triggerFx() {
+    const fx = document.getElementById('ctsPf46Fx');
     if (!fx) return;
     fx.className = '';
     void fx.offsetWidth;
@@ -22062,289 +22258,229 @@ body.cts-desktop-mode #cueList .cue-card {
     const st = ANIM_STYLES.find(a => a.id === cfg.animStyle) || ANIM_STYLES[0];
     document.documentElement.style.setProperty('--pf-c1', st.c1);
     document.documentElement.style.setProperty('--pf-c2', st.c2);
-    ANIM_STYLES.forEach(a => document.body.classList.remove(a.cls));
-    document.body.classList.add(st.cls);
   }
 
-  function clearOpenClasses() {
-    document.querySelectorAll('.cts-pf-open-tab').forEach(x => x.classList.remove('cts-pf-open-tab'));
-    document.querySelectorAll('.cts-pf-open-card').forEach(x => x.classList.remove('cts-pf-open-card'));
-    document.querySelectorAll('.cts-pf-open-ancestor').forEach(x => x.classList.remove('cts-pf-open-ancestor'));
-  }
-
-  function goHub(withFx) {
-    if (withFx) triggerTransitionFx();
-    cfg.viewMode = 'hub';
-    cfg.activeKey = '';
+  function setView(v, withFx) {
+    if (!VIEW_ORDER.includes(v)) v = 'hub';
+    if (withFx) triggerFx();
+    cfg.view = v;
     saveCfg();
-    clearOpenClasses();
-    document.body.classList.add('cts-pf-on', 'cts-pf-in-hub', 'cts-pf-hide-preview');
-    document.body.classList.remove('cts-pf-in-panel', 'cts-pf-show-preview', 'cts-pf-preview-only');
-    const ttl = document.getElementById('ctsPfTitle');
-    if (ttl) ttl.textContent = '🏠 CTS ProFlow Studio';
-    renderHubTiles();
-  }
 
-  function openItem(key, withFx) {
-    const list = buildCatalog();
-    const item = list.find(x => x.key === key) || list[0];
-    if (!item) return;
-    if (withFx) triggerTransitionFx();
+    document.body.classList.add('cts-v46-on');
+    document.body.classList.toggle('cts-v46-compact', !!cfg.compactCore);
+    document.body.classList.toggle('cts-v46-hub', v === 'hub');
+    document.body.classList.toggle('cts-v46-tab', ['recap', 'cues', 'design', 'settings'].includes(v));
+    document.body.classList.toggle('cts-v46-preview', v === 'preview');
 
-    cfg.viewMode = 'panel';
-    cfg.activeKey = item.key;
-    saveCfg();
-    clearOpenClasses();
+    const showPv = (v === 'design') || (v === 'cues' && cfg.cuesShowPv);
+    document.body.classList.toggle('cts-v46-with-pv', showPv);
+    document.body.classList.toggle('cts-v46-no-pv', !showPv && v !== 'preview');
 
-    if (typeof switchTab === 'function') {
-      try { switchTab(item.nav); } catch (e) {}
+    if (['recap', 'cues', 'design', 'settings'].includes(v)) {
+      if (typeof switchTab === 'function') { try { switchTab(v); } catch (e) {} }
+      else document.getElementById('nav-' + v)?.click();
+      renderTabSlot(v);
     }
 
-    document.body.classList.add('cts-pf-on', 'cts-pf-in-panel');
-    document.body.classList.remove('cts-pf-in-hub');
+    const ttl = document.getElementById('ctsPf46Title');
+    if (ttl) ttl.textContent = VIEW_LABELS[v] || 'CTS ProFlow';
 
-    const showPv = !!item.needsPreview || (item.nav === 'cues' && cfg.dubShowPreview);
-    document.body.classList.toggle('cts-pf-show-preview', showPv);
-    document.body.classList.toggle('cts-pf-hide-preview', !showPv);
-    document.body.classList.toggle('cts-pf-preview-only', !!item.previewOnly);
-
-    const tabEl = document.getElementById(item.tabId);
-    if (tabEl && !item.previewOnly) tabEl.classList.add('cts-pf-open-tab');
-
-    if (item.el) {
-      // Activate matching .d-pane tab if inside #tab-design!
-      const dp = item.el.closest('.d-pane');
-      if (dp) {
-        const dpId = dp.id ? dp.id.replace(/^dpane-/, '') : (dp.dataset?.dpane || '');
-        if (dpId) {
-          const stab = document.querySelector(`.d-stab[data-dpane="${dpId}"]`);
-          if (stab) { try { stab.click(); } catch (e) {} }
-        }
-        dp.classList.add('cts-pf-open-ancestor');
-      }
-      let p = item.el.parentElement;
-      while (p && !p.classList.contains('tab-content')) {
-        p.classList.add('cts-pf-open-ancestor');
-        p = p.parentElement;
-      }
-      item.el.classList.add('cts-pf-open-card');
+    const pvToggle = document.getElementById('ctsPf46PvTog');
+    if (pvToggle) {
+      pvToggle.style.display = (v === 'cues') ? 'inline-flex' : 'none';
+      pvToggle.textContent = cfg.cuesShowPv ? '👁️ លាក់ Preview' : '👁️ បើក Preview';
     }
 
-    const ttl = document.getElementById('ctsPfTitle');
-    if (ttl) ttl.textContent = `${item.icon} ${item.title}`;
     closeCmdModal();
   }
 
-  function stepItem(dir) {
-    const list = buildCatalog();
-    if (!list.length) return;
-    if (cfg.viewMode === 'hub') {
-      openItem(dir > 0 ? list[0].key : list[list.length - 1].key, true);
-      return;
-    }
-    const idx = list.findIndex(x => x.key === cfg.activeKey);
-    const nextIdx = (idx === -1) ? 0 : (idx + dir + list.length) % list.length;
-    openItem(list[nextIdx].key, true);
+  function stepView(dir) {
+    const idx = VIEW_ORDER.indexOf(cfg.view);
+    const next = VIEW_ORDER[(idx + dir + VIEW_ORDER.length) % VIEW_ORDER.length];
+    setView(next, true);
   }
 
-  function escHtml(s) {
-    return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
-  }
-
-  function renderHubTiles() {
-    const hub = document.getElementById('ctsPfHub');
+  function renderHub() {
+    const hub = document.getElementById('ctsPf46Hub');
     if (!hub) return;
-    const list = buildCatalog();
-    const pvList = list.filter(x => x.needsPreview);
-    const fullList = list.filter(x => !x.needsPreview);
-
     hub.innerHTML = `
-      <div class="cts-pf-hub-hero">
+      <div class="cts-pf46-hero">
         <div>
-          <div style="font-size:13.5px;font-weight:900;color:#fde68a">🎬 CTS ProFlow Workspace</div>
-          <div style="font-size:11px;opacity:.78;margin-top:2px">ជ្រើសរើសផ្ទាំងការងារ (ដាច់ដោយឡែកពីគ្នា ១០០%)</div>
+          <div style="font-size:14px;font-weight:900;color:#fde68a">🎬 CTS KING TOOL PRO</div>
+          <div style="font-size:11px;opacity:.8;margin-top:2px">ជ្រើសរើសផ្ទាំងការងារ (ដាច់ដោយឡែកពីគ្នា ១០០%)</div>
         </div>
-        <button type="button" id="ctsPfHubAddVid" class="cts-pf-iconbtn glow" style="font-size:11.5px;padding:0 12px">📥 ដាក់ Video</button>
+        <button type="button" id="ctsPf46HubVid" class="cts-pf46-btn glow">📥 ដាក់ Video</button>
       </div>
-
-      <div class="cts-pf-sec">🖥️ មុខងារពេញអេក្រង់ (មិនបង្ហាញ Preview)</div>
-      <div class="cts-pf-grid">
-        ${fullList.map(it => `<button type="button" data-open="${escHtml(it.key)}" class="cts-pf-tile full"><b>${it.icon} ${escHtml(it.title)}</b><span>${escHtml(it.sub)}</span></button>`).join('')}
-      </div>
-
-      <div class="cts-pf-sec">🎞️ មុខងារកែវីដេអូ (បង្ហាញ Video Preview រួមគ្នា)</div>
-      <div class="cts-pf-grid">
-        ${pvList.map(it => `<button type="button" data-open="${escHtml(it.key)}" class="cts-pf-tile pv"><b>${it.icon} ${escHtml(it.title)}</b><span>${escHtml(it.sub)}</span></button>`).join('')}
+      <div class="cts-pf46-hubgrid">
+        <button type="button" data-go="recap" class="cts-pf46-tabcard full">
+          <div><b style="font-size:13px">🎬 Big Project</b><div style="font-size:10.5px;opacity:.75;margin-top:2px">សម្រាយរឿងវែង (ពេញអេក្រង់ • គ្មាន Preview)</div></div>
+          <span style="font-size:18px">›</span>
+        </button>
+        <button type="button" data-go="cues" class="cts-pf46-tabcard pv">
+          <div><b style="font-size:13px">🎙️ Dubber & AI</b><div style="font-size:10.5px;opacity:.75;margin-top:2px">បកប្រែ + បញ្ចូលសំឡេង + Cues + Add Tools</div></div>
+          <span style="font-size:18px">›</span>
+        </button>
+        <button type="button" data-go="design" class="cts-pf46-tabcard pv">
+          <div><b style="font-size:13px">🎨 Edit Video</b><div style="font-size:10.5px;opacity:.75;margin-top:2px">Video Preview ធំ + Logo / Blur 5 ម៉ូដ / Subtitle</div></div>
+          <span style="font-size:18px">›</span>
+        </button>
+        <button type="button" data-go="settings" class="cts-pf46-tabcard full">
+          <div><b style="font-size:13px">⚙️ AI & Export</b><div style="font-size:10.5px;opacity:.75;margin-top:2px">API Keys + ភាសា + Export MP4 (ពេញអេក្រង់)</div></div>
+          <span style="font-size:18px">›</span>
+        </button>
+        <button type="button" data-go="preview" class="cts-pf46-tabcard pv">
+          <div><b style="font-size:13px">👁️ Video Preview & Play</b><div style="font-size:10.5px;opacity:.75;margin-top:2px">មើល Video Preview ធំពេញភ្នែក + អូសកែផ្ទាល់</div></div>
+          <span style="font-size:18px">›</span>
+        </button>
       </div>
     `;
-
-    document.getElementById('ctsPfHubAddVid').onclick = () => document.getElementById('videoInput')?.click();
-    hub.querySelectorAll('[data-open]').forEach(b => {
-      b.onclick = () => openItem(b.getAttribute('data-open'), true);
+    document.getElementById('ctsPf46HubVid').onclick = () => document.getElementById('videoInput')?.click();
+    hub.querySelectorAll('[data-go]').forEach(b => {
+      b.onclick = () => setView(b.getAttribute('data-go'), true);
     });
   }
 
   function openCmdModal() {
-    const m = document.getElementById('ctsPfCmdModal');
-    if (!m) return;
-    renderCmdModal();
+    const m = document.getElementById('ctsPf46CmdModal');
+    const box = document.getElementById('ctsPf46CmdBox');
+    if (!m || !box) return;
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <b style="font-size:13px;color:#fbbf24">⟨ ⟩ Menu & Switcher</b>
+        <button type="button" id="ctsPf46CmdX" class="cts-pf46-btn" style="height:28px;min-width:28px">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <button type="button" id="ctsCmdVid" class="cts-pf46-mitem">📥 ដាក់ Video</button>
+        <button type="button" id="ctsCmdExp" class="cts-pf46-mitem">📤 Export Video</button>
+        <button type="button" id="ctsCmdLang" class="cts-pf46-mitem">🌐 ប្តូរភាសា / Theme</button>
+        <button type="button" id="ctsCmdHub" class="cts-pf46-mitem">🏠 ត្រឡប់ Hub</button>
+      </div>
+      <label class="chk-row" style="margin:2px 0"><input type="checkbox" id="ctsCmdCmp" ${cfg.compactCore ? 'checked' : ''}><span>📐 បង្រួមមុខងារគោលឱ្យតូចស្អាតងាយចុច</span></label>
+      <div style="font-size:10.5px;font-weight:800;color:#94a3b8">✨ 4 Style ចលនាភ្លើងរត់ពេលប្តូរ Tab</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        ${ANIM_STYLES.map(a => `<button type="button" data-anim="${a.id}" class="cts-pf46-mitem ${cfg.animStyle === a.id ? 'act' : ''}">${a.name}</button>`).join('')}
+      </div>
+      <div style="font-size:10.5px;font-weight:800;color:#94a3b8">🗑️ លុបតាមផ្នែក & 🔄 Refresh</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        <button type="button" id="ctsCmdCV" class="cts-pf46-mitem danger">🗑️ លុប Video</button>
+        <button type="button" id="ctsCmdCS" class="cts-pf46-mitem danger">🗑️ លុប Subtitles</button>
+        <button type="button" id="ctsCmdCD" class="cts-pf46-mitem danger">🗑️ លុប Dub Audio</button>
+        <button type="button" id="ctsCmdCA" class="cts-pf46-mitem danger">🧹 លុបទាំងអស់</button>
+      </div>
+      <button type="button" id="ctsCmdRel" class="cts-pf46-mitem" style="text-align:center;border-color:#38bdf8;color:#bae6fd">🔄 Refresh App (រក្សា API Keys)</button>
+      <div style="font-size:10.5px;font-weight:800;color:#94a3b8">🧭 ប្តូរទៅ Tab</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        ${VIEW_ORDER.map(v => `<button type="button" data-vgo="${v}" class="cts-pf46-mitem ${cfg.view === v ? 'act' : ''}">${VIEW_LABELS[v]}</button>`).join('')}
+      </div>
+    `;
+    document.getElementById('ctsPf46CmdX').onclick = closeCmdModal;
+    document.getElementById('ctsCmdVid').onclick = () => { closeCmdModal(); document.getElementById('videoInput')?.click(); };
+    document.getElementById('ctsCmdExp').onclick = () => setView('settings', true);
+    document.getElementById('ctsCmdLang').onclick = () => setView('settings', true);
+    document.getElementById('ctsCmdHub').onclick = () => setView('hub', true);
+    document.getElementById('ctsCmdCmp').onchange = function() {
+      cfg.compactCore = this.checked; saveCfg();
+      document.body.classList.toggle('cts-v46-compact', !!cfg.compactCore);
+    };
+    box.querySelectorAll('[data-anim]').forEach(b => {
+      b.onclick = () => { cfg.animStyle = b.getAttribute('data-anim'); saveCfg(); applyAnimColors(); triggerFx(); openCmdModal(); };
+    });
+    document.getElementById('ctsCmdCV').onclick = () => { clearVideoPreview(); closeCmdModal(); };
+    document.getElementById('ctsCmdCS').onclick = () => { clearCuesAll(); closeCmdModal(); };
+    document.getElementById('ctsCmdCD').onclick = () => { clearDubAudioOnly(); closeCmdModal(); };
+    document.getElementById('ctsCmdCA').onclick = () => { clearAllNewProject(); closeCmdModal(); };
+    document.getElementById('ctsCmdRel').onclick = () => location.reload();
+    box.querySelectorAll('[data-vgo]').forEach(b => {
+      b.onclick = () => setView(b.getAttribute('data-vgo'), true);
+    });
     m.classList.add('open');
   }
   function closeCmdModal() {
-    const m = document.getElementById('ctsPfCmdModal');
-    if (m) m.classList.remove('open');
+    document.getElementById('ctsPf46CmdModal')?.classList.remove('open');
   }
 
-  function renderCmdModal() {
-    const box = document.getElementById('ctsPfCmdBox');
-    if (!box) return;
-    const list = buildCatalog();
-
-    box.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <b style="font-size:13px;color:#fbbf24">⟨ ⟩ CTS Quick Command Hub</b>
-        <button type="button" id="ctsPfCmdClose" class="cts-pf-iconbtn" style="height:28px;min-width:28px">✕</button>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <button type="button" id="ctsPfCmdVid" class="cts-pf-cbtn">📥 ដាក់ Video</button>
-        <button type="button" id="ctsPfCmdExp" class="cts-pf-cbtn">📤 Export Video</button>
-        <button type="button" id="ctsPfCmdLang" class="cts-pf-cbtn">🌐 ប្តូរភាសា</button>
-        <button type="button" id="ctsPfCmdHub" class="cts-pf-cbtn">🏠 ត្រឡប់ Hub</button>
-      </div>
-
-      <div style="font-size:10.5px;font-weight:800;color:#94a3b8">✨ 4 Style ចលនាពេលប្តូរ Tab (ភ្លើងរត់)</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-        ${ANIM_STYLES.map(a => `<button type="button" data-anim="${a.id}" class="cts-pf-cbtn ${cfg.animStyle === a.id ? 'act' : ''}">${a.name}</button>`).join('')}
-      </div>
-
-      <div style="font-size:10.5px;font-weight:800;color:#94a3b8">🗑️ លុបតាមផ្នែក & 🔄 Refresh</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-        <button type="button" id="ctsPfClrVid" class="cts-pf-cbtn danger">🗑️ លុប Video</button>
-        <button type="button" id="ctsPfClrSub" class="cts-pf-cbtn danger">🗑️ លុប Subtitles</button>
-        <button type="button" id="ctsPfClrDub" class="cts-pf-cbtn danger">🗑️ លុប Dub Audio</button>
-        <button type="button" id="ctsPfClrBgm" class="cts-pf-cbtn danger">🗑️ លុប BGM</button>
-        <button type="button" id="ctsPfClrFx"  class="cts-pf-cbtn danger">🗑️ លុប Logo/Blur</button>
-        <button type="button" id="ctsPfClrAll" class="cts-pf-cbtn danger">🧹 លុបទាំងអស់</button>
-      </div>
-      <button type="button" id="ctsPfReload" class="cts-pf-cbtn" style="text-align:center;border-color:#38bdf8;color:#bae6fd">🔄 Refresh App (រក្សា API Keys)</button>
-
-      <div style="font-size:10.5px;font-weight:800;color:#94a3b8">🧭 ផ្លាស់ទីទៅមុខងារផ្ទាល់</div>
-      <div style="display:flex;flex-direction:column;gap:4px">
-        ${list.map(it => `<button type="button" data-jump="${escHtml(it.key)}" class="cts-pf-cbtn ${cfg.activeKey === it.key ? 'act' : ''}">${it.icon} ${escHtml(it.title)}</button>`).join('')}
-      </div>
-    `;
-
-    document.getElementById('ctsPfCmdClose').onclick = closeCmdModal;
-    document.getElementById('ctsPfCmdVid').onclick = () => { closeCmdModal(); document.getElementById('videoInput')?.click(); };
-    document.getElementById('ctsPfCmdHub').onclick = () => { closeCmdModal(); goHub(true); };
-    document.getElementById('ctsPfCmdLang').onclick = () => {
-      closeCmdModal();
-      const langCard = list.find(x => /Language|ភាសា/i.test(x.title));
-      if (langCard) openItem(langCard.key, true);
-    };
-    document.getElementById('ctsPfCmdExp').onclick = () => {
-      closeCmdModal();
-      const expCard = list.find(x => /Export/i.test(x.title));
-      if (expCard) openItem(expCard.key, true);
-    };
-
-    box.querySelectorAll('[data-anim]').forEach(b => {
-      b.onclick = () => {
-        cfg.animStyle = b.getAttribute('data-anim');
-        saveCfg();
-        applyAnimColors();
-        triggerTransitionFx();
-        renderCmdModal();
-      };
-    });
-
-    document.getElementById('ctsPfClrVid').onclick = () => { clearVideoPreview(); closeCmdModal(); };
-    document.getElementById('ctsPfClrSub').onclick = () => { clearCuesAll(); closeCmdModal(); };
-    document.getElementById('ctsPfClrDub').onclick = () => { clearDubAudioOnly(); closeCmdModal(); };
-    document.getElementById('ctsPfClrBgm').onclick = () => { clearBgmOnly(); closeCmdModal(); };
-    document.getElementById('ctsPfClrFx').onclick  = () => { clearEffectsAndLogo(); closeCmdModal(); };
-    document.getElementById('ctsPfClrAll').onclick = () => { clearAllNewProject(); closeCmdModal(); };
-    document.getElementById('ctsPfReload').onclick = () => location.reload();
-
-    box.querySelectorAll('[data-jump]').forEach(b => {
-      b.onclick = () => openItem(b.getAttribute('data-jump'), true);
-    });
-  }
-
-  function mountProFlow() {
-    if (document.getElementById('ctsPfTopBar')) return;
+  function mountProFlow46() {
+    if (document.getElementById('ctsPf46Bar')) return;
 
     const header = document.querySelector('.app-header');
     const bar = document.createElement('div');
-    bar.id = 'ctsPfTopBar';
+    bar.id = 'ctsPf46Bar';
     bar.setAttribute('data-no-i18n', '1');
     bar.innerHTML = `
-      <button type="button" id="ctsPfBackBtn" class="cts-pf-iconbtn">←</button>
-      <div id="ctsPfTitle">🏠 CTS ProFlow Studio</div>
+      <button type="button" id="ctsPf46Back" class="cts-pf46-btn">←</button>
+      <div id="ctsPf46Title">🏠 CTS ProFlow Hub</div>
       <div style="display:flex;align-items:center;gap:4px">
-        <button type="button" id="ctsPfPrevBtn" class="cts-pf-iconbtn" style="padding:0 8px">‹</button>
-        <button type="button" id="ctsPfCmdBtn" class="cts-pf-iconbtn glow" style="padding:0 9px">⟨ ⟩</button>
-        <button type="button" id="ctsPfNextBtn" class="cts-pf-iconbtn" style="padding:0 8px">›</button>
+        <button type="button" id="ctsPf46Prev" class="cts-pf46-btn" style="padding:0 8px">‹</button>
+        <button type="button" id="ctsPf46Cmd"  class="cts-pf46-btn glow" style="padding:0 9px">⟨ ⟩</button>
+        <button type="button" id="ctsPf46Next" class="cts-pf46-btn" style="padding:0 8px">›</button>
       </div>`;
     if (header) header.insertAdjacentElement('afterend', bar);
     else document.body.prepend(bar);
 
-    // Compact Preview Controls Strip (only visible when Preview is shown)
     const pStrip = document.createElement('div');
-    pStrip.id = 'ctsPfPreviewStrip';
+    pStrip.id = 'ctsPf46PvStrip';
     pStrip.setAttribute('data-no-i18n', '1');
     pStrip.innerHTML = `
-      <div style="display:flex;gap:5px">
-        <button type="button" id="ctsPfLockBtn" class="cts-pf-iconbtn" style="height:28px;font-size:11px">🔓 Free Drag</button>
-        <button type="button" id="ctsPfResetPos" class="cts-pf-iconbtn" style="height:28px;font-size:11px">↺ Reset</button>
+      <div style="display:flex;gap:4px">
+        <button type="button" id="ctsPf46LockBtn" class="cts-pf46-btn" style="height:27px;font-size:10.5px;padding:0 8px">🔓 Free Drag</button>
+        <button type="button" id="ctsPf46ResetPos" class="cts-pf46-btn" style="height:27px;font-size:10.5px;padding:0 8px">↺ Reset</button>
+        <button type="button" id="ctsPf46PvTog" class="cts-pf46-btn" style="height:27px;font-size:10.5px;padding:0 8px;display:none">👁️ លាក់ Preview</button>
       </div>
-      <button type="button" id="ctsPfClrVidTop" class="cts-pf-iconbtn" style="height:28px;font-size:11px;border-color:rgba(239,68,68,0.5);color:#fecaca">🗑️ លុប Video</button>`;
+      <button type="button" id="ctsPf46ClrVid" class="cts-pf46-btn" style="height:27px;font-size:10.5px;padding:0 8px;border-color:rgba(239,68,68,0.55);color:#fecaca">🗑️ លុប Video</button>`;
     const playerSec = document.getElementById('playerSection');
     if (playerSec) playerSec.insertAdjacentElement('beforebegin', pStrip);
 
-    // Workspace Home Hub
     const hub = document.createElement('div');
-    hub.id = 'ctsPfHub';
+    hub.id = 'ctsPf46Hub';
     hub.setAttribute('data-no-i18n', '1');
     const firstTab = document.getElementById('tab-recap');
     if (firstTab) firstTab.insertAdjacentElement('beforebegin', hub);
     else bar.insertAdjacentElement('afterend', hub);
 
-    // Command Hub Overlay
     const cmdM = document.createElement('div');
-    cmdM.id = 'ctsPfCmdModal';
+    cmdM.id = 'ctsPf46CmdModal';
+    cmdM.className = 'cts-pf46-modal';
     cmdM.setAttribute('data-no-i18n', '1');
-    cmdM.innerHTML = `<div id="ctsPfCmdBox"></div>`;
+    cmdM.innerHTML = `<div class="cts-pf46-mbox" id="ctsPf46CmdBox"></div>`;
     cmdM.onclick = (e) => { if (e.target === cmdM) closeCmdModal(); };
     document.body.appendChild(cmdM);
 
-    // Transition Light-Sweep FX Layer
+    const addM = document.createElement('div');
+    addM.id = 'ctsPf46AddModal';
+    addM.className = 'cts-pf46-modal';
+    addM.setAttribute('data-no-i18n', '1');
+    addM.innerHTML = `<div class="cts-pf46-mbox" id="ctsPf46AddBox"></div>`;
+    addM.onclick = (e) => { if (e.target === addM) addM.classList.remove('open'); };
+    document.body.appendChild(addM);
+
     const fx = document.createElement('div');
-    fx.id = 'ctsPfFxOverlay';
+    fx.id = 'ctsPf46Fx';
     document.body.appendChild(fx);
 
-    document.getElementById('ctsPfBackBtn').onclick = () => goHub(true);
-    document.getElementById('ctsPfPrevBtn').onclick = () => stepItem(-1);
-    document.getElementById('ctsPfNextBtn').onclick = () => stepItem(1);
-    document.getElementById('ctsPfCmdBtn').onclick = openCmdModal;
-    document.getElementById('ctsPfLockBtn').onclick = () => { cfg.dragLocked = !cfg.dragLocked; saveCfg(); updateLockUI(); };
-    document.getElementById('ctsPfResetPos').onclick = () => document.getElementById('ctsResetPosBtn')?.click();
-    document.getElementById('ctsPfClrVidTop').onclick = clearVideoPreview;
+    document.getElementById('ctsPf46Back').onclick = () => setView('hub', true);
+    document.getElementById('ctsPf46Prev').onclick = () => stepView(-1);
+    document.getElementById('ctsPf46Next').onclick = () => stepView(1);
+    document.getElementById('ctsPf46Cmd').onclick = openCmdModal;
+    document.getElementById('ctsPf46LockBtn').onclick = () => { cfg.dragLocked = !cfg.dragLocked; saveCfg(); updateLockUI(); };
+    document.getElementById('ctsPf46ResetPos').onclick = () => document.getElementById('ctsResetPosBtn')?.click();
+    document.getElementById('ctsPf46ClrVid').onclick = clearVideoPreview;
+    document.getElementById('ctsPf46PvTog').onclick = () => { cfg.cuesShowPv = !cfg.cuesShowPv; saveCfg(); setView('cues', false); };
 
     applyAnimColors();
     updateLockUI();
     installFastPreviewDrag();
     installBlurExportHook();
-    enhanceNativeBlurCard();
     applyBlurPreviewStyle();
-
-    if (cfg.viewMode === 'panel' && cfg.activeKey) openItem(cfg.activeKey, false);
-    else goHub(false);
+    renderHub();
+    ['recap', 'cues', 'design', 'settings'].forEach(renderTabSlot);
+    setView(cfg.view || 'hub', false);
   }
 
-  setTimeout(mountProFlow, 450);
-  setTimeout(() => { installBlurExportHook(); enhanceNativeBlurCard(); if (cfg.viewMode === 'hub') renderHubTiles(); }, 1700);
+  setTimeout(mountProFlow46, 400);
+  setTimeout(() => {
+    installBlurExportHook();
+    ['recap', 'cues', 'design', 'settings'].forEach(renderTabSlot);
+  }, 1600);
 })();
 </script>
 
