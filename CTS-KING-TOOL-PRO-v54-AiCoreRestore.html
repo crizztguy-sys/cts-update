@@ -21842,6 +21842,7 @@ body.cts-desktop-mode #cueList .cue-card {
     { id: 'clear', icon: '🗑️', title: 'លុបតាមផ្នែក & 🔄 Refresh',     desc: 'លុប Video / Subtitles / Dub / BGM / Clear All' },
     { id: 'thumb', icon: '🖼️', title: 'Thumbnail / Cover Maker',       desc: 'ចាប់ Frame វីដេអូ + អក្សរធំ + Save HD PNG' },
     { id: 'viral', icon: '🧠', title: 'AI Viral Title & Hashtags',     desc: 'សរសេរចំណងជើង Caption & Hashtags ១ ចុច' }
+      ,{ id: 'aicore54', icon: '🛡️', title: 'AI Core Restore Pro (v54)', desc: 'Auto-Heal 100% • ពិសិដ្ឋ/ស្រីមុំ • 3.8-TTS 4x' }
   ];
 
   const styleEl = document.createElement('style');
@@ -22576,6 +22577,8 @@ body.cts-desktop-mode #cueList .cue-card {
         const v = document.getElementById(uid + '-out').value;
         if (v && navigator.clipboard) navigator.clipboard.writeText(v).then(() => { if (typeof toast === 'function') toast('📋 Copy រួចរាល់!'); });
       };
+    } else if (typeId === 'aicore54') {
+      if (window.__ctsV54MountInlineCard) window.__ctsV54MountInlineCard(wrap, uid);
     }
   }
 
@@ -24785,124 +24788,48 @@ body.cts-desktop-mode #cueList .cue-card {
     return new Blob([pcm16ToWavBytesFn(res, sr)], { type: 'audio/wav' });
   };
 
-  // 6. Visible UI inside "+ រើសមុខងារបន្ថែម (គ្មានកំណត់)" + Control Modal
-  const stEl = document.createElement('style');
-  stEl.id = 'cts-v54-style';
-  stEl.textContent = `
-    #ctsV54PanelModal { position:fixed; inset:0; z-index:99998; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,0.76); backdrop-filter:blur(6px); }
-    #ctsV54PanelModal.open { display:flex; }
-    #ctsV54PanelBox { width:100%; max-width:390px; border-radius:18px; background:var(--cts-ui-bg, #120714); color:var(--cts-ui-text, #f8fafc); border:1.5px solid var(--cts-ui-border, rgba(251,191,36,0.5)); box-shadow:0 22px 54px rgba(0,0,0,0.88); padding:15px; display:flex; flex-direction:column; gap:10px; }
-    .cts-v54-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 11px; border-radius:12px; background:var(--cts-ui-card, rgba(255,255,255,0.05)); border:1px solid var(--cts-ui-card-border, rgba(255,255,255,0.14)); font-size:12px; font-weight:800; }
-    .cts-v54-btn { width:100%; padding:10px 12px; border-radius:12px; font-size:12.5px; font-weight:900; cursor:pointer; border:1.5px solid var(--cts-ui-card-border, rgba(251,191,36,0.38)); background:var(--cts-ui-card, rgba(251,191,36,0.1)); color:var(--cts-ui-text, #fff); text-align:left; }
-    .cts-v54-btn:active { transform:scale(0.985); }
-    .cts-v54-pill { padding:4px 10px; border-radius:99px; font-size:11px; font-weight:900; cursor:pointer; border:1px solid var(--cts-ui-accent, #fbbf24); background:var(--cts-ui-card-hover, rgba(251,191,36,0.18)); color:var(--cts-ui-title, #fde68a); }
-  `;
-  document.head.appendChild(stEl);
-
-  function openV54Modal() {
-    let m = document.getElementById('ctsV54PanelModal');
-    if (!m) {
-      m = document.createElement('div');
-      m.id = 'ctsV54PanelModal';
-      m.setAttribute('data-no-i18n', '1');
-      m.innerHTML = `
-        <div id="ctsV54PanelBox">
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <b style="font-size:14px;color:var(--cts-ui-title,#fde68a)">🛡️ AI Core Restore Pro (v54)</b>
-            <button type="button" id="ctsV54CloseBtn" style="width:30px;height:30px;border-radius:99px;border:1px solid var(--cts-ui-card-border,rgba(255,255,255,0.2));background:transparent;color:inherit;font-weight:900;cursor:pointer">✕</button>
-          </div>
-          <div class="cts-v54-row" style="border-color:rgba(16,185,129,0.45);background:rgba(16,185,129,0.12);color:#a7f3d0">
-            <span>✅ ម៉ាស៊ីន v54 Active 100%</span>
-            <span style="font-size:10.5px">3.8-TTS • 4x • Auto-Heal</span>
-          </div>
-          <div class="cts-v54-row">
-            <span>🔄 Auto-Heal 1-Click ស្វ័យប្រវត្តិ</span>
-            <button type="button" id="ctsV54HealToggle" class="cts-v54-pill"></button>
-          </div>
-          <div class="cts-v54-row">
-            <span>🎙️ កម្រិតចាប់សំឡេងស្រី (ស្រីមុំ)</span>
-            <select id="ctsV54HzSel" style="background:#0f172a;color:#fff;border:1px solid rgba(251,191,36,0.45);border-radius:8px;padding:4px 7px;font-size:11px;font-weight:800">
-              <option value="178">178Hz (ចាប់ស្រីងាយ)</option>
-              <option value="188">188Hz (ស្តង់ដារ v54)</option>
-              <option value="198">198Hz (តួប្រុសច្បាស់)</option>
-            </select>
-          </div>
-          <button type="button" id="ctsV54RunTrNow" class="cts-v54-btn">🌐 រត់បកប្រែ + Auto-Heal ឃ្លាខ្វះឥឡូវនេះ</button>
-          <button type="button" id="ctsV54RunAuNow" class="cts-v54-btn">🔊 រត់បង្កើតសំឡេង + Auto-Heal ឥឡូវនេះ</button>
-        </div>`;
-      m.onclick = (e) => { if (e.target === m) m.classList.remove('open'); };
-      document.body.appendChild(m);
-      document.getElementById('ctsV54CloseBtn').onclick = () => m.classList.remove('open');
-      const tBtn = document.getElementById('ctsV54HealToggle');
-      const syncUI = () => {
-        tBtn.textContent = cfg54.autoHeal ? 'បើក (ON)' : 'បិទ (OFF)';
-        document.getElementById('ctsV54HzSel').value = String(cfg54.femaleHz || 188);
-      };
-      tBtn.onclick = () => { cfg54.autoHeal = !cfg54.autoHeal; saveCfg54(); syncUI(); };
-      document.getElementById('ctsV54HzSel').onchange = (e) => { cfg54.femaleHz = Number(e.target.value) || 188; saveCfg54(); };
-      document.getElementById('ctsV54RunTrNow').onclick = () => {
-        m.classList.remove('open');
-        if (typeof window.translateAllCues === 'function') window.translateAllCues();
-        else if (typeof toast === 'function') toast('⚠️ សូមផ្ទុក Video/Cues ក្នុង Dubber & AI ជាមុន!');
-      };
-      document.getElementById('ctsV54RunAuNow').onclick = () => {
-        m.classList.remove('open');
-        if (typeof window.generateAllCuesAudio === 'function') window.generateAllCuesAudio();
-        else if (typeof toast === 'function') toast('⚠️ សូមផ្ទុក Cues ក្នុង Dubber & AI ជាមុន!');
-      };
-      syncUI();
-    }
-    m.classList.add('open');
-  }
-
-  function injectIntoAddFeatureModal() {
-    if (document.getElementById('ctsV54AddMenuCard')) return;
-    let viralCard = null;
-    for (const b of document.querySelectorAll('button, [role="button"]')) {
-      if (b.id === 'ctsV54AddMenuCard' || b.closest('#ctsV54PanelModal')) continue;
-      const t = (b.textContent || '').replace(/\s+/g, ' ').trim();
-      if (/AI Viral Title\s*&\s*Hashtags/i.test(t) && !/រើសមុខងារបន្ថែម|Blur/i.test(t) && t.length < 140) {
-        viralCard = b;
-        break;
-      }
-    }
-    if (!viralCard) {
-      let inner = null;
-      for (const el of document.querySelectorAll('div, span, b')) {
-        if (el.closest('#ctsV54PanelModal')) continue;
-        const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
-        if (/AI Viral Title\s*&\s*Hashtags/i.test(t) && !/រើសមុខងារបន្ថែម|Blur/i.test(t) && t.length < 140) inner = el;
-      }
-      while (inner && inner.parentElement && inner.parentElement.children.length < 4) inner = inner.parentElement;
-      if (inner && inner.parentElement && inner.parentElement.children.length >= 4) viralCard = inner;
-    }
-    if (!viralCard || !viralCard.parentElement) return;
-    const modalRoot = viralCard.closest('[id*="Modal"], [id*="modal"], .open') || viralCard.parentElement.parentElement;
-
-    const card = document.createElement(viralCard.tagName === 'BUTTON' ? 'button' : 'div');
-    if (card.tagName === 'BUTTON') card.type = 'button';
-    card.id = 'ctsV54AddMenuCard';
-    card.className = viralCard.className;
-    card.style.cssText = viralCard.style.cssText;
-    card.innerHTML = `<div style="font-weight:900;font-size:13.5px;display:flex;align-items:center;gap:6px"><span>🛡️</span><span>AI Core Restore Pro (v54)</span></div><div style="font-size:11px;opacity:0.78;margin-top:2px">Auto-Heal 100% • ពិសិដ្ឋ/ស្រីមុំ • 3.8-TTS 4x</div>`;
-    card.onclick = (e) => {
-      e.stopPropagation();
-      if (modalRoot) {
-        modalRoot.classList.remove('open');
-        for (const b of modalRoot.querySelectorAll('button')) {
-          if (/^[✕×X]$/.test((b.textContent || '').trim())) { b.click(); break; }
-        }
-      }
-      openV54Modal();
+  // 6. Native Inline Card Renderer inside v47 "+ មុខងារបន្ថែម" slot
+  window.__ctsV54MountInlineCard = function(wrap, uid) {
+    wrap.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border-radius:9px;border:1px solid rgba(16,185,129,0.45);background:rgba(16,185,129,0.12);color:#a7f3d0;font-size:11.5px;font-weight:800">
+          <span>✅ ម៉ាស៊ីន v54 Active 100%</span>
+          <span style="font-size:10.5px">3.8-TTS • 4x • Auto-Heal</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:9px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.04);font-size:11.5px;font-weight:800">
+          <span>🔄 Auto-Heal 1-Click ស្វ័យប្រវត្តិ</span>
+          <button type="button" id="${uid}-heal" class="cts-pf46-mitem act" style="padding:4px 10px;border-radius:99px;font-size:11px;font-weight:900"></button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:9px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.04);font-size:11.5px;font-weight:800">
+          <span>🎙️ កម្រិតសំឡេងស្រី (ស្រីមុំ)</span>
+          <select id="${uid}-hz" style="background:#0f172a;color:#fff;border:1px solid rgba(251,191,36,0.45);border-radius:8px;padding:4px 7px;font-size:11px;font-weight:800">
+            <option value="178">178Hz (ចាប់ស្រីងាយ)</option>
+            <option value="188">188Hz (ស្តង់ដារ v54)</option>
+            <option value="198">198Hz (តួប្រុសច្បាស់)</option>
+          </select>
+        </div>
+        <button type="button" id="${uid}-tr" class="cts-pf46-mitem" style="width:100%;text-align:center">🌐 រត់បកប្រែ + Auto-Heal ឃ្លាខ្វះឥឡូវនេះ</button>
+        <button type="button" id="${uid}-au" class="cts-pf46-mitem" style="width:100%;text-align:center">🔊 រត់បង្កើតសំឡេង + Auto-Heal ឥឡូវនេះ</button>
+      </div>`;
+    const hBtn = document.getElementById(uid + '-heal');
+    const hzSel = document.getElementById(uid + '-hz');
+    const sync = () => {
+      if (hBtn) hBtn.textContent = cfg54.autoHeal ? 'បើក (ON)' : 'បិទ (OFF)';
+      if (hzSel) hzSel.value = String(cfg54.femaleHz || 188);
     };
-    viralCard.insertAdjacentElement('afterend', card);
-  }
-
-  new MutationObserver(() => injectIntoAddFeatureModal()).observe(document.body, { childList: true, subtree: true });
-  document.addEventListener('click', () => setTimeout(injectIntoAddFeatureModal, 60), true);
-  setTimeout(injectIntoAddFeatureModal, 1000);
+    if (hBtn) hBtn.onclick = () => { cfg54.autoHeal = !cfg54.autoHeal; saveCfg54(); sync(); };
+    if (hzSel) hzSel.onchange = (e) => { cfg54.femaleHz = Number(e.target.value) || 188; saveCfg54(); };
+    document.getElementById(uid + '-tr').onclick = () => {
+      if (typeof window.translateAllCues === 'function') window.translateAllCues();
+      else if (typeof toast === 'function') toast('⚠️ សូមផ្ទុក Video/Cues ជាមុន!');
+    };
+    document.getElementById(uid + '-au').onclick = () => {
+      if (typeof window.generateAllCuesAudio === 'function') window.generateAllCuesAudio();
+      else if (typeof toast === 'function') toast('⚠️ សូមផ្ទុក Cues ជាមុន!');
+    };
+    sync();
+  };
 })();
 </script>
-
 </body>
 </html>
