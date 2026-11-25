@@ -24133,5 +24133,232 @@ body.cts-desktop-mode #cueList .cue-card {
 })();
 </script>
 
+
+<script id="cts-addon-52-importpicker">
+// === ADD-ON #52: SMART "SEND TO / នាំចូល" DESTINATION PICKER + DARK/CLASSIC THEME ADAPTIVE UI ===
+(function() {
+  const BTN_LABEL = '📤 នាំចូល • Send to';
+  let pendingDest = false;
+  let pendingTimer = null;
+
+  // Theme-adaptive CSS (automatically responds to Classic Mode vs Dark Mode `body.cts-theme-dark`)
+  const styleEl = document.createElement('style');
+  styleEl.id = 'cts-v52-style';
+  styleEl.textContent = `
+    :root {
+      --cts-ui-bg: linear-gradient(160deg, #2a0813 0%, #16040a 100%);
+      --cts-ui-card: rgba(255, 232, 185, 0.06);
+      --cts-ui-card-hover: rgba(251, 191, 36, 0.16);
+      --cts-ui-border: rgba(251, 191, 36, 0.55);
+      --cts-ui-card-border: rgba(251, 191, 36, 0.28);
+      --cts-ui-title: #fde68a;
+      --cts-ui-text: #fff7ed;
+      --cts-ui-sub: rgba(254, 243, 199, 0.72);
+      --cts-ui-accent: #fbbf24;
+    }
+    body.cts-theme-dark {
+      --cts-ui-bg: linear-gradient(160deg, #0f172a 0%, #060913 100%);
+      --cts-ui-card: rgba(56, 189, 248, 0.06);
+      --cts-ui-card-hover: rgba(56, 189, 248, 0.16);
+      --cts-ui-border: rgba(56, 189, 248, 0.45);
+      --cts-ui-card-border: rgba(148, 163, 184, 0.25);
+      --cts-ui-title: #bae6fd;
+      --cts-ui-text: #f8fafc;
+      --cts-ui-sub: rgba(203, 213, 225, 0.75);
+      --cts-ui-accent: #38bdf8;
+    }
+
+    #ctsV52DestModal {
+      position: fixed; inset: 0; z-index: 99998;
+      display: none; align-items: center; justify-content: center;
+      padding: 16px; background: rgba(0, 0, 0, 0.74); backdrop-filter: blur(6px);
+    }
+    #ctsV52DestModal.open { display: flex; }
+    #ctsV52DestBox {
+      width: 100%; max-width: 370px; border-radius: 18px;
+      background: var(--cts-ui-bg); color: var(--cts-ui-text);
+      border: 1.5px solid var(--cts-ui-border);
+      box-shadow: 0 22px 54px rgba(0, 0, 0, 0.85);
+      padding: 15px; display: flex; flex-direction: column; gap: 10px;
+      animation: ctsV52Pop .16s ease;
+    }
+    .cts-v52-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .cts-v52-head b { font-size: 13.5px; color: var(--cts-ui-title); font-weight: 900; }
+    .cts-v52-close {
+      width: 30px; height: 30px; border-radius: 99px;
+      border: 1px solid var(--cts-ui-card-border); background: var(--cts-ui-card);
+      color: var(--cts-ui-text); font-weight: 900; cursor: pointer;
+    }
+    .cts-v52-part {
+      font-size: 11px; font-weight: 700; color: var(--cts-ui-title);
+      background: var(--cts-ui-card); border: 1px solid var(--cts-ui-card-border);
+      border-radius: 10px; padding: 6px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .cts-v52-opt {
+      width: 100%; text-align: left; cursor: pointer;
+      display: flex; align-items: center; gap: 11px;
+      padding: 11px 12px; border-radius: 13px;
+      background: var(--cts-ui-card); color: var(--cts-ui-text);
+      border: 1.5px solid var(--cts-ui-card-border);
+      transition: transform .12s, background .18s, border-color .18s;
+    }
+    .cts-v52-opt:active { transform: scale(0.98); background: var(--cts-ui-card-hover); border-color: var(--cts-ui-accent); }
+    .cts-v52-ico {
+      width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 19px;
+      background: var(--cts-ui-card-hover); border: 1px solid var(--cts-ui-card-border);
+    }
+    .cts-v52-info { min-width: 0; flex: 1; }
+    .cts-v52-info .t { font-size: 13px; font-weight: 900; color: var(--cts-ui-text); }
+    .cts-v52-info .d { font-size: 10.5px; color: var(--cts-ui-sub); margin-top: 2px; line-height: 1.3; }
+    .cts-v52-arr { font-size: 14px; font-weight: 900; color: var(--cts-ui-accent); }
+    @keyframes ctsV52Pop { from { opacity: 0; transform: translateY(10px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  `;
+  document.head.appendChild(styleEl);
+
+  function ensureDestModal() {
+    if (document.getElementById('ctsV52DestModal')) return;
+    const m = document.createElement('div');
+    m.id = 'ctsV52DestModal';
+    m.setAttribute('data-no-i18n', '1');
+    m.innerHTML = `
+      <div id="ctsV52DestBox">
+        <div class="cts-v52-head">
+          <b>📤 នាំចូលទៅកាន់ Tab (Send to)</b>
+          <button type="button" id="ctsV52DestClose" class="cts-v52-close">✕</button>
+        </div>
+        <div id="ctsV52PartBadge" class="cts-v52-part">🎬 ភាគ Video រួចរាល់</div>
+        <button type="button" class="cts-v52-opt" data-v52dest="cues">
+          <div class="cts-v52-ico">🎙️</div>
+          <div class="cts-v52-info">
+            <div class="t">Dubber & AI (បកប្រែ & បញ្ចូលសំឡេង)</div>
+            <div class="d">កែ Subtitle, បកប្រែអត្ថបទ និងបង្កើតសំឡេង AI</div>
+          </div>
+          <div class="cts-v52-arr">➔</div>
+        </button>
+        <button type="button" class="cts-v52-opt" data-v52dest="design">
+          <div class="cts-v52-ico">🎨</div>
+          <div class="cts-v52-info">
+            <div class="t">Edit Video (កាត់ត & កែលម្អវីដេអូ)</div>
+            <div class="d">ដាក់ Logo, Blur, អក្សររត់, កាត់ Copyright & Export</div>
+          </div>
+          <div class="cts-v52-arr">➔</div>
+        </button>
+        <button type="button" class="cts-v52-opt" data-v52dest="preview">
+          <div class="cts-v52-ico">👁️</div>
+          <div class="cts-v52-info">
+            <div class="t">Preview (មើលវីដេអូពេញអេក្រង់)</div>
+            <div class="d">ចាក់មើលលទ្ធផលធំច្បាស់នៅលើអេក្រង់ Preview</div>
+          </div>
+          <div class="cts-v52-arr">➔</div>
+        </button>
+      </div>
+    `;
+    m.onclick = (e) => { if (e.target === m) closeDestModal(); };
+    document.body.appendChild(m);
+    document.getElementById('ctsV52DestClose').onclick = closeDestModal;
+    m.querySelectorAll('[data-v52dest]').forEach(btn => {
+      btn.onclick = () => {
+        const dest = btn.getAttribute('data-v52dest');
+        closeDestModal();
+        goToTargetTab(dest);
+      };
+    });
+  }
+
+  function openDestModal() {
+    ensureDestModal();
+    const badge = document.getElementById('ctsV52PartBadge');
+    const st = document.getElementById('vidHeaderStatus')?.textContent?.trim();
+    if (badge) badge.textContent = st || '🎬 ភាគ Video បានផ្ទុករួចរាល់';
+    document.getElementById('ctsV52DestModal')?.classList.add('open');
+  }
+
+  function closeDestModal() {
+    document.getElementById('ctsV52DestModal')?.classList.remove('open');
+  }
+
+  function goToTargetTab(target) {
+    const names = { cues: '🎙️ Dubber & AI', design: '🎨 Edit Video', preview: '👁️ Preview' };
+    // Use v47's native view triggers (`[data-go]` on Hub or `[data-vgo]`) so layout, slots & animations stay 100% synced!
+    const trigger = document.querySelector(`[data-go="${target}"]`) || document.querySelector(`[data-vgo="${target}"]`);
+    if (trigger) {
+      trigger.click();
+    } else if (typeof window.__ctsV52OrigSwitchTab === 'function' && target !== 'preview') {
+      window.__ctsV52OrigSwitchTab(target);
+    } else if (target === 'preview') {
+      document.body.classList.remove('cts-v47-tab', 'cts-v47-hub');
+      document.body.classList.add('cts-v47-preview');
+    }
+    if (typeof toast === 'function') {
+      toast(`✅ នាំចូលទៅ ${names[target] || target} រួចរាល់!`);
+    }
+  }
+
+  // Safely wrap switchTab ONLY when user clicked a "Send to / នាំចូល" button in Big Project
+  function hookSwitchTabSafely() {
+    if (typeof window.switchTab === 'function' && !window.switchTab.__cts52Wrapped) {
+      const orig = window.switchTab;
+      window.__ctsV52OrigSwitchTab = orig;
+      const wrapped = function(tabName) {
+        if (pendingDest && tabName === 'cues') {
+          pendingDest = false;
+          if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
+          openDestModal();
+          return;
+        }
+        return orig.apply(this, arguments);
+      };
+      wrapped.__cts52Wrapped = true;
+      window.switchTab = wrapped;
+    }
+  }
+
+  // Rename "បកប្រែភាគនេះ" -> "📤 នាំចូល • Send to" in Split Video AND Big Project Dubbed Results
+  function relabelBigProjectSendButtons() {
+    const recap = document.getElementById('tab-recap');
+    if (!recap) return;
+    recap.querySelectorAll('button').forEach(btn => {
+      if (btn.dataset.ctsV52Send === '1') return;
+      // Skip top switcher tabs & main action buttons
+      if (['bpStartBtn', 'bpResumeBtn', 'bpSplitStartBtn', 'bpSplitStopBtn'].includes(btn.id)) return;
+      const txt = (btn.textContent || '').replace(/\s+/g, ' ').trim();
+      const isSplitDub = btn.classList.contains('sp-dub-btn');
+      const isResultSend = /^(🎬|🎙️|📤|🚀)?\s*(បកប្រែភាគនេះ|ចូល\s*Dubber(\s*&\s*AI)?|នាំចូលទៅ\s*Dubber)$/i.test(txt)
+        || (txt.includes('បកប្រែភាគនេះ') && !btn.closest('.sub-tabs'));
+      if (isSplitDub || isResultSend) {
+        btn.dataset.ctsV52Send = '1';
+        btn.textContent = BTN_LABEL;
+        btn.title = 'នាំចូលទៅ Dubber & AI / Edit Video / Preview';
+      }
+    });
+  }
+
+  // Intercept clicks on any relabeled Send button in capture phase BEFORE its original handler runs
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('button[data-cts-v52-send="1"], button.sp-dub-btn');
+    if (!btn) return;
+    hookSwitchTabSafely();
+    pendingDest = true;
+    if (pendingTimer) clearTimeout(pendingTimer);
+    pendingTimer = setTimeout(() => { pendingDest = false; }, 4500);
+  }, true);
+
+  function initV52() {
+    ensureDestModal();
+    hookSwitchTabSafely();
+    relabelBigProjectSendButtons();
+    const recap = document.getElementById('tab-recap');
+    if (recap && !recap.__ctsV52Obs) {
+      recap.__ctsV52Obs = true;
+      new MutationObserver(() => relabelBigProjectSendButtons()).observe(recap, { childList: true, subtree: true });
+    }
+  }
+
+  setTimeout(initV52, 600);
+  setTimeout(initV52, 1800);
+})();
+</script>
+
 </body>
 </html>
