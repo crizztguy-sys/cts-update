@@ -24513,8 +24513,6 @@ body.cts-desktop-mode #cueList .cue-card {
   }, 45);
 })();
 </script>
-
-
 <script id="cts-addon-54-aicorerestore">
 // === ADD-ON #54: AI CORE RESTORE (VISIBLE IN + ADD FEATURE MENU + AUTO-HEAL + PISETH/SREYMOM + 4X AUDIO) ===
 (function() {
@@ -24859,23 +24857,25 @@ body.cts-desktop-mode #cueList .cue-card {
 
   function injectIntoAddFeatureModal() {
     if (document.getElementById('ctsV54AddMenuCard')) return;
-    const allEls = document.querySelectorAll('button, div, [role="button"]');
     let viralCard = null;
-    for (const el of allEls) {
-      if (el.children.length <= 4 && /AI Viral Title\s*&\s*Hashtags/i.test(el.textContent || '') && !el.closest('#ctsV54PanelModal')) {
-        if (el.tagName === 'BUTTON' || el.className) { viralCard = el; break; }
-      }
+    for (const el of document.querySelectorAll('button, [role="button"], .cts-pf46-mitem, div')) {
+      if (el.id === 'ctsV54AddMenuCard' || el.closest('#ctsV54PanelModal')) continue;
+      const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!/AI Viral Title\s*&\s*Hashtags/i.test(t)) continue;
+      if (/រើសមុខងារបន្ថែម|Blur\s*៥\s*ជម្រើស|Thumbnail\s*\/\s*Cover/i.test(t)) continue;
+      if (t.length > 130) continue;
+      if (getComputedStyle(el).position === 'fixed') continue;
+      viralCard = el;
     }
     if (!viralCard || !viralCard.parentElement) return;
-    // Confirm it's inside the "+ រើសមុខងារបន្ថែម" modal
-    const modalRoot = viralCard.closest('[id*="Modal"], [id*="modal"], [class*="modal"], div[style*="fixed"]') || viralCard.parentElement.parentElement;
-    if (!modalRoot || !/រើសមុខងារបន្ថែម/.test(modalRoot.textContent || '')) return;
+    const modalRoot = viralCard.closest('[id*="Modal"], [id*="modal"], .open') || viralCard.parentElement.parentElement;
 
     const card = document.createElement(viralCard.tagName === 'BUTTON' ? 'button' : 'div');
     if (card.tagName === 'BUTTON') card.type = 'button';
     card.id = 'ctsV54AddMenuCard';
     card.className = viralCard.className;
     card.style.cssText = viralCard.style.cssText;
+    card.style.position = 'relative';
     card.innerHTML = `
       <div style="font-weight:900;font-size:13.5px;display:flex;align-items:center;gap:6px">
         <span>🛡️</span><span>AI Core Restore Pro (v54)</span>
@@ -24883,10 +24883,11 @@ body.cts-desktop-mode #cueList .cue-card {
       <div style="font-size:11px;opacity:0.78;margin-top:2px">Auto-Heal 100% • ពិសិដ្ឋ/ស្រីមុំ • 3.8-TTS 4x</div>`;
     card.onclick = (e) => {
       e.stopPropagation();
-      const closeBtn = modalRoot.querySelector('button[id*="Close"], button[id*="close"], button:has(> svg), button');
-      // Try clicking the top-right '×' button of the Add Feature modal cleanly
-      for (const b of modalRoot.querySelectorAll('button')) {
-        if (/^[✕×X]$/.test((b.textContent || '').trim())) { b.click(); break; }
+      if (modalRoot) {
+        modalRoot.classList.remove('open');
+        for (const b of modalRoot.querySelectorAll('button')) {
+          if (/^[✕×X]$/.test((b.textContent || '').trim())) { b.click(); break; }
+        }
       }
       openV54Modal();
     };
