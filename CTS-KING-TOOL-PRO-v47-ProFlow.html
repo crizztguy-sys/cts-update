@@ -13354,7 +13354,8 @@
   }
 
   // 4. Live Preview Sync (reflects ALL Touch Positions, Anti-Copyright, Fonts, Ticker, Sponsor in real time!)
-  function applyProPreview() {
+  window.__ctsPro = pro; window.__ctsApplyPro = applyProPreview; window.__ctsSavePro = savePro; window.__ctsSelLayer = typeof selectTouchLayer === 'function' ? selectTouchLayer : null;
+        function applyProPreview() {
     if (vidEl) {
       const totalZoom = +(pro.vidScale * pro.crZoom).toFixed(3);
       const sx = pro.crMirror ? -totalZoom : totalZoom;
@@ -21676,17 +21677,17 @@ body.cts-desktop-mode #cueList .cue-card {
 </script>
 
 
-<script id="cts-addon-46-proflow">
-// === ADD-ON #46: CTS PROFLOW (VERIFIED IDs #cueCountTxt/#cueList/#bpSplitResCount, 0% CORE TOUCH) ===
+<script id="cts-addon-47-proflow">
+// === ADD-ON #47: CTS PROFLOW + CAPCUT-STYLE 8-HANDLE 1-FINGER TRANSFORM (0% CORE TOUCH) ===
 (function() {
   const CFG_KEY = 'cts_proflow_v46_cfg';
   let cfg = {
-    view: 'hub',          // hub | recap | cues | design | settings | preview
-    animStyle: 'laser',   // laser | plasma | fire | gold
+    view: 'hub',
+    animStyle: 'laser',
     cuesShowPv: true,
     compactCore: true,
     dragLocked: false,
-    blurStyle: 'soft',    // soft | heavy | black | frosted | mosaic
+    blurStyle: 'soft',
     blurPower: 14,
     addedWidgets: { recap: [], cues: [], design: [], settings: [] }
   };
@@ -21725,16 +21726,14 @@ body.cts-desktop-mode #cueList .cue-card {
   ];
 
   const styleEl = document.createElement('style');
-  styleEl.id = 'cts-v46-style';
+  styleEl.id = 'cts-v47-style';
   styleEl.textContent = `
-    /* Point 4: Remove persistent yellow/red dashed guide lines on Preview */
+    /* Remove persistent yellow/red dashed lines */
     .cts-selected-el { outline: none !important; }
     #ctsTransformGizmo { display: none !important; opacity: 0 !important; }
     #blurBox { border: none !important; }
-    #videoBox.cts-dragging-now .cts-selected-el { outline: 1px solid rgba(255,255,255,0.45) !important; }
-    #videoBox.cts-dragging-now #blurBox.on { border: 1px solid rgba(255,255,255,0.35) !important; }
 
-    /* Point 5: Instant touch-drag on Preview unless locked */
+    /* Direct touch-through on preview layers unless locked */
     body.cts-drag-free #wmContainer,
     body.cts-drag-free #subOverlay,
     body.cts-drag-free #blurBox,
@@ -21742,11 +21741,29 @@ body.cts-desktop-mode #cueList .cue-card {
     body.cts-drag-free #ctsSponsorOverlay { pointer-events: auto !important; touch-action: none !important; cursor: move; }
     body.cts-drag-locked #videoBox * { pointer-events: none !important; }
 
-    /* Hide native bottom nav & old touch layer bar */
-    body.cts-v46-on .bottom-nav { display: none !important; }
+    /* Keep #ctsTouchLayerBar & #ctsQuickZoomBar visible and neat! */
+    body.cts-v47-on .bottom-nav { display: none !important; }
     #ctsTouchLayerBar { padding: 4px 6px !important; }
 
-    /* Top ProFlow Bar (<- Title < <> >) */
+    /* Pro 8-Handle 1-Finger Bounding Box (#ctsProGizmo8) */
+    #ctsProGizmo8 { position:absolute; z-index:30; display:none; border:1.5px solid #fbbf24; border-radius:4px; box-shadow:0 0 0 1px rgba(0,0,0,0.65),0 0 14px rgba(251,191,36,0.28); touch-action:none; box-sizing:border-box; cursor:move; }
+    #ctsG8Tag { position:absolute; left:50%; top:-24px; transform:translateX(-50%); display:inline-flex; align-items:center; gap:5px; padding:2px 7px; border-radius:99px; background:rgba(15,10,20,0.92); border:1px solid #fbbf24; color:#fef08a; font-size:10px; font-weight:800; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.7); }
+    #ctsG8Close { background:rgba(239,68,68,0.75); color:#fff; border:none; border-radius:50%; width:15px; height:15px; font-size:10px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; }
+    .cts-g8-h { position:absolute; width:26px; height:26px; display:flex; align-items:center; justify-content:center; touch-action:none; z-index:32; }
+    .cts-g8-h::after { content:''; display:block; background:#fff; border:2px solid #f59e0b; box-shadow:0 1px 5px rgba(0,0,0,0.85); }
+    .cts-g8-h.c::after { width:12px; height:12px; border-radius:50%; }
+    .cts-g8-h.ex::after { width:6px; height:16px; border-radius:99px; background:#38bdf8; border-color:#fff; }
+    .cts-g8-h.ey::after { width:16px; height:6px; border-radius:99px; background:#38bdf8; border-color:#fff; }
+    .cts-g8-tl { left:-13px; top:-13px; cursor:nwse-resize; }
+    .cts-g8-tr { right:-13px; top:-13px; cursor:nesw-resize; }
+    .cts-g8-bl { left:-13px; bottom:-13px; cursor:nesw-resize; }
+    .cts-g8-br { right:-13px; bottom:-13px; cursor:nwse-resize; }
+    .cts-g8-ml { left:-13px; top:50%; transform:translateY(-50%); cursor:ew-resize; }
+    .cts-g8-mr { right:-13px; top:50%; transform:translateY(-50%); cursor:ew-resize; }
+    .cts-g8-tm { left:50%; top:-13px; transform:translateX(-50%); cursor:ns-resize; }
+    .cts-g8-bm { left:50%; bottom:-13px; transform:translateX(-50%); cursor:ns-resize; }
+
+    /* Top ProFlow Bar */
     #ctsPf46Bar { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:6px 10px; background:linear-gradient(180deg,rgba(16,8,18,0.98),rgba(10,6,14,0.96)); border-bottom:1.5px solid var(--pf-c1,#38bdf8); flex-shrink:0; position:relative; z-index:50; overflow:hidden; }
     #ctsPf46Bar::after { content:''; position:absolute; left:-45%; bottom:0; width:45%; height:2px; background:linear-gradient(90deg,transparent,var(--pf-c1,#38bdf8),var(--pf-c2,#f59e0b),transparent); animation:ctsPf46Beam 2.5s linear infinite; pointer-events:none; }
     .cts-pf46-btn { height:33px; min-width:33px; padding:0 10px; border-radius:9px; border:1.5px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:#f8fafc; font-size:12.5px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:4px; transition:transform .12s,border-color .2s; white-space:nowrap; }
@@ -21754,43 +21771,43 @@ body.cts-desktop-mode #cueList .cue-card {
     .cts-pf46-btn.glow { border-color:var(--pf-c1,#38bdf8); box-shadow:0 0 12px rgba(56,189,248,0.32); }
     #ctsPf46Title { flex:1; text-align:center; font-size:12.5px; font-weight:800; color:#fef3c7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-    /* Preview Control Strip */
+    /* Preview Control Strip (Always visible in cues even when preview hidden!) */
     #ctsPf46PvStrip { display:none; align-items:center; justify-content:space-between; gap:5px; padding:5px 10px; background:rgba(12,18,32,0.88); border-bottom:1px solid rgba(255,255,255,0.1); flex-shrink:0; }
-    body.cts-v46-with-pv #ctsPf46PvStrip,
-    body.cts-v46-preview #ctsPf46PvStrip,
-    body.cts-v46-cues-nopv #ctsPf46PvStrip { display:flex !important; }
-    body.cts-v46-cues-nopv #ctsPf46LockBtn,
-    body.cts-v46-cues-nopv #ctsPf46ResetPos,
-    body.cts-v46-cues-nopv #ctsPf46ClrVid { display:none !important; }
+    body.cts-v47-with-pv #ctsPf46PvStrip,
+    body.cts-v47-preview #ctsPf46PvStrip,
+    body.cts-v47-cues-nopv #ctsPf46PvStrip { display:flex !important; }
+    body.cts-v47-cues-nopv #ctsPf46LockBtn,
+    body.cts-v47-cues-nopv #ctsPf46ResetPos,
+    body.cts-v47-cues-nopv #ctsPf46ClrVid { display:none !important; }
 
-    /* Smart Preview Sizing (overrides .collapsed & fixed .stage-wrap height cleanly!) */
-    body.cts-v46-no-pv #playerSection { display: none !important; }
-    body.cts-v46-with-pv #playerSection,
-    body.cts-v46-with-pv #playerSection.collapsed { display: flex !important; flex-direction: column !important; flex-shrink: 0 !important; height: auto !important; max-height: none !important; opacity: 1 !important; overflow: visible !important; }
-    body.cts-v46-with-pv .stage-wrap { height: 31vh !important; min-height: 215px !important; max-height: 300px !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 4px !important; }
-    body.cts-v46-with-pv #videoBox.r-916 { height: 100% !important; width: auto !important; aspect-ratio: 9/16 !important; }
-    body.cts-v46-with-pv #videoBox.r-169 { width: 92% !important; max-width: 460px !important; height: auto !important; }
-    body.cts-v46-with-pv #videoBox.r-11  { height: 100% !important; width: auto !important; aspect-ratio: 1/1 !important; }
+    /* Smart Preview Sizing */
+    body.cts-v47-no-pv #playerSection { display: none !important; }
+    body.cts-v47-with-pv #playerSection,
+    body.cts-v47-with-pv #playerSection.collapsed { display: flex !important; flex-direction: column !important; flex-shrink: 0 !important; height: auto !important; max-height: none !important; opacity: 1 !important; overflow: visible !important; }
+    body.cts-v47-with-pv .stage-wrap { height: 32vh !important; min-height: 220px !important; max-height: 310px !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 6px !important; }
+    body.cts-v47-with-pv #videoBox.r-916 { height: 100% !important; width: auto !important; aspect-ratio: 9/16 !important; }
+    body.cts-v47-with-pv #videoBox.r-169 { width: 92% !important; max-width: 460px !important; height: auto !important; }
+    body.cts-v47-with-pv #videoBox.r-11  { height: 100% !important; width: auto !important; aspect-ratio: 1/1 !important; }
 
-    body.cts-v46-preview #playerSection,
-    body.cts-v46-preview #playerSection.collapsed { display: flex !important; flex-direction: column !important; flex: 1 1 auto !important; height: auto !important; max-height: none !important; opacity: 1 !important; overflow: visible !important; }
-    body.cts-v46-preview .stage-wrap { flex: 1 1 auto !important; height: auto !important; min-height: 50vh !important; max-height: 65vh !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 6px !important; }
-    body.cts-v46-preview #videoBox.r-916 { height: 50vh !important; max-height: 62vh !important; width: auto !important; max-width: 94vw !important; aspect-ratio: 9/16 !important; }
-    body.cts-v46-preview #videoBox.r-169 { width: 96% !important; max-width: 680px !important; height: auto !important; }
-    body.cts-v46-preview #videoBox.r-11  { height: 48vh !important; width: auto !important; aspect-ratio: 1/1 !important; }
-    body.cts-v46-preview main.tab-content { display: none !important; }
+    body.cts-v47-preview #playerSection,
+    body.cts-v47-preview #playerSection.collapsed { display: flex !important; flex-direction: column !important; flex: 1 1 auto !important; height: auto !important; max-height: none !important; opacity: 1 !important; overflow: visible !important; }
+    body.cts-v47-preview .stage-wrap { flex: 1 1 auto !important; height: auto !important; min-height: 50vh !important; max-height: 65vh !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 8px !important; }
+    body.cts-v47-preview #videoBox.r-916 { height: 50vh !important; max-height: 62vh !important; width: auto !important; max-width: 94vw !important; aspect-ratio: 9/16 !important; }
+    body.cts-v47-preview #videoBox.r-169 { width: 96% !important; max-width: 680px !important; height: auto !important; }
+    body.cts-v47-preview #videoBox.r-11  { height: 48vh !important; width: auto !important; aspect-ratio: 1/1 !important; }
+    body.cts-v47-preview main.tab-content { display: none !important; }
 
     /* Intact Core Tabs */
-    body.cts-v46-hub main.tab-content { display: none !important; }
-    body.cts-v46-tab #ctsPf46Hub { display: none !important; }
-    body.cts-v46-tab main.tab-content.active { flex: 1 1 auto !important; overflow-y: auto !important; padding-bottom: 24px !important; }
+    body.cts-v47-hub main.tab-content { display: none !important; }
+    body.cts-v47-tab #ctsPf46Hub { display: none !important; }
+    body.cts-v47-tab main.tab-content.active { flex: 1 1 auto !important; overflow-y: auto !important; padding-bottom: 24px !important; }
 
     /* Compact Core Functions */
-    body.cts-v46-compact .panel-card { padding: 9px 10px !important; margin-bottom: 8px !important; }
-    body.cts-v46-compact .panel-title { margin-bottom: 6px !important; font-size: 12.5px !important; }
-    body.cts-v46-compact .field { margin-bottom: 6px !important; }
-    body.cts-v46-compact .range-row { margin: 4px 0 !important; }
-    body.cts-v46-compact .chk-row { margin: 3px 0 !important; font-size: 11.5px !important; }
+    body.cts-v47-compact .panel-card { padding: 9px 10px !important; margin-bottom: 8px !important; }
+    body.cts-v47-compact .panel-title { margin-bottom: 6px !important; font-size: 12.5px !important; }
+    body.cts-v47-compact .field { margin-bottom: 6px !important; }
+    body.cts-v47-compact .range-row { margin: 4px 0 !important; }
+    body.cts-v47-compact .chk-row { margin: 3px 0 !important; font-size: 11.5px !important; }
 
     /* Hub Home Workspace */
     #ctsPf46Hub { width:100%; flex:1 1 auto; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px; box-sizing:border-box; }
@@ -21809,7 +21826,7 @@ body.cts-desktop-mode #cueList .cue-card {
     .cts-widget-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.1); }
     .cts-widget-x { width:26px; height:26px; border-radius:7px; border:1px solid rgba(239,68,68,0.6); background:rgba(127,29,29,0.55); color:#fecaca; font-size:13px; font-weight:900; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
 
-    /* Modals */
+    /* Modals & Light-Sweep FX */
     .cts-pf46-modal { position:fixed; inset:0; z-index:99992; display:none; align-items:center; justify-content:center; padding:12px; background:rgba(0,0,0,0.74); backdrop-filter:blur(6px); }
     .cts-pf46-modal.open { display:flex; }
     .cts-pf46-mbox { width:100%; max-width:380px; max-height:86vh; overflow-y:auto; border-radius:15px; background:#0e0a16; color:#f8fafc; border:1.5px solid var(--pf-c1,#38bdf8); box-shadow:0 16px 48px rgba(0,0,0,0.85); padding:13px; display:flex; flex-direction:column; gap:10px; animation:ctsV46Pop .16s ease; }
@@ -21817,7 +21834,6 @@ body.cts-desktop-mode #cueList .cue-card {
     .cts-pf46-mitem.act { border-color:var(--pf-c1,#38bdf8); background:linear-gradient(135deg,rgba(56,189,248,0.25),rgba(168,85,247,0.25)); color:#fff; }
     .cts-pf46-mitem.danger { border-color:rgba(239,68,68,0.45); background:rgba(127,29,29,0.28); color:#fecaca; }
 
-    /* 4 Light-Sweep Transition Effects */
     #ctsPf46Fx { position:fixed; inset:0; pointer-events:none; z-index:99999; opacity:0; }
     #ctsPf46Fx.go-laser { opacity:1; background:linear-gradient(90deg,transparent,rgba(56,189,248,0.45),rgba(168,85,247,0.5),transparent); animation:cts46SweepX .36s ease-out forwards; }
     #ctsPf46Fx.go-plasma { opacity:1; background:radial-gradient(circle,rgba(45,212,191,0.42),rgba(59,130,246,0.22),transparent 70%); animation:cts46Pulse .36s ease-out forwards; }
@@ -21832,6 +21848,265 @@ body.cts-desktop-mode #cueList .cue-card {
   `;
   document.head.appendChild(styleEl);
 
+  // === PRO 8-HANDLE 1-FINGER TRANSFORM ENGINE ===
+  let g8ActiveLayer = null; // null | 'vid' | 'sub' | 'logo' | 'blur' | 'ticker' | 'sponsor'
+
+  const LAYER_NAMES = {
+    vid: '🎬 Video', sub: '💬 Text', logo: '👑 Logo',
+    blur: '💧 Blur', ticker: '📜 រត់', sponsor: '📢 Sponsor'
+  };
+
+  function getLayerEl(layer) {
+    if (layer === 'vid') return document.getElementById('videoPlayer');
+    if (layer === 'logo') return document.getElementById('wmContainer');
+    if (layer === 'sub') return document.getElementById('subOverlay');
+    if (layer === 'blur') return document.getElementById('blurBox');
+    if (layer === 'ticker') return document.getElementById('ctsTickerOverlay');
+    if (layer === 'sponsor') return document.getElementById('ctsSponsorOverlay');
+    return null;
+  }
+
+  function syncQuickZoomBar(layer) {
+    const p = window.__ctsPro;
+    if (!p) return;
+    const sl = document.getElementById('qzSlider');
+    const vt = document.getElementById('qzValTxt');
+    const lb = document.getElementById('qzLabel');
+    if (lb && LAYER_NAMES[layer]) lb.textContent = LAYER_NAMES[layer];
+    let val = 1.0;
+    if (layer === 'vid') val = p.vidScale || 1.0;
+    else if (layer === 'sub') val = p.subScale || 1.0;
+    else if (layer === 'logo') val = p.logoScale || 1.0;
+    else if (layer === 'sponsor') val = p.sponsorScale || 1.0;
+    else if (layer === 'blur') val = (p.blurW || 88) / 88;
+    if (sl) sl.value = String(Math.max(0.4, Math.min(2.4, val)));
+    if (vt) vt.textContent = layer === 'blur' ? `${Math.round(p.blurW || 88)}%` : `${Number(val).toFixed(2)}x`;
+  }
+
+  function applyBlurBoxHeight() {
+    const p = window.__ctsPro;
+    const bb = document.getElementById('blurBox');
+    if (p && bb) bb.style.height = (p.blurH || 14) + '%';
+  }
+
+  function positionGizmo8() {
+    const g = document.getElementById('ctsProGizmo8');
+    const vb = document.getElementById('videoBox');
+    const p = window.__ctsPro;
+    if (!g || !vb || !p || !g8ActiveLayer || cfg.dragLocked) {
+      if (g) g.style.display = 'none';
+      return;
+    }
+
+    const vbr = vb.getBoundingClientRect();
+    if (vbr.width < 20 || vbr.height < 20) { g.style.display = 'none'; return; }
+
+    let x = 8, y = 8, w = vbr.width - 16, h = vbr.height - 16;
+    if (g8ActiveLayer === 'vid') {
+      const sc = Math.max(0.4, Math.min(2.4, p.vidScale || 1.0));
+      const bw = Math.min(vbr.width * 0.94, Math.max(54, vbr.width * 0.72 * sc));
+      const bh = Math.min(vbr.height * 0.94, Math.max(54, vbr.height * 0.72 * sc));
+      const cx = vbr.width / 2 + ((p.vidX || 0) / 100) * vbr.width;
+      const cy = vbr.height / 2 + ((p.vidY || 0) / 100) * vbr.height;
+      x = Math.max(4, Math.min(vbr.width - bw - 4, cx - bw / 2));
+      y = Math.max(4, Math.min(vbr.height - bh - 4, cy - bh / 2));
+      w = bw; h = bh;
+    } else if (g8ActiveLayer === 'blur') {
+      x = ((p.blurX ?? 6) / 100) * vbr.width;
+      y = ((p.blurY ?? 80) / 100) * vbr.height;
+      w = Math.max(36, ((p.blurW ?? 88) / 100) * vbr.width);
+      h = Math.max(22, ((p.blurH ?? 14) / 100) * vbr.height);
+    } else {
+      const el = getLayerEl(g8ActiveLayer);
+      if (!el) { g.style.display = 'none'; return; }
+      const r = el.getBoundingClientRect();
+      if (r.width < 6 || r.height < 6) {
+        x = vbr.width * 0.12; y = vbr.height * 0.4; w = vbr.width * 0.76; h = 40;
+      } else {
+        const pad = 5;
+        x = Math.max(2, r.left - vbr.left - pad);
+        y = Math.max(2, r.top - vbr.top - pad);
+        w = Math.max(38, r.width + pad * 2);
+        h = Math.max(28, r.height + pad * 2);
+      }
+    }
+
+    g.style.display = 'block';
+    g.style.left = Math.round(x) + 'px';
+    g.style.top = Math.round(y) + 'px';
+    g.style.width = Math.round(w) + 'px';
+    g.style.height = Math.round(h) + 'px';
+
+    const tag = document.getElementById('ctsG8Txt');
+    if (tag) {
+      if (g8ActiveLayer === 'blur') tag.textContent = `${LAYER_NAMES.blur} ${Math.round(p.blurW || 88)}%×${Math.round(p.blurH || 14)}%`;
+      else {
+        const sc = g8ActiveLayer === 'vid' ? p.vidScale : (g8ActiveLayer === 'sub' ? p.subScale : (g8ActiveLayer === 'logo' ? p.logoScale : (g8ActiveLayer === 'sponsor' ? p.sponsorScale : 1)));
+        tag.textContent = `${LAYER_NAMES[g8ActiveLayer] || g8ActiveLayer} ${Number(sc || 1).toFixed(2)}x`;
+      }
+    }
+  }
+
+  function selectGizmo8(layer) {
+    g8ActiveLayer = layer;
+    if (typeof window.__ctsSelLayer === 'function') {
+      try { window.__ctsSelLayer(layer); } catch (e) {}
+    }
+    syncQuickZoomBar(layer);
+    positionGizmo8();
+  }
+
+  function installGizmo8() {
+    const vb = document.getElementById('videoBox');
+    if (!vb || document.getElementById('ctsProGizmo8')) return;
+
+    const g = document.createElement('div');
+    g.id = 'ctsProGizmo8';
+    g.innerHTML = `
+      <div id="ctsG8Tag"><span id="ctsG8Txt">🎬 Video 1.00x</span><button type="button" id="ctsG8Close">✕</button></div>
+      <div class="cts-g8-h c cts-g8-tl" data-h="tl"></div>
+      <div class="cts-g8-h c cts-g8-tr" data-h="tr"></div>
+      <div class="cts-g8-h c cts-g8-bl" data-h="bl"></div>
+      <div class="cts-g8-h c cts-g8-br" data-h="br"></div>
+      <div class="cts-g8-h ex cts-g8-ml" data-h="ml"></div>
+      <div class="cts-g8-h ex cts-g8-mr" data-h="mr"></div>
+      <div class="cts-g8-h ey cts-g8-tm" data-h="tm"></div>
+      <div class="cts-g8-h ey cts-g8-bm" data-h="bm"></div>`;
+    vb.appendChild(g);
+
+    document.getElementById('ctsG8Close').onclick = (e) => {
+      e.stopPropagation();
+      g8ActiveLayer = null;
+      positionGizmo8();
+    };
+
+    // Hide bounding box cleanly while video plays or on empty tap outside elements
+    const vp = document.getElementById('videoPlayer');
+    if (vp) vp.addEventListener('play', () => { g8ActiveLayer = null; positionGizmo8(); });
+
+    // 1-Finger Drag on any Handle or inside the Box
+    let dragInfo = null;
+    g.addEventListener('pointerdown', (e) => {
+      if (e.target && e.target.id === 'ctsG8Close') return;
+      if (cfg.dragLocked || !g8ActiveLayer || !window.__ctsPro) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const handle = e.target.closest('[data-h]')?.getAttribute('data-h') || 'move';
+      const p = window.__ctsPro;
+      const vbr = vb.getBoundingClientRect();
+      dragInfo = {
+        pid: e.pointerId,
+        handle,
+        sx: e.clientX,
+        sy: e.clientY,
+        vw: vbr.width || 200,
+        vh: vbr.height || 300,
+        snap: Object.assign({}, p),
+        subW: parseFloat(document.getElementById('subOverlay')?.style.width || '90') || 90
+      };
+      try { g.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+
+    g.addEventListener('pointermove', (e) => {
+      if (!dragInfo || e.pointerId !== dragInfo.pid || !window.__ctsPro) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const p = window.__ctsPro;
+      const sn = dragInfo.snap;
+      const dxPct = ((e.clientX - dragInfo.sx) / dragInfo.vw) * 100;
+      const dyPct = ((e.clientY - dragInfo.sy) / dragInfo.vh) * 100;
+      const h = dragInfo.handle;
+      const L = g8ActiveLayer;
+
+      if (h === 'move') {
+        if (L === 'vid') { p.vidX = +(Math.max(-60, Math.min(60, (sn.vidX || 0) + dxPct))).toFixed(1); p.vidY = +(Math.max(-60, Math.min(60, (sn.vidY || 0) + dyPct))).toFixed(1); }
+        else if (L === 'logo') { p.logoX = +(Math.max(0, Math.min(92, (sn.logoX || 4) + dxPct))).toFixed(1); p.logoY = +(Math.max(0, Math.min(92, (sn.logoY || 4) + dyPct))).toFixed(1); }
+        else if (L === 'sub') { p.subX = +(Math.max(5, Math.min(95, (sn.subX || 50) + dxPct))).toFixed(1); p.subY = +(Math.max(10, Math.min(98, (sn.subY || 88) + dyPct))).toFixed(1); }
+        else if (L === 'blur') { p.blurX = +(Math.max(0, Math.min(100 - (p.blurW || 88), (sn.blurX || 6) + dxPct))).toFixed(1); p.blurY = +(Math.max(0, Math.min(100 - (p.blurH || 14), (sn.blurY || 80) + dyPct))).toFixed(1); }
+        else if (L === 'ticker') { p.tickerY = +(Math.max(4, Math.min(94, (sn.tickerY || 16) + dyPct))).toFixed(1); }
+        else if (L === 'sponsor') { p.sponsorX = +(Math.max(0, Math.min(90, (sn.sponsorX || 68) + dxPct))).toFixed(1); p.sponsorY = +(Math.max(0, Math.min(90, (sn.sponsorY || 14) + dyPct))).toFixed(1); }
+      } else if (L === 'blur') {
+        // Precise 8-handle width/height/corner stretch for Blur box!
+        if (h.includes('r')) p.blurW = +(Math.max(10, Math.min(98 - (sn.blurX || 0), (sn.blurW || 88) + dxPct))).toFixed(1);
+        if (h.includes('l')) {
+          const nw = Math.max(10, Math.min((sn.blurX || 0) + (sn.blurW || 88), (sn.blurW || 88) - dxPct));
+          p.blurX = +(Math.max(0, (sn.blurX || 0) + ((sn.blurW || 88) - nw))).toFixed(1);
+          p.blurW = +nw.toFixed(1);
+        }
+        if (h.includes('b')) p.blurH = +(Math.max(4, Math.min(75 - (sn.blurY || 0), (sn.blurH || 14) + dyPct))).toFixed(1);
+        if (h.includes('t')) {
+          const nh = Math.max(4, Math.min((sn.blurY || 0) + (sn.blurH || 14), (sn.blurH || 14) - dyPct));
+          p.blurY = +(Math.max(0, (sn.blurY || 0) + ((sn.blurH || 14) - nh))).toFixed(1);
+          p.blurH = +nh.toFixed(1);
+        }
+      } else {
+        // Scale / Zoom In & Out (4 Corners) + Width/Height stretch (4 Edges)
+        const dirX = h.includes('l') ? -dxPct : (h.includes('r') ? dxPct : 0);
+        const dirY = h.includes('t') ? -dyPct : (h.includes('b') ? dyPct : 0);
+        const delta = (h === 'ml' || h === 'mr') ? dirX : ((h === 'tm' || h === 'bm') ? dirY : (dirX + dirY) * 0.65);
+
+        if (L === 'sub' && (h === 'ml' || h === 'mr')) {
+          const nw = Math.max(30, Math.min(96, dragInfo.subW + dirX * 1.4));
+          const subOv = document.getElementById('subOverlay');
+          if (subOv) subOv.style.width = nw.toFixed(1) + '%';
+        } else {
+          const factor = 1 + delta / 55;
+          if (L === 'vid') p.vidScale = +(Math.max(0.4, Math.min(2.6, (sn.vidScale || 1) * factor))).toFixed(2);
+          else if (L === 'sub') p.subScale = +(Math.max(0.5, Math.min(2.4, (sn.subScale || 1) * factor))).toFixed(2);
+          else if (L === 'logo') p.logoScale = +(Math.max(0.4, Math.min(2.8, (sn.logoScale || 1) * factor))).toFixed(2);
+          else if (L === 'sponsor') p.sponsorScale = +(Math.max(0.4, Math.min(2.4, (sn.sponsorScale || 1) * factor))).toFixed(2);
+        }
+      }
+
+      if (typeof window.__ctsApplyPro === 'function') window.__ctsApplyPro();
+      applyBlurBoxHeight();
+      syncQuickZoomBar(L);
+      positionGizmo8();
+    });
+
+    const endDrag = (e) => {
+      if (!dragInfo || e.pointerId !== dragInfo.pid) return;
+      dragInfo = null;
+      if (typeof window.__ctsSavePro === 'function') window.__ctsSavePro();
+      positionGizmo8();
+    };
+    g.addEventListener('pointerup', endDrag);
+    g.addEventListener('pointercancel', endDrag);
+
+    // Tap directly on any layer inside #videoBox to activate 8-Handle Transform!
+    vb.addEventListener('pointerdown', (e) => {
+      if (cfg.dragLocked) return;
+      if (e.target && e.target.closest && (e.target.closest('#ctsProGizmo8') || e.target.closest('#demoCover'))) return;
+      const t = e.target;
+      let hit = 'vid';
+      if (document.getElementById('wmContainer')?.contains(t)) hit = 'logo';
+      else if (document.getElementById('subOverlay')?.contains(t)) hit = 'sub';
+      else if (document.getElementById('blurBox')?.contains(t)) hit = 'blur';
+      else if (document.getElementById('ctsTickerOverlay')?.contains(t)) hit = 'ticker';
+      else if (document.getElementById('ctsSponsorOverlay')?.contains(t)) hit = 'sponsor';
+      selectGizmo8(hit);
+    }, true);
+
+    // Sync #ctsTouchLayerBar pills + rename "🔒 Video" -> "🎬 Video"
+    const tbar = document.getElementById('ctsTouchLayerBar');
+    if (tbar) {
+      const vpPill = tbar.querySelector('[data-layer="vid"]');
+      if (vpPill) vpPill.innerHTML = '🎬 Video';
+      tbar.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-layer]');
+        if (b) setTimeout(() => selectGizmo8(b.getAttribute('data-layer')), 20);
+      });
+    }
+
+    // Keep Gizmo synced when user drags #qzSlider
+    const qz = document.getElementById('qzSlider');
+    if (qz) qz.addEventListener('input', () => setTimeout(() => { applyBlurBoxHeight(); positionGizmo8(); }, 15));
+    const qm = document.getElementById('qzMinus');
+    const qp = document.getElementById('qzPlus');
+    if (qm) qm.addEventListener('click', () => setTimeout(() => { applyBlurBoxHeight(); positionGizmo8(); }, 15));
+    if (qp) qp.addEventListener('click', () => setTimeout(() => { applyBlurBoxHeight(); positionGizmo8(); }, 15));
+  }
+
   function updateLockUI() {
     document.body.classList.toggle('cts-drag-free', !cfg.dragLocked);
     document.body.classList.toggle('cts-drag-locked', !!cfg.dragLocked);
@@ -21840,21 +22115,13 @@ body.cts-desktop-mode #cueList .cue-card {
       b.textContent = cfg.dragLocked ? '🔒 Locked' : '🔓 Free Drag';
       b.style.borderColor = cfg.dragLocked ? '#ef4444' : '#22c55e';
     }
-  }
-
-  function installFastPreviewDrag() {
-    const vb = document.getElementById('videoBox');
-    if (!vb || vb.__ctsV46Drag) return;
-    vb.__ctsV46Drag = true;
-    vb.addEventListener('pointerdown', () => { if (!cfg.dragLocked) vb.classList.add('cts-dragging-now'); }, true);
-    const off = () => vb.classList.remove('cts-dragging-now');
-    window.addEventListener('pointerup', off, true);
-    window.addEventListener('pointercancel', off, true);
+    if (cfg.dragLocked) { g8ActiveLayer = null; positionGizmo8(); }
   }
 
   function applyBlurPreviewStyle() {
     const bb = document.getElementById('blurBox');
     if (!bb) return;
+    applyBlurBoxHeight();
     const pwr = cfg.blurPower || 14;
     const st = cfg.blurStyle || 'soft';
     bb.style.backgroundImage = '';
@@ -21883,18 +22150,18 @@ body.cts-desktop-mode #cueList .cue-card {
 
   let mosaicTmpCvs = null;
   function installBlurExportHook() {
-    if (window.__ctsV46BlurHooked || typeof window.renderExportFrame !== 'function') return;
+    if (window.__ctsV47BlurHooked || typeof window.renderExportFrame !== 'function') return;
     const _origEF = window.renderExportFrame;
-    window.__ctsV46BlurHooked = true;
+    window.__ctsV47BlurHooked = true;
     window.renderExportFrame = function(ctx, cw, ch, el, activeCue, efCfg, bgObj) {
       const st = cfg.blurStyle || 'soft';
       if (!efCfg || !efCfg.incBlur || st === 'soft') return _origEF(ctx, cw, ch, el, activeCue, efCfg, bgObj);
       _origEF(ctx, cw, ch, el, activeCue, Object.assign({}, efCfg, { incBlur: false }), bgObj);
       try {
-        const p = (typeof pro !== 'undefined' && pro) ? pro : { blurX: 6, blurY: 80, blurW: 88 };
+        const p = window.__ctsPro || { blurX: 6, blurY: 80, blurW: 88, blurH: 14 };
         const bx = Math.round(((p.blurX ?? 6) / 100) * cw);
         const bw = Math.max(20, Math.round(((p.blurW ?? 88) / 100) * cw));
-        const bh = Math.max(16, Math.round(efCfg.bH || Math.round(ch * 0.14)));
+        const bh = Math.max(16, Math.round(((p.blurH ?? 14) / 100) * ch));
         const by = Math.max(0, Math.min(ch - bh, Math.round(((p.blurY ?? 80) / 100) * ch)));
         ctx.save();
         if (st === 'black') {
@@ -21929,6 +22196,7 @@ body.cts-desktop-mode #cueList .cue-card {
       const vi = document.getElementById('videoInput');
       if (vi) vi.value = '';
       if (typeof videoFile !== 'undefined') videoFile = null;
+      g8ActiveLayer = null; positionGizmo8();
       if (typeof toast === 'function') toast('🗑️ លុប Video Preview រួចរាល់!');
     } catch (e) {}
   }
@@ -21965,6 +22233,7 @@ body.cts-desktop-mode #cueList .cue-card {
       if (tk) tk.style.display = 'none';
       const sp = document.getElementById('ctsSponsorOverlay');
       if (sp) sp.style.display = 'none';
+      g8ActiveLayer = null; positionGizmo8();
       if (typeof toast === 'function') toast('🗑️ លុប Logo / Blur / Effects រួចរាល់!');
     } catch (e) {}
   }
@@ -21980,7 +22249,6 @@ body.cts-desktop-mode #cueList .cue-card {
   function renderWidgetBody(typeId, uid, tabKey) {
     const wrap = document.getElementById(uid + '-body');
     if (!wrap) return;
-
     if (typeId === 'blur5') {
       wrap.innerHTML = `
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px">
@@ -22003,6 +22271,7 @@ body.cts-desktop-mode #cueList .cue-card {
         if (typeof toggleBlur === 'function') toggleBlur();
         else document.getElementById('blurToggleBtn')?.click();
         applyBlurPreviewStyle();
+        setTimeout(() => selectGizmo8('blur'), 40);
       };
     } else if (typeId === 'clear') {
       wrap.innerHTML = `
@@ -22125,7 +22394,6 @@ body.cts-desktop-mode #cueList .cue-card {
     }
   }
 
-  // Verified exact anchor IDs from v34-Desktop (#cueCountTxt / #cueList / #bpSplitResCount)
   function findAddAnchorInTab(tabKey) {
     if (tabKey === 'cues') {
       const tab = document.getElementById('tab-cues');
@@ -22205,7 +22473,6 @@ body.cts-desktop-mode #cueList .cue-card {
         renderTabSlot(tabKey);
       };
     });
-
     list.forEach((w, idx) => renderWidgetBody(w.type, `cts-w-${tabKey}-${idx}`, tabKey));
   }
 
@@ -22242,12 +22509,8 @@ body.cts-desktop-mode #cueList .cue-card {
 
   const VIEW_ORDER = ['hub', 'recap', 'cues', 'design', 'settings', 'preview'];
   const VIEW_LABELS = {
-    hub:      '🏠 CTS ProFlow Hub',
-    recap:    '🎬 Big Project',
-    cues:     '🎙️ Dubber & AI',
-    design:   '🎨 Edit Video',
-    settings: '⚙️ AI & Export',
-    preview:  '👁️ Video Preview & Play'
+    hub: '🏠 CTS ProFlow Hub', recap: '🎬 Big Project', cues: '🎙️ Dubber & AI',
+    design: '🎨 Edit Video', settings: '⚙️ AI & Export', preview: '👁️ Video Preview & Play'
   };
 
   function triggerFx() {
@@ -22270,16 +22533,16 @@ body.cts-desktop-mode #cueList .cue-card {
     cfg.view = v;
     saveCfg();
 
-    document.body.classList.add('cts-v46-on');
-    document.body.classList.toggle('cts-v46-compact', !!cfg.compactCore);
-    document.body.classList.toggle('cts-v46-hub', v === 'hub');
-    document.body.classList.toggle('cts-v46-tab', ['recap', 'cues', 'design', 'settings'].includes(v));
-    document.body.classList.toggle('cts-v46-preview', v === 'preview');
+    document.body.classList.add('cts-v47-on');
+    document.body.classList.toggle('cts-v47-compact', !!cfg.compactCore);
+    document.body.classList.toggle('cts-v47-hub', v === 'hub');
+    document.body.classList.toggle('cts-v47-tab', ['recap', 'cues', 'design', 'settings'].includes(v));
+    document.body.classList.toggle('cts-v47-preview', v === 'preview');
 
     const showPv = (v === 'design') || (v === 'cues' && cfg.cuesShowPv);
-    document.body.classList.toggle('cts-v46-with-pv', showPv);
-    document.body.classList.toggle('cts-v46-no-pv', !showPv && v !== 'preview');
-    document.body.classList.toggle('cts-v46-cues-nopv', v === 'cues' && !cfg.cuesShowPv);
+    document.body.classList.toggle('cts-v47-with-pv', showPv);
+    document.body.classList.toggle('cts-v47-no-pv', !showPv && v !== 'preview');
+    document.body.classList.toggle('cts-v47-cues-nopv', v === 'cues' && !cfg.cuesShowPv);
 
     if (['recap', 'cues', 'design', 'settings'].includes(v)) {
       if (typeof switchTab === 'function') { try { switchTab(v); } catch (e) {} }
@@ -22298,6 +22561,7 @@ body.cts-desktop-mode #cueList .cue-card {
       pvToggle.style.color = cfg.cuesShowPv ? '#f8fafc' : '#bae6fd';
     }
 
+    setTimeout(positionGizmo8, 60);
     closeCmdModal();
   }
 
@@ -22328,7 +22592,7 @@ body.cts-desktop-mode #cueList .cue-card {
           <span style="font-size:18px">›</span>
         </button>
         <button type="button" data-go="design" class="cts-pf46-tabcard pv">
-          <div><b style="font-size:13px">🎨 Edit Video</b><div style="font-size:10.5px;opacity:.75;margin-top:2px">Video Preview ធំ + Logo / Blur 5 ម៉ូដ / Subtitle</div></div>
+          <div><b style="font-size:13px">🎨 Edit Video</b><div style="font-size:10.5px;opacity:.75;margin-top:2px">Preview ធំ + 8-Handle ម្រាមដៃ ១ + Blur 5 ម៉ូដ</div></div>
           <span style="font-size:18px">›</span>
         </button>
         <button type="button" data-go="settings" class="cts-pf46-tabcard full">
@@ -22336,15 +22600,13 @@ body.cts-desktop-mode #cueList .cue-card {
           <span style="font-size:18px">›</span>
         </button>
         <button type="button" data-go="preview" class="cts-pf46-tabcard pv">
-          <div><b style="font-size:13px">👁️ Video Preview & Play</b><div style="font-size:10.5px;opacity:.75;margin-top:2px">មើល Video Preview ធំពេញភ្នែក + អូសកែផ្ទាល់</div></div>
+          <div><b style="font-size:13px">👁️ Video Preview & Play</b><div style="font-size:10.5px;opacity:.75;margin-top:2px">Preview ធំពេញភ្នែក + ទាញ ៨ ជ្រុងដោយម្រាមដៃ ១</div></div>
           <span style="font-size:18px">›</span>
         </button>
       </div>
     `;
     document.getElementById('ctsPf46HubVid').onclick = () => document.getElementById('videoInput')?.click();
-    hub.querySelectorAll('[data-go]').forEach(b => {
-      b.onclick = () => setView(b.getAttribute('data-go'), true);
-    });
+    hub.querySelectorAll('[data-go]').forEach(b => { b.onclick = () => setView(b.getAttribute('data-go'), true); });
   }
 
   function openCmdModal() {
@@ -22387,7 +22649,7 @@ body.cts-desktop-mode #cueList .cue-card {
     document.getElementById('ctsCmdHub').onclick = () => setView('hub', true);
     document.getElementById('ctsCmdCmp').onchange = function() {
       cfg.compactCore = this.checked; saveCfg();
-      document.body.classList.toggle('cts-v46-compact', !!cfg.compactCore);
+      document.body.classList.toggle('cts-v47-compact', !!cfg.compactCore);
     };
     box.querySelectorAll('[data-anim]').forEach(b => {
       b.onclick = () => { cfg.animStyle = b.getAttribute('data-anim'); saveCfg(); applyAnimColors(); triggerFx(); openCmdModal(); };
@@ -22397,16 +22659,14 @@ body.cts-desktop-mode #cueList .cue-card {
     document.getElementById('ctsCmdCD').onclick = () => { clearDubAudioOnly(); closeCmdModal(); };
     document.getElementById('ctsCmdCA').onclick = () => { clearAllNewProject(); closeCmdModal(); };
     document.getElementById('ctsCmdRel').onclick = () => location.reload();
-    box.querySelectorAll('[data-vgo]').forEach(b => {
-      b.onclick = () => setView(b.getAttribute('data-vgo'), true);
-    });
+    box.querySelectorAll('[data-vgo]').forEach(b => { b.onclick = () => setView(b.getAttribute('data-vgo'), true); });
     m.classList.add('open');
   }
   function closeCmdModal() {
     document.getElementById('ctsPf46CmdModal')?.classList.remove('open');
   }
 
-  function mountProFlow46() {
+  function mountProFlow47() {
     if (document.getElementById('ctsPf46Bar')) return;
 
     const header = document.querySelector('.app-header');
@@ -22469,15 +22729,13 @@ body.cts-desktop-mode #cueList .cue-card {
     document.getElementById('ctsPf46Next').onclick = () => stepView(1);
     document.getElementById('ctsPf46Cmd').onclick = openCmdModal;
     document.getElementById('ctsPf46LockBtn').onclick = () => { cfg.dragLocked = !cfg.dragLocked; saveCfg(); updateLockUI(); };
-    document.getElementById('ctsPf46ResetPos').onclick = () => document.getElementById('ctsResetPosBtn')?.click();
+    document.getElementById('ctsPf46ResetPos').onclick = () => { document.getElementById('ctsResetPosBtn')?.click(); setTimeout(() => { applyBlurBoxHeight(); positionGizmo8(); }, 40); };
     document.getElementById('ctsPf46ClrVid').onclick = clearVideoPreview;
     document.getElementById('ctsPf46PvTog').onclick = () => { cfg.cuesShowPv = !cfg.cuesShowPv; saveCfg(); setView('cues', false); };
 
-    const vidLayerPill = document.querySelector('#ctsTouchLayerBar [data-layer="vid"]');
-    if (vidLayerPill) vidLayerPill.innerHTML = '🎬 Video';
     applyAnimColors();
     updateLockUI();
-    installFastPreviewDrag();
+    installGizmo8();
     installBlurExportHook();
     applyBlurPreviewStyle();
     renderHub();
@@ -22485,11 +22743,14 @@ body.cts-desktop-mode #cueList .cue-card {
     setView(cfg.view || 'hub', false);
   }
 
-  setTimeout(mountProFlow46, 400);
+  window.addEventListener('resize', () => setTimeout(positionGizmo8, 50));
+  setTimeout(mountProFlow47, 450);
   setTimeout(() => {
+    installGizmo8();
     installBlurExportHook();
     ['recap', 'cues', 'design', 'settings'].forEach(renderTabSlot);
-  }, 1600);
+    positionGizmo8();
+  }, 1650);
 })();
 </script>
 
