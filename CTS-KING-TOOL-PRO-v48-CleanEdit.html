@@ -22828,7 +22828,7 @@ body.cts-desktop-mode #cueList .cue-card {
 
 
 <script id="cts-addon-48-cleanedit">
-// === ADD-ON #48: CLEAN EDIT VIDEO WORKSPACE (NO CENTER UPLOAD, TIMELINE KEPT, ALL EDIT TOOLS IN +ADD/X) ===
+// === ADD-ON #48: CLEAN EDIT VIDEO (TOUCH-LAYER & QUICK-ZOOM MOVED INTO +ADD/X, ZERO DUPLICATES) ===
 (function() {
   const CFG_KEY = 'cts_v48_edit_widgets';
   let activeIds = [];
@@ -22847,10 +22847,20 @@ body.cts-desktop-mode #cueList .cue-card {
     /* Hide center "Tap to Add Video" box ONLY inside Edit Video workspace */
     body.cts-v48-in-design #demoCover { display: none !important; }
 
-    /* Keep Timeline comfortable & roomy inside Edit Video */
-    body.cts-v48-in-design #miniTimeline { height: 54px !important; margin-top: 2px !important; }
+    /* Keep Timeline comfortable & clean inside Edit Video */
+    body.cts-v48-in-design #miniTimeline { height: 56px !important; margin-top: 2px !important; }
 
-    /* Hide cluttered sub-tab bars & staging bin inside #tab-design, leaving ONLY our clean +Add workspace */
+    /* Hide touchLayerBar & quickZoomBar from player area in Edit Video / Preview Only (moved into +Add!) */
+    body.cts-v48-in-design #ctsTouchLayerBar:not(.cts-v48-in-slot),
+    body.cts-v48-in-design #ctsQuickZoomBar:not(.cts-v48-in-slot),
+    body.cts-v47-preview #ctsTouchLayerBar:not(.cts-v48-in-slot),
+    body.cts-v47-preview #ctsQuickZoomBar:not(.cts-v48-in-slot) { display: none !important; }
+
+    /* Hide duplicate Reset ("ដើម") & Lock ("សោ Video") inside touchLayerBar since top strip already has them */
+    #ctsTouchLayerBar #ctsResetPosBtn,
+    #ctsTouchLayerBar .cts-v48-dup-hide { display: none !important; }
+
+    /* Hide cluttered sub-tab bars & staging bin inside #tab-design, leaving ONLY clean +Add workspace */
     body.cts-v48-in-design #tab-design > :not(#ctsV48EditSlot) { display: none !important; }
     #ctsDesignBin { display: none !important; }
     #cts-addslot-design { display: none !important; }
@@ -22859,6 +22869,8 @@ body.cts-desktop-mode #cueList .cue-card {
     #ctsV48EditSlot .cts-add-bar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 12px; border-radius:11px; border:1px dashed rgba(251,191,36,0.6); background:rgba(180,83,9,0.16); }
     #ctsV48EditSlot .cts-widget-box .panel-card { margin:0 !important; border:none !important; background:transparent !important; padding:0 !important; box-shadow:none !important; display:block !important; }
     #ctsV48EditSlot .cts-widget-box .panel-card > .panel-title:first-child { display:none !important; }
+    #ctsV48EditSlot #ctsTouchLayerBar { display:flex !important; flex-wrap:wrap !important; gap:5px !important; padding:6px !important; border-radius:9px; background:rgba(0,0,0,0.32); margin-bottom:6px; }
+    #ctsV48EditSlot #ctsQuickZoomBar { display:flex !important; padding:6px 8px !important; border-radius:9px; background:rgba(0,0,0,0.32); margin-bottom:6px; }
   `;
   document.head.appendChild(styleEl);
 
@@ -22870,7 +22882,7 @@ body.cts-desktop-mode #cueList .cue-card {
     { match: /Running Ticker/i,                  id: 'ed_ticker',  icon: '📜', title: 'អក្សររត់ Running Ticker (៥ ម៉ូដ)',       desc: 'ដាក់អក្សររត់ខាងលើ/ក្រោមវីដេអូ' },
     { match: /Banner Sponsor/i,                  id: 'ed_sponsor', icon: '📢', title: 'Video / Banner Sponsor',                desc: 'ដាក់រូប ឬ Banner ផ្សាយពាណិជ្ជកម្ម' },
     { match: /Copyright Pro/i,                   id: 'ed_cr',      icon: '🛡️', title: 'កាត់ Copyright Pro (80-90%)',           desc: 'Mirror / Zoom / LUT / Cinema Frame / Pitch' },
-    { match: /Zoom & អូសលើ Preview/i,            id: 'ed_canvas',  icon: '✋', title: 'Smart Canvas & ទីតាំងដើម',              desc: 'Reset ទីតាំងទាំងអស់ និងកែ Zoom' },
+    { match: /Zoom & អូសលើ Preview/i,            id: 'ed_canvas',  icon: '✋', title: 'ជ្រើស Layer & Zoom (Video/Text/Fit)',   desc: 'ប៊ូតុង Video, អក្សរ, Logo, Blur, រត់, Fit 100% & Slider' },
     { match: /Auto-Ducking|BGM|Save/i,           id: 'ed_audio',   icon: '🎵', title: 'ភ្លេង BGM, សំឡេង & Auto-Ducking',       desc: 'ដាក់ BGM កម្រិតសំឡេង Video ដើម និងល្បឿន' }
   ];
 
@@ -22888,7 +22900,18 @@ body.cts-desktop-mode #cueList .cue-card {
     { id: 'mosaic',  name: '👾 Mosaic' }
   ];
 
-  const cardRegistry = new Map(); // id -> { id, icon, title, desc, el }
+  const cardRegistry = new Map();
+
+  function cleanTouchLayerDuplicates() {
+    const tbar = document.getElementById('ctsTouchLayerBar');
+    if (!tbar) return;
+    tbar.querySelectorAll('button').forEach(btn => {
+      const txt = (btn.textContent || '').trim();
+      if (/សោ Video|ដើម/i.test(txt) || btn.id === 'ctsResetPosBtn') {
+        btn.classList.add('cts-v48-dup-hide');
+      }
+    });
+  }
 
   function harvestDesignCards() {
     const tab = document.getElementById('tab-design');
@@ -22900,6 +22923,19 @@ body.cts-desktop-mode #cueList .cue-card {
       tab.appendChild(bin);
     }
 
+    // Also harvest #ctsTouchLayerBar & #ctsQuickZoomBar cleanly into bin when not in +Add
+    cleanTouchLayerDuplicates();
+    const tbar = document.getElementById('ctsTouchLayerBar');
+    const qbar = document.getElementById('ctsQuickZoomBar');
+    if (tbar && !tbar.closest('#ctsV48EditSlot') && tbar.parentElement !== bin) {
+      tbar.classList.remove('cts-v48-in-slot');
+      bin.appendChild(tbar);
+    }
+    if (qbar && !qbar.closest('#ctsV48EditSlot') && qbar.parentElement !== bin) {
+      qbar.classList.remove('cts-v48-in-slot');
+      bin.appendChild(qbar);
+    }
+
     const cards = Array.from(tab.querySelectorAll('.panel-card'));
     cards.forEach((card, idx) => {
       if (card.closest('#ctsV48EditSlot')) return;
@@ -22909,12 +22945,10 @@ body.cts-desktop-mode #cueList .cue-card {
       }
       const txt = (card.querySelector('.panel-title')?.textContent || card.textContent || '').replace(/\s+/g, ' ').trim();
       let meta = null;
-      // Match specific native titles cleanly
       if (/Subtitle/i.test(txt) && !/Running Ticker/i.test(txt)) meta = NATIVE_MAP[1];
       else if (/Running Ticker/i.test(txt)) meta = NATIVE_MAP[4];
-      else {
-        meta = NATIVE_MAP.find(m => m.match.test(txt));
-      }
+      else meta = NATIVE_MAP.find(m => m.match.test(txt));
+
       const uid = meta ? (cardRegistry.has(meta.id) ? `${meta.id}_${idx}` : meta.id) : `ed_extra_${idx}`;
       const title = meta ? meta.title : (txt.slice(0, 32) || `Edit Tool #${idx + 1}`);
       const icon = meta ? meta.icon : '🎨';
@@ -22923,7 +22957,6 @@ body.cts-desktop-mode #cueList .cue-card {
       cardRegistry.set(uid, { id: uid, icon, title, desc, el: card });
       bin.appendChild(card);
 
-      // Attach 5 Blur Style buttons right inside the real Blur card if it's ed_blur!
       if (uid === 'ed_blur' && !card.querySelector('#ctsV48BlurStyles')) {
         const bDiv = document.createElement('div');
         bDiv.id = 'ctsV48BlurStyles';
@@ -22937,14 +22970,11 @@ body.cts-desktop-mode #cueList .cue-card {
         const syncBlurBtns = () => {
           let cur = 'soft';
           try { cur = (JSON.parse(localStorage.getItem('cts_proflow_v46_cfg') || '{}')).blurStyle || 'soft'; } catch (e) {}
-          bDiv.querySelectorAll('[data-v48bs]').forEach(btn => {
-            btn.classList.toggle('act', btn.getAttribute('data-v48bs') === cur);
-          });
+          bDiv.querySelectorAll('[data-v48bs]').forEach(btn => btn.classList.toggle('act', btn.getAttribute('data-v48bs') === cur));
         };
         bDiv.querySelectorAll('[data-v48bs]').forEach(btn => {
           btn.onclick = () => {
             const val = btn.getAttribute('data-v48bs');
-            // Sync with v47 cfg in localStorage + click equivalent or update blurBox live
             try {
               const c = JSON.parse(localStorage.getItem('cts_proflow_v46_cfg') || '{}');
               c.blurStyle = val;
@@ -22966,6 +22996,17 @@ body.cts-desktop-mode #cueList .cue-card {
         syncBlurBtns();
       }
     });
+
+    // Ensure unified ed_canvas entry exists even if native Smart Canvas wasn't created yet
+    if (!cardRegistry.has('ed_canvas')) {
+      cardRegistry.set('ed_canvas', {
+        id: 'ed_canvas',
+        icon: '✋',
+        title: 'ជ្រើស Layer & Zoom (Video/Text/Fit)',
+        desc: 'ប៊ូតុង Video, អក្សរ, Logo, Blur, រត់, Fit 100% & Slider',
+        el: null
+      });
+    }
   }
 
   function escHtml(s) {
@@ -23030,12 +23071,15 @@ body.cts-desktop-mode #cueList .cue-card {
       tab.appendChild(slot);
     }
 
-    // Move all native cards back to bin before rebuilding slot wrapper cleanly
     const bin = document.getElementById('ctsDesignBin');
     if (bin) {
       cardRegistry.forEach(item => {
         if (item.el && item.el.parentElement !== bin) bin.appendChild(item.el);
       });
+      const tbar = document.getElementById('ctsTouchLayerBar');
+      const qbar = document.getElementById('ctsQuickZoomBar');
+      if (tbar && tbar.parentElement !== bin) { tbar.classList.remove('cts-v48-in-slot'); bin.appendChild(tbar); }
+      if (qbar && qbar.parentElement !== bin) { qbar.classList.remove('cts-v48-in-slot'); bin.appendChild(qbar); }
     }
 
     slot.innerHTML = `
@@ -23071,10 +23115,16 @@ body.cts-desktop-mode #cueList .cue-card {
 
     activeIds.forEach((id, idx) => {
       const uid = `cts-v48-w-${idx}`;
+      const bodyEl = document.getElementById(uid + '-body');
       const nat = cardRegistry.get(id);
-      if (nat && nat.el) {
-        const bodyEl = document.getElementById(uid + '-body');
-        if (bodyEl) bodyEl.appendChild(nat.el);
+      if (id === 'ed_canvas' && bodyEl) {
+        const tbar = document.getElementById('ctsTouchLayerBar');
+        const qbar = document.getElementById('ctsQuickZoomBar');
+        if (tbar) { tbar.classList.add('cts-v48-in-slot'); bodyEl.appendChild(tbar); }
+        if (qbar) { qbar.classList.add('cts-v48-in-slot'); bodyEl.appendChild(qbar); }
+        if (nat && nat.el) bodyEl.appendChild(nat.el);
+      } else if (nat && nat.el && bodyEl) {
+        bodyEl.appendChild(nat.el);
       } else {
         buildExtraWidget(id, uid);
       }
@@ -23114,7 +23164,6 @@ body.cts-desktop-mode #cueList .cue-card {
     box.querySelectorAll('[data-pick]').forEach(btn => {
       btn.onclick = () => {
         const id = btn.getAttribute('data-pick');
-        // Native cards move cleanly (prevent duplicate native card IDs, toggle/focus cleanly)
         if (cardRegistry.has(id)) {
           if (!activeIds.includes(id)) activeIds.push(id);
         } else {
@@ -23128,6 +23177,23 @@ body.cts-desktop-mode #cueList .cue-card {
     m.classList.add('open');
   }
 
+  // Add quick 1-tap "🎬 Video" Zoom-Box button right on the top preview strip!
+  function addTopVideoZoomBtn() {
+    const rst = document.getElementById('ctsPf46ResetPos');
+    if (!rst || document.getElementById('ctsV48VidBoxBtn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'ctsV48VidBoxBtn';
+    btn.type = 'button';
+    btn.className = 'cts-pf46-btn';
+    btn.style.cssText = 'height:27px;font-size:10.5px;padding:0 8px;border-color:rgba(56,189,248,0.55);color:#bae6fd';
+    btn.textContent = '🎬 Video';
+    btn.onclick = () => {
+      const vidPill = document.querySelector('#ctsTouchLayerBar [data-layer="vid"]');
+      if (vidPill) vidPill.click();
+    };
+    rst.insertAdjacentElement('beforebegin', btn);
+  }
+
   function syncDesignFlag() {
     const inTab = document.body.classList.contains('cts-v47-tab') && document.getElementById('tab-design')?.classList.contains('active');
     document.body.classList.toggle('cts-v48-in-design', !!inTab);
@@ -23136,8 +23202,8 @@ body.cts-desktop-mode #cueList .cue-card {
   const mo = new MutationObserver(syncDesignFlag);
   mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
-  setTimeout(() => { renderEditSlot(); syncDesignFlag(); }, 1800);
-  setTimeout(() => { renderEditSlot(); syncDesignFlag(); }, 3200);
+  setTimeout(() => { addTopVideoZoomBtn(); renderEditSlot(); syncDesignFlag(); }, 1800);
+  setTimeout(() => { addTopVideoZoomBtn(); renderEditSlot(); syncDesignFlag(); }, 3200);
 })();
 </script>
 
