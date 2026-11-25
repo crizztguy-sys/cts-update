@@ -22826,5 +22826,320 @@ body.cts-desktop-mode #cueList .cue-card {
 })();
 </script>
 
+
+<script id="cts-addon-48-cleanedit">
+// === ADD-ON #48: CLEAN EDIT VIDEO WORKSPACE (NO CENTER UPLOAD, TIMELINE KEPT, ALL EDIT TOOLS IN +ADD/X) ===
+(function() {
+  const CFG_KEY = 'cts_v48_edit_widgets';
+  let activeIds = [];
+  try {
+    const s = JSON.parse(localStorage.getItem(CFG_KEY) || '[]');
+    if (Array.isArray(s)) activeIds = s;
+  } catch (e) {}
+
+  function saveIds() {
+    try { localStorage.setItem(CFG_KEY, JSON.stringify(activeIds)); } catch (e) {}
+  }
+
+  const styleEl = document.createElement('style');
+  styleEl.id = 'cts-v48-style';
+  styleEl.textContent = `
+    /* Hide center "Tap to Add Video" box ONLY inside Edit Video workspace */
+    body.cts-v48-in-design #demoCover { display: none !important; }
+
+    /* Keep Timeline comfortable & roomy inside Edit Video */
+    body.cts-v48-in-design #miniTimeline { height: 54px !important; margin-top: 2px !important; }
+
+    /* Hide cluttered sub-tab bars & staging bin inside #tab-design, leaving ONLY our clean +Add workspace */
+    body.cts-v48-in-design #tab-design > :not(#ctsV48EditSlot) { display: none !important; }
+    #ctsDesignBin { display: none !important; }
+    #cts-addslot-design { display: none !important; }
+
+    #ctsV48EditSlot { display:flex; flex-direction:column; gap:8px; padding:6px 0 24px; }
+    #ctsV48EditSlot .cts-add-bar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 12px; border-radius:11px; border:1px dashed rgba(251,191,36,0.6); background:rgba(180,83,9,0.16); }
+    #ctsV48EditSlot .cts-widget-box .panel-card { margin:0 !important; border:none !important; background:transparent !important; padding:0 !important; box-shadow:none !important; display:block !important; }
+    #ctsV48EditSlot .cts-widget-box .panel-card > .panel-title:first-child { display:none !important; }
+  `;
+  document.head.appendChild(styleEl);
+
+  const NATIVE_MAP = [
+    { match: /ដាក់ Video, ទំហំ|ប្លង់|1:1 Square/i, id: 'ed_ratio',   icon: '📐', title: 'ប្លង់ & ទំហំ Video (9:16 / 16:9 / 1:1)', desc: 'ប្តូរខ្នាតអេក្រង់ និងកម្រិតច្បាស់' },
+    { match: /Subtitle|អក្សររត់/i,               id: 'ed_sub',     icon: '💬', title: 'Subtitle & ពណ៌អក្សរ',                   desc: 'បើក/បិទ ទំហំ ទីតាំង និងពណ៌ Subtitle' },
+    { match: /Logo CTS/i,                        id: 'ed_logo',    icon: '👑', title: 'Logo & ឈ្មោះឆានែល',                    desc: 'ដាក់រូប Logo និងអក្សរ watermark' },
+    { match: /ប្រអប់ Blur/i,                      id: 'ed_blur',    icon: '💧', title: 'ប្រអប់ Blur + ៥ ម៉ូដ (Preview & MP4)',  desc: 'បិទបាំងអក្សរចាស់ • Soft/Heavy/Black/Mosaic' },
+    { match: /Running Ticker/i,                  id: 'ed_ticker',  icon: '📜', title: 'អក្សររត់ Running Ticker (៥ ម៉ូដ)',       desc: 'ដាក់អក្សររត់ខាងលើ/ក្រោមវីដេអូ' },
+    { match: /Banner Sponsor/i,                  id: 'ed_sponsor', icon: '📢', title: 'Video / Banner Sponsor',                desc: 'ដាក់រូប ឬ Banner ផ្សាយពាណិជ្ជកម្ម' },
+    { match: /Copyright Pro/i,                   id: 'ed_cr',      icon: '🛡️', title: 'កាត់ Copyright Pro (80-90%)',           desc: 'Mirror / Zoom / LUT / Cinema Frame / Pitch' },
+    { match: /Zoom & អូសលើ Preview/i,            id: 'ed_canvas',  icon: '✋', title: 'Smart Canvas & ទីតាំងដើម',              desc: 'Reset ទីតាំងទាំងអស់ និងកែ Zoom' },
+    { match: /Auto-Ducking|BGM|Save/i,           id: 'ed_audio',   icon: '🎵', title: 'ភ្លេង BGM, សំឡេង & Auto-Ducking',       desc: 'ដាក់ BGM កម្រិតសំឡេង Video ដើម និងល្បឿន' }
+  ];
+
+  const EXTRA_WIDGETS = [
+    { id: 'ex_clear', icon: '🗑️', title: 'លុបតាមផ្នែក & 🔄 Refresh', desc: 'លុប Video / Subtitles / Dub / BGM / Clear All' },
+    { id: 'ex_thumb', icon: '🖼️', title: 'Thumbnail / Cover Maker',   desc: 'ចាប់ Frame វីដេអូ + អក្សរធំ + Save HD PNG' },
+    { id: 'ex_viral', icon: '🧠', title: 'AI Viral Title & Hashtags', desc: 'សរសេរចំណងជើង Caption & Hashtags ១ ចុច' }
+  ];
+
+  const BLUR_STYLES = [
+    { id: 'soft',    name: '💧 Soft' },
+    { id: 'heavy',   name: '🌫️ Heavy' },
+    { id: 'black',   name: '⬛ Black Bar' },
+    { id: 'frosted', name: '🟫 Frosted' },
+    { id: 'mosaic',  name: '👾 Mosaic' }
+  ];
+
+  const cardRegistry = new Map(); // id -> { id, icon, title, desc, el }
+
+  function harvestDesignCards() {
+    const tab = document.getElementById('tab-design');
+    if (!tab) return;
+    let bin = document.getElementById('ctsDesignBin');
+    if (!bin) {
+      bin = document.createElement('div');
+      bin.id = 'ctsDesignBin';
+      tab.appendChild(bin);
+    }
+
+    const cards = Array.from(tab.querySelectorAll('.panel-card'));
+    cards.forEach((card, idx) => {
+      if (card.closest('#ctsV48EditSlot')) return;
+      if (card.dataset.ctsV48Id) {
+        if (card.parentElement !== bin) bin.appendChild(card);
+        return;
+      }
+      const txt = (card.querySelector('.panel-title')?.textContent || card.textContent || '').replace(/\s+/g, ' ').trim();
+      let meta = null;
+      // Match specific native titles cleanly
+      if (/Subtitle/i.test(txt) && !/Running Ticker/i.test(txt)) meta = NATIVE_MAP[1];
+      else if (/Running Ticker/i.test(txt)) meta = NATIVE_MAP[4];
+      else {
+        meta = NATIVE_MAP.find(m => m.match.test(txt));
+      }
+      const uid = meta ? (cardRegistry.has(meta.id) ? `${meta.id}_${idx}` : meta.id) : `ed_extra_${idx}`;
+      const title = meta ? meta.title : (txt.slice(0, 32) || `Edit Tool #${idx + 1}`);
+      const icon = meta ? meta.icon : '🎨';
+      const desc = meta ? meta.desc : 'ឧបករណ៍កែវីដេអូ';
+      card.dataset.ctsV48Id = uid;
+      cardRegistry.set(uid, { id: uid, icon, title, desc, el: card });
+      bin.appendChild(card);
+
+      // Attach 5 Blur Style buttons right inside the real Blur card if it's ed_blur!
+      if (uid === 'ed_blur' && !card.querySelector('#ctsV48BlurStyles')) {
+        const bDiv = document.createElement('div');
+        bDiv.id = 'ctsV48BlurStyles';
+        bDiv.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1)';
+        bDiv.innerHTML = `
+          <div style="font-size:11px;font-weight:700;margin-bottom:5px;color:#fde68a">🌫️ ម៉ូដ Blur ៥ ជម្រើស (Preview & Export MP4)៖</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+            ${BLUR_STYLES.map(b => `<button type="button" data-v48bs="${b.id}" class="cts-pf46-mitem" style="text-align:center;padding:6px 4px">${b.name}</button>`).join('')}
+          </div>`;
+        card.appendChild(bDiv);
+        const syncBlurBtns = () => {
+          let cur = 'soft';
+          try { cur = (JSON.parse(localStorage.getItem('cts_proflow_v46_cfg') || '{}')).blurStyle || 'soft'; } catch (e) {}
+          bDiv.querySelectorAll('[data-v48bs]').forEach(btn => {
+            btn.classList.toggle('act', btn.getAttribute('data-v48bs') === cur);
+          });
+        };
+        bDiv.querySelectorAll('[data-v48bs]').forEach(btn => {
+          btn.onclick = () => {
+            const val = btn.getAttribute('data-v48bs');
+            // Sync with v47 cfg in localStorage + click equivalent or update blurBox live
+            try {
+              const c = JSON.parse(localStorage.getItem('cts_proflow_v46_cfg') || '{}');
+              c.blurStyle = val;
+              localStorage.setItem('cts_proflow_v46_cfg', JSON.stringify(c));
+            } catch (e) {}
+            const bb = document.getElementById('blurBox');
+            if (bb) {
+              if (!bb.classList.contains('on')) document.getElementById('blurToggleBtn')?.click();
+              bb.style.backgroundImage = '';
+              if (val === 'black') { bb.style.backdropFilter = 'none'; bb.style.webkitBackdropFilter = 'none'; bb.style.background = 'rgba(0,0,0,0.96)'; }
+              else if (val === 'frosted') { bb.style.backdropFilter = 'blur(14px) saturate(1.2)'; bb.style.webkitBackdropFilter = 'blur(14px) saturate(1.2)'; bb.style.background = 'rgba(18,18,28,0.58)'; }
+              else if (val === 'mosaic') { bb.style.backdropFilter = 'blur(6px)'; bb.style.webkitBackdropFilter = 'blur(6px)'; bb.style.background = 'rgba(20,20,28,0.25)'; bb.style.backgroundImage = 'repeating-linear-gradient(0deg,rgba(255,255,255,0.08) 0 1px,transparent 1px 6px),repeating-linear-gradient(90deg,rgba(255,255,255,0.08) 0 1px,transparent 1px 6px)'; }
+              else if (val === 'heavy') { bb.style.backdropFilter = 'blur(20px)'; bb.style.webkitBackdropFilter = 'blur(20px)'; bb.style.background = 'rgba(20,6,10,0.35)'; }
+              else { bb.style.backdropFilter = 'blur(8px)'; bb.style.webkitBackdropFilter = 'blur(8px)'; bb.style.background = 'rgba(20,6,10,0.28)'; }
+            }
+            syncBlurBtns();
+          };
+        });
+        syncBlurBtns();
+      }
+    });
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
+
+  function buildExtraWidget(typeId, uid) {
+    const wrap = document.getElementById(uid + '-body');
+    if (!wrap) return;
+    if (typeId === 'ex_clear') {
+      wrap.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+          <button type="button" id="${uid}-cv" class="cts-pf46-mitem danger">🗑️ លុប Video</button>
+          <button type="button" id="${uid}-cs" class="cts-pf46-mitem danger">🗑️ លុប Subtitles</button>
+          <button type="button" id="${uid}-cb" class="cts-pf46-mitem danger">🗑️ លុប BGM</button>
+          <button type="button" id="${uid}-cf" class="cts-pf46-mitem danger">🗑️ លុប Logo/Blur</button>
+        </div>
+        <button type="button" id="${uid}-rl" class="cts-pf46-mitem" style="width:100%;text-align:center;margin-top:6px;border-color:#38bdf8;color:#bae6fd">🔄 Refresh App (រក្សា API Keys)</button>`;
+      document.getElementById(uid + '-cv').onclick = () => document.getElementById('ctsPf46ClrVid')?.click();
+      document.getElementById(uid + '-cs').onclick = () => { if (typeof cues !== 'undefined' && Array.isArray(cues)) { cues.length = 0; if (typeof renderAll === 'function') renderAll(); } };
+      document.getElementById(uid + '-cb').onclick = () => { if (typeof bgmAudio !== 'undefined' && bgmAudio) { bgmAudio.pause(); bgmAudio.src = ''; } };
+      document.getElementById(uid + '-cf').onclick = () => {
+        const wm = document.getElementById('wmImgEl'); if (wm) { wm.removeAttribute('src'); wm.style.display = 'none'; }
+        document.getElementById('blurBox')?.classList.remove('on');
+        const tk = document.getElementById('ctsTickerOverlay'); if (tk) tk.style.display = 'none';
+        const sp = document.getElementById('ctsSponsorOverlay'); if (sp) sp.style.display = 'none';
+      };
+      document.getElementById(uid + '-rl').onclick = () => location.reload();
+    } else if (typeId === 'ex_thumb') {
+      wrap.innerHTML = `<div style="font-size:11.5px;opacity:.85;margin-bottom:6px">ចាប់ Frame បច្ចុប្បន្ន + សរសេរអក្សរគម្រប HD PNG</div><button type="button" id="${uid}-snap" class="cts-pf46-mitem act" style="width:100%;text-align:center">📸 Save Frame បច្ចុប្បន្នជា PNG</button>`;
+      document.getElementById(uid + '-snap').onclick = () => {
+        const v = document.getElementById('videoPlayer');
+        if (!v || v.readyState < 2 || !v.videoWidth) { if (typeof toast === 'function') toast('⚠️ សូមដាក់ Video ជាមុនសិន!'); return; }
+        const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+        c.toBlob(b => { if (!b) return; const u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = `CTS-Frame-${Date.now()}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(u), 3000); }, 'image/png');
+      };
+    } else if (typeId === 'ex_viral') {
+      wrap.innerHTML = `<button type="button" id="${uid}-go" class="cts-pf46-mitem act" style="width:100%;text-align:center;margin-bottom:6px">✨ AI សរសេរ Title + Hashtags</button><textarea id="${uid}-ta" rows="3" style="width:100%;padding:6px;border-radius:8px;background:rgba(0,0,0,0.4);color:#fff;border:1px solid rgba(255,255,255,0.2);font-size:11.5px"></textarea>`;
+      document.getElementById(uid + '-go').onclick = async function() {
+        if (typeof callAI !== 'function') return;
+        const list = (typeof cues !== 'undefined' && Array.isArray(cues)) ? cues : [];
+        const txt = list.slice(0, 18).map(c => c.km || c.src || '').filter(Boolean).join('\n');
+        if (!txt) { if (typeof toast === 'function') toast('⚠️ មិនទាន់មាន Subtitle ទេ!'); return; }
+        this.textContent = '⏳...';
+        try { document.getElementById(uid + '-ta').value = await callAI('Write 2 viral titles, 2-line caption, 6 hashtags in Khmer.', txt); } catch (e) {}
+        this.textContent = '✨ AI សរសេរ Title + Hashtags';
+      };
+    }
+  }
+
+  function renderEditSlot() {
+    const tab = document.getElementById('tab-design');
+    if (!tab) return;
+    harvestDesignCards();
+
+    let slot = document.getElementById('ctsV48EditSlot');
+    if (!slot) {
+      slot = document.createElement('div');
+      slot.id = 'ctsV48EditSlot';
+      slot.setAttribute('data-no-i18n', '1');
+      tab.appendChild(slot);
+    }
+
+    // Move all native cards back to bin before rebuilding slot wrapper cleanly
+    const bin = document.getElementById('ctsDesignBin');
+    if (bin) {
+      cardRegistry.forEach(item => {
+        if (item.el && item.el.parentElement !== bin) bin.appendChild(item.el);
+      });
+    }
+
+    slot.innerHTML = `
+      <div class="cts-add-bar">
+        <span style="font-size:12px;font-weight:800;color:#fde68a">🎨 ឧបករណ៍កែវីដេអូ (${activeIds.length})</span>
+        <button type="button" id="ctsV48OpenPicker" class="cts-pf46-btn glow" style="height:29px;font-size:11.5px;padding:0 12px">+ Add មុខងារ</button>
+      </div>
+      ${activeIds.map((id, idx) => {
+        const nat = cardRegistry.get(id);
+        const ext = EXTRA_WIDGETS.find(x => x.id === id);
+        const meta = nat || ext || { icon: '🎨', title: id };
+        const uid = `cts-v48-w-${idx}`;
+        return `
+          <div class="cts-widget-box" id="${uid}">
+            <div class="cts-widget-head">
+              <b style="font-size:12px;color:#e0f2fe">${meta.icon} ${escHtml(meta.title)}</b>
+              <button type="button" data-rm="${idx}" class="cts-widget-x" title="ដកចេញ">×</button>
+            </div>
+            <div id="${uid}-body"></div>
+          </div>`;
+      }).join('')}
+    `;
+
+    document.getElementById('ctsV48OpenPicker').onclick = openEditPicker;
+    slot.querySelectorAll('[data-rm]').forEach(btn => {
+      btn.onclick = () => {
+        const idx = parseInt(btn.getAttribute('data-rm'), 10);
+        activeIds.splice(idx, 1);
+        saveIds();
+        renderEditSlot();
+      };
+    });
+
+    activeIds.forEach((id, idx) => {
+      const uid = `cts-v48-w-${idx}`;
+      const nat = cardRegistry.get(id);
+      if (nat && nat.el) {
+        const bodyEl = document.getElementById(uid + '-body');
+        if (bodyEl) bodyEl.appendChild(nat.el);
+      } else {
+        buildExtraWidget(id, uid);
+      }
+    });
+  }
+
+  function openEditPicker() {
+    harvestDesignCards();
+    const m = document.getElementById('ctsPf46AddModal');
+    const box = document.getElementById('ctsPf46AddBox');
+    if (!m || !box) return;
+
+    const nativeItems = Array.from(cardRegistry.values());
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <b style="font-size:13px;color:#fbbf24">➕ រើសមុខងារកែវីដេអូ (គ្មានកំណត់)</b>
+        <button type="button" id="ctsV48PickX" class="cts-pf46-btn" style="height:28px;min-width:28px">✕</button>
+      </div>
+      <div style="font-size:10.5px;font-weight:800;color:#94a3b8">🎨 ឧបករណ៍កែវីដេអូគោល</div>
+      ${nativeItems.map(it => {
+        const added = activeIds.includes(it.id);
+        return `
+          <button type="button" data-pick="${escHtml(it.id)}" class="cts-pf46-mitem ${added ? 'act' : ''}">
+            <div style="font-size:12px;font-weight:800">${it.icon} ${escHtml(it.title)} ${added ? '✅' : ''}</div>
+            <div style="font-size:10px;opacity:.75;margin-top:2px">${escHtml(it.desc)}</div>
+          </button>`;
+      }).join('')}
+      <div style="font-size:10.5px;font-weight:800;color:#94a3b8;margin-top:4px">✨ ឧបករណ៍ជំនួយបន្ថែម</div>
+      ${EXTRA_WIDGETS.map(it => `
+        <button type="button" data-pick="${it.id}" class="cts-pf46-mitem">
+          <div style="font-size:12px;font-weight:800">${it.icon} ${escHtml(it.title)}</div>
+          <div style="font-size:10px;opacity:.75;margin-top:2px">${escHtml(it.desc)}</div>
+        </button>`).join('')}
+    `;
+
+    document.getElementById('ctsV48PickX').onclick = () => m.classList.remove('open');
+    box.querySelectorAll('[data-pick]').forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute('data-pick');
+        // Native cards move cleanly (prevent duplicate native card IDs, toggle/focus cleanly)
+        if (cardRegistry.has(id)) {
+          if (!activeIds.includes(id)) activeIds.push(id);
+        } else {
+          activeIds.push(id);
+        }
+        saveIds();
+        m.classList.remove('open');
+        renderEditSlot();
+      };
+    });
+    m.classList.add('open');
+  }
+
+  function syncDesignFlag() {
+    const inTab = document.body.classList.contains('cts-v47-tab') && document.getElementById('tab-design')?.classList.contains('active');
+    document.body.classList.toggle('cts-v48-in-design', !!inTab);
+  }
+
+  const mo = new MutationObserver(syncDesignFlag);
+  mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+  setTimeout(() => { renderEditSlot(); syncDesignFlag(); }, 1800);
+  setTimeout(() => { renderEditSlot(); syncDesignFlag(); }, 3200);
+})();
+</script>
+
 </body>
 </html>
