@@ -23207,5 +23207,497 @@ body.cts-desktop-mode #cueList .cue-card {
 })();
 </script>
 
+
+<script id="cts-addon-49-headeranime">
+// === ADD-ON #49: HEADER CONSOLIDATION + 10 ANIMATED JAPANESE/CHINESE CARTOON HEADER BACKGROUNDS ===
+(function() {
+  const CFG_KEY = 'cts_v49_header_anime';
+  let cfg = { style: 'jp_shinobi' }; // off | 5 jp + 5 cn
+  try {
+    const s = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    if (s && typeof s === 'object' && s.style) cfg.style = s.style;
+  } catch (e) {}
+
+  function saveCfg() {
+    try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) {}
+  }
+
+  const STYLES = [
+    // 5 Japanese Anime Styles
+    { id: 'jp_shinobi',  grp: 'jp', tag: '🔥 កាច',        name: '1. 🍥 Shinobi Ninja Fox',   c1: '#0f172a', c2: '#ea580c' },
+    { id: 'jp_sakura',   grp: 'jp', tag: '🌸 Cute/Child', name: '2. 🌸 Chibi Sakura Kitty',  c1: '#2e1065', c2: '#db2777' },
+    { id: 'jp_cyber',    grp: 'jp', tag: '⚡ កាច/Cool',    name: '3. ⚡ Cyber Lightning',     c1: '#020617', c2: '#0284c7' },
+    { id: 'jp_oni',      grp: 'jp', tag: '👹 កាចខ្លាំង',    name: '4. 👹 Oni Demon Slayer',    c1: '#180408', c2: '#dc2626' },
+    { id: 'jp_kawaii',   grp: 'jp', tag: '🍙 Child/Cute', name: '5. 🍙 Chibi Slime & Star',  c1: '#0c4a6e', c2: '#0d9488' },
+    // 5 Chinese Donghua Styles
+    { id: 'cn_wukong',   grp: 'cn', tag: '🔥 កាច/អង់អាច', name: '6. 🐒 Wukong Monkey King',  c1: '#270a04', c2: '#d97706' },
+    { id: 'cn_panda',    grp: 'cn', tag: '🎋 Child/Cute', name: '7. 🐼 Kungfu Baby Panda',   c1: '#052e16', c2: '#16a34a' },
+    { id: 'cn_dragon',   grp: 'cn', tag: '🐉 កាច/មន្តអាគម', name: '8. 🐉 Azure Dragon Xianxia', c1: '#041e2b', c2: '#0891b2' },
+    { id: 'cn_lantern',  grp: 'cn', tag: '🏮 គួរឱ្យស្រលាញ់', name: '9. 🏮 Cute Lotus Fairy',    c1: '#3b0712', c2: '#e11d48' },
+    { id: 'cn_nezha',    grp: 'cn', tag: '🔥 កាច+ទាក់ទាញ', name: '10. 🔥 Nezha Fire Hero',    c1: '#2a0808', c2: '#ea580c' }
+  ];
+
+  // Scoped CSS (Header only!)
+  const styleEl = document.createElement('style');
+  styleEl.id = 'cts-v49-style';
+  styleEl.textContent = `
+    .app-header { position:relative !important; overflow:hidden !important; }
+    #ctsHdrBgCvs { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; display:block; }
+    .app-header > *:not(#ctsHdrBgCvs) { position:relative; z-index:2; }
+    .app-header .brand { min-width:0; flex:1 1 auto !important; }
+    .app-header .brand-title span.main-name { overflow:visible !important; text-overflow:clip !important; font-size:12px !important; text-shadow:0 1px 6px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.85) !important; }
+    .app-header .brand-title small { text-shadow:0 1px 5px rgba(0,0,0,0.95) !important; }
+    .app-header #engineBadge { flex-shrink:0 !important; box-shadow:0 2px 8px rgba(0,0,0,0.65); }
+    #ctsHdrMenuBtn { flex-shrink:0; height:31px; padding:0 10px; border-radius:99px; border:1.5px solid rgba(251,191,36,0.75); background:rgba(15,10,24,0.82); color:#fef08a; font-size:13px; font-weight:900; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:4px; box-shadow:0 2px 10px rgba(0,0,0,0.7); backdrop-filter:blur(4px); }
+
+    /* Consolidated Header Menu Modal */
+    #ctsHdrMenuModal { position:fixed; inset:0; z-index:99995; display:none; align-items:flex-start; justify-content:flex-end; padding:54px 10px 12px; background:rgba(0,0,0,0.72); backdrop-filter:blur(6px); }
+    #ctsHdrMenuModal.open { display:flex; }
+    #ctsHdrMenuBox { width:100%; max-width:390px; max-height:86vh; overflow-y:auto; border-radius:16px; background:#0e0916; color:#f8fafc; border:1.5px solid rgba(251,191,36,0.5); box-shadow:0 18px 48px rgba(0,0,0,0.88); padding:12px; display:flex; flex-direction:column; gap:10px; animation:ctsV49Pop .16s ease; }
+    #ctsHdrToolTray { display:flex; flex-wrap:wrap; align-items:center; gap:7px; padding:8px; border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); }
+    .cts-hm-sec { font-size:11px; font-weight:900; color:#fbbf24; letter-spacing:.5px; margin-top:2px; }
+    .cts-hm-list { display:flex; flex-direction:column; gap:7px; }
+    .cts-hm-card { position:relative; border-radius:11px; overflow:hidden; border:1.5px solid rgba(255,255,255,0.16); cursor:pointer; background:#09090f; transition:transform .12s, border-color .2s; }
+    .cts-hm-card:active { transform:scale(0.98); }
+    .cts-hm-card.act { border-color:#fbbf24; box-shadow:0 0 14px rgba(251,191,36,0.45); }
+    .cts-hm-card canvas { width:100%; height:48px; display:block; }
+    .cts-hm-meta { display:flex; align-items:center; justify-content:space-between; padding:5px 9px; background:rgba(0,0,0,0.68); font-size:11.5px; font-weight:800; }
+    .cts-hm-tag { font-size:9.5px; padding:2px 6px; border-radius:99px; background:rgba(255,255,255,0.12); color:#fde68a; }
+    @keyframes ctsV49Pop { from{opacity:0;transform:translateY(-8px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+  `;
+  document.head.appendChild(styleEl);
+
+  // === 60FPS ANIME & DONGHUA VECTOR CARTOON RENDERER ===
+  function drawCartoonScene(ctx, W, H, styleId, t) {
+    const st = STYLES.find(x => x.id === styleId);
+    if (!st) return;
+
+    // 1. Rich Anime/Donghua Sky Gradient
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, st.c1);
+    g.addColorStop(0.6, st.c2);
+    g.addColorStop(1, st.c1);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    const cx = W * 0.68; // Character sits cleanly in open middle-right area
+    const cy = H * 0.56;
+    const blink = (t % 3.6) > 3.45;
+    const bob = Math.sin(t * 3.8) * 2.2;
+
+    ctx.save();
+    if (styleId === 'jp_shinobi') {
+      // Sunset Konoha clouds + spinning blue Rasen-chakra + spiky blonde ninja fox
+      for (let i = 0; i < 6; i++) {
+        const px = ((i * 85 + t * 28) % (W + 40)) - 20;
+        const py = 10 + (i % 3) * 14;
+        ctx.fillStyle = 'rgba(251,146,60,0.45)';
+        ctx.beginPath(); ctx.arc(px, py, 2.2, 0, Math.PI * 2); ctx.fill();
+      }
+      // Glowing swirling Chakra orb
+      ctx.save();
+      ctx.translate(cx - 34, cy + 4 + bob);
+      ctx.rotate(t * 7);
+      ctx.strokeStyle = 'rgba(56,189,248,0.85)'; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 1.6); ctx.stroke();
+      ctx.fillStyle = 'rgba(186,230,253,0.75)'; ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      // Fluttering red headband tails
+      ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx + 12, cy - 12 + bob);
+      ctx.quadraticCurveTo(cx + 28, cy - 16 + Math.sin(t * 8) * 5, cx + 44, cy - 10 + Math.cos(t * 7) * 5);
+      ctx.stroke();
+
+      // Ninja face & spiky blonde anime hair
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath(); ctx.arc(cx, cy + bob, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#facc15';
+      for (let s = -3; s <= 3; s++) {
+        ctx.beginPath();
+        ctx.moveTo(cx + s * 4 - 4, cy - 10 + bob);
+        ctx.lineTo(cx + s * 6, cy - 22 - Math.abs(s % 2) * 3 + bob);
+        ctx.lineTo(cx + s * 4 + 4, cy - 10 + bob);
+        ctx.fill();
+      }
+      // Headband + metallic plate
+      ctx.fillStyle = '#1e293b'; ctx.fillRect(cx - 14, cy - 13 + bob, 28, 5);
+      ctx.fillStyle = '#cbd5e1'; ctx.fillRect(cx - 7, cy - 13 + bob, 14, 5);
+      // Fierce red/blue eyes + fox whiskers
+      ctx.fillStyle = blink ? '#78350f' : '#ef4444';
+      ctx.fillRect(cx - 8, cy - 4 + bob, 5, blink ? 1.5 : 3.5);
+      ctx.fillRect(cx + 3, cy - 4 + bob, 5, blink ? 1.5 : 3.5);
+      ctx.strokeStyle = '#92400e'; ctx.lineWidth = 1;
+      [-1, 1].forEach(side => {
+        for (let w = 0; w < 2; w++) {
+          ctx.beginPath(); ctx.moveTo(cx + side * 7, cy + 2 + w * 3 + bob); ctx.lineTo(cx + side * 12, cy + 1 + w * 3 + bob); ctx.stroke();
+        }
+      });
+
+    } else if (styleId === 'jp_sakura') {
+      // Drifting sakura petals
+      for (let i = 0; i < 10; i++) {
+        const px = ((i * 55 + t * 22) % (W + 30)) - 15;
+        const py = ((i * 19 + t * 14) % (H + 10)) - 5;
+        ctx.save(); ctx.translate(px, py); ctx.rotate(t * 2 + i);
+        ctx.fillStyle = 'rgba(249,168,212,0.85)';
+        ctx.beginPath(); ctx.ellipse(0, 0, 4, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+      const b = Math.abs(Math.sin(t * 4)) * -4;
+      // Cute Chibi Sakura Cat-ear Girl
+      ctx.fillStyle = '#f472b6'; // hair + cat ears
+      ctx.beginPath(); ctx.arc(cx, cy - 2 + b, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx - 14, cy - 10 + b); ctx.lineTo(cx - 17, cy - 23 + b); ctx.lineTo(cx - 5, cy - 15 + b); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx + 14, cy - 10 + b); ctx.lineTo(cx + 17, cy - 23 + b); ctx.lineTo(cx + 5, cy - 15 + b); ctx.fill();
+      // Chibi face
+      ctx.fillStyle = '#fff1f2'; ctx.beginPath(); ctx.arc(cx, cy + 2 + b, 12.5, 0, Math.PI * 2); ctx.fill();
+      // Big sparkling anime eyes
+      ctx.fillStyle = '#be185d';
+      if (blink) {
+        ctx.fillRect(cx - 8, cy + 1 + b, 5, 1.5); ctx.fillRect(cx + 3, cy + 1 + b, 5, 1.5);
+      } else {
+        ctx.beginPath(); ctx.arc(cx - 5.5, cy + 1 + b, 3.3, 0, Math.PI * 2); ctx.arc(cx + 5.5, cy + 1 + b, 3.3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(cx - 6.5, cy + b, 1.2, 0, Math.PI * 2); ctx.arc(cx + 4.5, cy + b, 1.2, 0, Math.PI * 2); ctx.fill();
+      }
+      // Cute pink blush + cat mouth
+      ctx.fillStyle = 'rgba(244,114,182,0.55)';
+      ctx.beginPath(); ctx.ellipse(cx - 8, cy + 5 + b, 3, 1.5, 0, 0, Math.PI * 2); ctx.ellipse(cx + 8, cy + 5 + b, 3, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+
+    } else if (styleId === 'jp_cyber') {
+      // Neon speed lines + lightning bolts
+      ctx.strokeStyle = 'rgba(56,189,248,0.35)'; ctx.lineWidth = 1.2;
+      for (let i = 0; i < 6; i++) {
+        const lx = W - ((t * 160 + i * 75) % (W + 80));
+        const ly = 6 + (i * 8) % (H - 12);
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 42, ly); ctx.stroke();
+      }
+      // Electric lightning arc
+      ctx.strokeStyle = '#67e8f9'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      const j = Math.sin(t * 25) * 4;
+      ctx.moveTo(cx - 42, cy - 8); ctx.lineTo(cx - 24, cy + j); ctx.lineTo(cx - 14, cy - 4 - j);
+      ctx.stroke();
+      // Cyber Anime Hero
+      ctx.fillStyle = '#e0f2fe'; ctx.beginPath(); ctx.arc(cx, cy + bob, 13, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#0ea5e9';
+      for (let s = -3; s <= 3; s++) {
+        ctx.beginPath(); ctx.moveTo(cx + s * 4 - 4, cy - 9 + bob); ctx.lineTo(cx + s * 6 + 3, cy - 22 + bob); ctx.lineTo(cx + s * 4 + 4, cy - 9 + bob); ctx.fill();
+      }
+      // Glowing cyber visor
+      ctx.fillStyle = '#22d3ee'; ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 8;
+      ctx.fillRect(cx - 11, cy - 5 + bob, 22, 5.5);
+      ctx.shadowBlur = 0;
+
+    } else if (styleId === 'jp_oni') {
+      // Glowing embers + blood moon
+      ctx.fillStyle = 'rgba(220,38,38,0.45)'; ctx.beginPath(); ctx.arc(cx + 38, H * 0.35, 16, 0, Math.PI * 2); ctx.fill();
+      for (let i = 0; i < 8; i++) {
+        const px = (i * 52 + t * 18) % W, py = H - ((t * 24 + i * 13) % H);
+        ctx.fillStyle = '#fb923c'; ctx.beginPath(); ctx.arc(px, py, 1.8, 0, Math.PI * 2); ctx.fill();
+      }
+      // Sword slash arc
+      ctx.strokeStyle = 'rgba(248,113,113,0.85)'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(cx - 22, cy + 4, 18, -0.8 + Math.sin(t * 5) * 0.4, 0.9 + Math.sin(t * 5) * 0.4); ctx.stroke();
+      // Horned Oni Mask Warrior
+      ctx.fillStyle = '#18181b'; ctx.beginPath(); ctx.arc(cx, cy + 2 + bob, 14, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fca5a5'; // twin Oni horns
+      ctx.beginPath(); ctx.moveTo(cx - 9, cy - 9 + bob); ctx.lineTo(cx - 14, cy - 22 + bob); ctx.lineTo(cx - 3, cy - 11 + bob); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx + 9, cy - 9 + bob); ctx.lineTo(cx + 14, cy - 22 + bob); ctx.lineTo(cx + 3, cy - 11 + bob); ctx.fill();
+      // Glowing gold/crimson slit eyes
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath(); ctx.moveTo(cx - 10, cy - 2 + bob); ctx.lineTo(cx - 3, cy + bob); ctx.lineTo(cx - 9, cy + 2 + bob); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx + 10, cy - 2 + bob); ctx.lineTo(cx + 3, cy + bob); ctx.lineTo(cx + 9, cy + 2 + bob); ctx.fill();
+
+    } else if (styleId === 'jp_kawaii') {
+      // Twinkling stars + cute hopping Chibi Slime & Star mascot
+      for (let i = 0; i < 9; i++) {
+        const sx = (i * 49 + 20) % W, sy = 8 + ((i * 17) % (H - 16));
+        const sc = 0.6 + 0.4 * Math.sin(t * 4 + i);
+        ctx.fillStyle = `rgba(254,240,138,${sc})`;
+        ctx.beginPath(); ctx.arc(sx, sy, 2.2 * sc, 0, Math.PI * 2); ctx.fill();
+      }
+      const hop = Math.abs(Math.sin(t * 4.5)) * -7;
+      // Blue chibi slime body
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath(); ctx.arc(cx - 14, cy + 5 + hop, 12, Math.PI, 0); ctx.lineTo(cx - 2, cy + 12 + hop); ctx.lineTo(cx - 26, cy + 12 + hop); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath(); ctx.arc(cx - 18, cy + 4 + hop, 2, 0, Math.PI * 2); ctx.arc(cx - 10, cy + 4 + hop, 2, 0, Math.PI * 2); ctx.fill();
+      // Cute happy star buddy
+      const hop2 = Math.abs(Math.cos(t * 4.5)) * -7;
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath(); ctx.arc(cx + 16, cy + 3 + hop2, 11, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#78350f';
+      ctx.beginPath(); ctx.arc(cx + 12, cy + 2 + hop2, 1.8, 0, Math.PI * 2); ctx.arc(cx + 20, cy + 2 + hop2, 1.8, 0, Math.PI * 2); ctx.fill();
+
+    } else if (styleId === 'cn_wukong') {
+      // Donghua Monkey King with twin long phoenix feathers + golden staff aura
+      for (let i = 0; i < 7; i++) {
+        const px = (i * 64 + t * 32) % W, py = H - ((t * 26 + i * 11) % H);
+        ctx.fillStyle = 'rgba(251,191,36,0.75)'; ctx.beginPath(); ctx.arc(px, py, 1.8, 0, Math.PI * 2); ctx.fill();
+      }
+      // Two long sweeping golden-red phoenix crown feathers!
+      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+      [-1, 1].forEach(dir => {
+        ctx.beginPath();
+        ctx.moveTo(cx + dir * 4, cy - 14 + bob);
+        ctx.quadraticCurveTo(cx + dir * 24, cy - 28 + Math.sin(t * 6) * 5, cx + dir * 46, cy - 16 + Math.cos(t * 5) * 6);
+        ctx.stroke();
+      });
+      // Spinning Ruyi golden staff glow
+      ctx.save(); ctx.translate(cx - 34, cy + 4); ctx.rotate(t * 5);
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(12, 0); ctx.stroke();
+      ctx.restore();
+      // Monkey King face + golden headband
+      ctx.fillStyle = '#fed7aa'; ctx.beginPath(); ctx.arc(cx, cy + 2 + bob, 13, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(cx, cy - 2 + bob, 12, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+      ctx.fillStyle = '#dc2626'; // fiery eyes
+      ctx.fillRect(cx - 7, cy - 1 + bob, 4.5, 3); ctx.fillRect(cx + 2.5, cy - 1 + bob, 4.5, 3);
+
+    } else if (styleId === 'cn_panda') {
+      // Swaying bamboo + cute Kungfu Baby Panda cub!
+      ctx.strokeStyle = 'rgba(74,222,128,0.45)'; ctx.lineWidth = 4;
+      [W * 0.45, W * 0.88].forEach((bx, bi) => {
+        ctx.beginPath(); ctx.moveTo(bx, H); ctx.lineTo(bx + Math.sin(t * 2 + bi) * 5, 0); ctx.stroke();
+      });
+      const b = Math.abs(Math.sin(t * 3.8)) * -5;
+      // Cute Panda ears + white round head
+      ctx.fillStyle = '#09090b';
+      ctx.beginPath(); ctx.arc(cx - 11, cy - 10 + b, 6, 0, Math.PI * 2); ctx.arc(cx + 11, cy - 10 + b, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(cx, cy + 2 + b, 14, 0, Math.PI * 2); ctx.fill();
+      // Red Kungfu headband
+      ctx.fillStyle = '#ef4444'; ctx.fillRect(cx - 13, cy - 9 + b, 26, 4);
+      // Panda eye patches + sparkling cute eyes
+      ctx.fillStyle = '#09090b';
+      ctx.beginPath(); ctx.ellipse(cx - 5.5, cy + 1 + b, 4, 3.2, -0.3, 0, Math.PI * 2); ctx.ellipse(cx + 5.5, cy + 1 + b, 4, 3.2, 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      if (!blink) { ctx.beginPath(); ctx.arc(cx - 5.5, cy + 0.5 + b, 1.5, 0, Math.PI * 2); ctx.arc(cx + 5.5, cy + 0.5 + b, 1.5, 0, Math.PI * 2); ctx.fill(); }
+
+    } else if (styleId === 'cn_dragon') {
+      // Swirling cyan dragon aura + orbiting jade sword + white-haired immortal
+      ctx.strokeStyle = 'rgba(34,211,238,0.65)'; ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 14) {
+        const y = cy + Math.sin(x * 0.04 + t * 4) * 10;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      // Flying jade sword orbiting
+      const swX = cx - 32 + Math.cos(t * 3) * 14, swY = cy + Math.sin(t * 3) * 8;
+      ctx.strokeStyle = '#67e8f9'; ctx.lineWidth = 2.8;
+      ctx.beginPath(); ctx.moveTo(swX - 10, swY + 4); ctx.lineTo(swX + 10, swY - 4); ctx.stroke();
+      // Flowing white Donghua hair + immortal face
+      ctx.strokeStyle = '#e0f2fe'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(cx + 8, cy - 6 + bob); ctx.quadraticCurveTo(cx + 26, cy - 2 + Math.sin(t * 5) * 6, cx + 40, cy + 6); ctx.stroke();
+      ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.arc(cx, cy + bob, 13, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#06b6d4'; ctx.fillRect(cx - 8, cy - 3 + bob, 5, 2.5); ctx.fillRect(cx + 3, cy - 3 + bob, 5, 2.5);
+
+    } else if (styleId === 'cn_lantern') {
+      // Floating glowing red lanterns + cute Twin-Bun Chinese Lotus Fairy
+      for (let i = 0; i < 4; i++) {
+        const lx = W * 0.35 + i * 52, ly = 14 + Math.sin(t * 2.5 + i) * 5;
+        ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.ellipse(lx, ly, 6, 8, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fde047'; ctx.fillRect(lx - 3, ly - 9, 6, 2); ctx.fillRect(lx - 3, ly + 7, 6, 2);
+      }
+      const b = Math.sin(t * 3.5) * 2.5;
+      // Twin cute hair buns
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath(); ctx.arc(cx - 12, cy - 11 + b, 6.5, 0, Math.PI * 2); ctx.arc(cx + 12, cy - 11 + b, 6.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath(); ctx.arc(cx - 12, cy - 11 + b, 2.5, 0, Math.PI * 2); ctx.arc(cx + 12, cy - 11 + b, 2.5, 0, Math.PI * 2); ctx.fill();
+      // Cute face + sparkling eyes
+      ctx.fillStyle = '#ffe4e6'; ctx.beginPath(); ctx.arc(cx, cy + 2 + b, 12.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#881337';
+      ctx.beginPath(); ctx.arc(cx - 5, cy + 1 + b, 2.6, 0, Math.PI * 2); ctx.arc(cx + 5, cy + 1 + b, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(244,63,94,0.5)';
+      ctx.beginPath(); ctx.arc(cx - 8, cy + 5 + b, 2.5, 0, Math.PI * 2); ctx.arc(cx + 8, cy + 5 + b, 2.5, 0, Math.PI * 2); ctx.fill();
+
+    } else if (styleId === 'cn_nezha') {
+      // Flowing red silk ribbon + spinning fire wheel + fierce Nezha boy hero
+      ctx.strokeStyle = 'rgba(239,68,68,0.85)'; ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      for (let x = cx - 55; x <= cx + 55; x += 10) {
+        const y = cy + 10 + Math.sin(x * 0.08 - t * 6) * 7;
+        if (x === cx - 55) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      // Spinning Fire-Wheel
+      ctx.save(); ctx.translate(cx - 32, cy + 4 + bob); ctx.rotate(t * 8);
+      ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(9, 0); ctx.moveTo(0, -9); ctx.lineTo(0, 9); ctx.stroke();
+      ctx.restore();
+      // Twin buns + fierce hero face
+      ctx.fillStyle = '#09090b';
+      ctx.beginPath(); ctx.arc(cx - 11, cy - 11 + bob, 6, 0, Math.PI * 2); ctx.arc(cx + 11, cy - 11 + bob, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fed7aa'; ctx.beginPath(); ctx.arc(cx, cy + 1 + bob, 12.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#dc2626'; // forehead flame mark + fierce eyes
+      ctx.beginPath(); ctx.arc(cx, cy - 6 + bob, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#b91c1c'; ctx.fillRect(cx - 8, cy - 2 + bob, 5, 3); ctx.fillRect(cx + 3, cy - 2 + bob, 5, 3);
+    }
+    ctx.restore();
+  }
+
+  let menuOpen = false;
+  let rafId = null;
+
+  function tickAnimeBg() {
+    const t = performance.now() / 1000;
+    const mainCvs = document.getElementById('ctsHdrBgCvs');
+    if (mainCvs && cfg.style !== 'off') {
+      const hdr = mainCvs.parentElement;
+      const W = Math.max(200, hdr ? hdr.clientWidth : 360);
+      const H = Math.max(44, hdr ? hdr.clientHeight : 50);
+      if (mainCvs.width !== W || mainCvs.height !== H) { mainCvs.width = W; mainCvs.height = H; }
+      drawCartoonScene(mainCvs.getContext('2d'), W, H, cfg.style, t);
+    }
+    if (menuOpen) {
+      document.querySelectorAll('#ctsHdrMenuModal canvas[data-st]').forEach(cv => {
+        const sid = cv.getAttribute('data-st');
+        if (cv.width !== 320 || cv.height !== 48) { cv.width = 320; cv.height = 48; }
+        drawCartoonScene(cv.getContext('2d'), 320, 48, sid, t);
+      });
+    }
+    if (cfg.style !== 'off' || menuOpen) {
+      rafId = requestAnimationFrame(tickAnimeBg);
+    } else {
+      rafId = null;
+    }
+  }
+
+  function ensureAnimRunning() {
+    const mainCvs = document.getElementById('ctsHdrBgCvs');
+    if (mainCvs) mainCvs.style.display = (cfg.style === 'off') ? 'none' : 'block';
+    if ((cfg.style !== 'off' || menuOpen) && !rafId) {
+      rafId = requestAnimationFrame(tickAnimeBg);
+    }
+  }
+
+  function openHdrMenu() {
+    const m = document.getElementById('ctsHdrMenuModal');
+    if (!m) return;
+    menuOpen = true;
+    renderAnimeCards();
+    m.classList.add('open');
+    ensureAnimRunning();
+  }
+  function closeHdrMenu() {
+    menuOpen = false;
+    document.getElementById('ctsHdrMenuModal')?.classList.remove('open');
+  }
+
+  function renderAnimeCards() {
+    const listWrap = document.getElementById('ctsHdrAnimeList');
+    if (!listWrap) return;
+    const jp = STYLES.filter(s => s.grp === 'jp');
+    const cn = STYLES.filter(s => s.grp === 'cn');
+
+    const cardHtml = s => `
+      <div class="cts-hm-card ${cfg.style === s.id ? 'act' : ''}" data-pick="${s.id}">
+        <canvas data-st="${s.id}" width="320" height="48"></canvas>
+        <div class="cts-hm-meta">
+          <span>${s.name} ${cfg.style === s.id ? '✅' : ''}</span>
+          <span class="cts-hm-tag">${s.tag}</span>
+        </div>
+      </div>`;
+
+    listWrap.innerHTML = `
+      <button type="button" id="ctsHdrStyleOff" class="cts-pf46-mitem ${cfg.style === 'off' ? 'act' : ''}" style="text-align:center">🚫 បិទ Background តុក្កតា (ប្រើពណ៌ដើម)</button>
+      <div class="cts-hm-sec">🇯🇵 តុក្កតាជប៉ុន Japanese Anime (5 Styles)</div>
+      <div class="cts-hm-list">${jp.map(cardHtml).join('')}</div>
+      <div class="cts-hm-sec">🇨🇳 តុក្កតាចិន Chinese Donghua (5 Styles)</div>
+      <div class="cts-hm-list">${cn.map(cardHtml).join('')}</div>
+    `;
+
+    document.getElementById('ctsHdrStyleOff').onclick = () => {
+      cfg.style = 'off'; saveCfg(); ensureAnimRunning(); renderAnimeCards();
+    };
+    listWrap.querySelectorAll('[data-pick]').forEach(el => {
+      el.onclick = () => {
+        cfg.style = el.getAttribute('data-pick');
+        saveCfg();
+        ensureAnimRunning();
+        renderAnimeCards();
+      };
+    });
+  }
+
+  function consolidateHeader() {
+    const hdr = document.querySelector('.app-header');
+    if (!hdr || document.getElementById('ctsHdrMenuBtn')) return;
+
+    // 1. Add animated cartoon background canvas inside .app-header
+    const bgCvs = document.createElement('canvas');
+    bgCvs.id = 'ctsHdrBgCvs';
+    hdr.prepend(bgCvs);
+
+    // 2. Ensure full name shows cleanly
+    const mainName = hdr.querySelector('.brand-title span.main-name');
+    if (mainName) mainName.textContent = 'CTS KING TOOL PRO';
+
+    // 3. Create consolidated Header Menu Modal
+    const modal = document.createElement('div');
+    modal.id = 'ctsHdrMenuModal';
+    modal.setAttribute('data-no-i18n', '1');
+    modal.innerHTML = `
+      <div id="ctsHdrMenuBox">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <b style="font-size:13.5px;color:#fbbf24">🎛️ Header Menu & Anime Styles</b>
+          <button type="button" id="ctsHdrMenuX" class="cts-pf46-btn" style="height:28px;min-width:28px">✕</button>
+        </div>
+        <div class="cts-hm-sec">🧰 ប៊ូតុងឧបករណ៍ក្បាល App (រក្សាមុខងារដើម ១០០%)</div>
+        <div id="ctsHdrToolTray"></div>
+        <div id="ctsHdrAnimeList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>`;
+    modal.onclick = (e) => { if (e.target === modal) closeHdrMenu(); };
+    document.body.appendChild(modal);
+    document.getElementById('ctsHdrMenuX').onclick = closeHdrMenu;
+
+    // 4. Create the single compact Menu button right next to #engineBadge
+    const menuBtn = document.createElement('button');
+    menuBtn.id = 'ctsHdrMenuBtn';
+    menuBtn.type = 'button';
+    menuBtn.innerHTML = '🎛️';
+    menuBtn.title = 'Header Menu & Anime Styles';
+    menuBtn.onclick = openHdrMenu;
+
+    const eng = document.getElementById('engineBadge');
+    if (eng && eng.parentElement !== hdr) {
+      hdr.appendChild(eng);
+    }
+    hdr.appendChild(menuBtn);
+
+    // 5. Move all extra header action buttons (📱, 🌙, Video, 📺, 🎥) cleanly into #ctsHdrToolTray
+    const tray = document.getElementById('ctsHdrToolTray');
+    const moveExtras = () => {
+      Array.from(hdr.children).forEach(ch => {
+        if (ch.id === 'ctsHdrBgCvs' || ch.classList.contains('brand') || ch.id === 'engineBadge' || ch.id === 'ctsHdrMenuBtn') return;
+        // If it's a container holding buttons (e.g., .header-actions), move its inner buttons cleanly
+        if (ch.tagName === 'DIV' && !ch.classList.contains('brand')) {
+          Array.from(ch.children).forEach(inner => {
+            if (inner.id !== 'engineBadge') tray.appendChild(inner);
+          });
+          if (!ch.children.length) ch.style.display = 'none';
+        } else {
+          tray.appendChild(ch);
+        }
+      });
+    };
+    moveExtras();
+    setTimeout(moveExtras, 1200);
+    setTimeout(moveExtras, 2600);
+
+    ensureAnimRunning();
+  }
+
+  setTimeout(consolidateHeader, 550);
+  setTimeout(consolidateHeader, 1700);
+})();
+</script>
+
 </body>
 </html>
