@@ -21678,7 +21678,7 @@ body.cts-desktop-mode #cueList .cue-card {
 
 
 <script id="cts-addon-47-proflow">
-// === ADD-ON #47: CTS PROFLOW + CAPCUT-STYLE 8-HANDLE 1-FINGER TRANSFORM (0% CORE TOUCH) ===
+// === ADD-ON #47: CTS PROFLOW + FULL 6-LAYER 8-HANDLE 1-FINGER TRANSFORM (0% CORE TOUCH) ===
 (function() {
   const CFG_KEY = 'cts_proflow_v46_cfg';
   let cfg = {
@@ -21728,12 +21728,10 @@ body.cts-desktop-mode #cueList .cue-card {
   const styleEl = document.createElement('style');
   styleEl.id = 'cts-v47-style';
   styleEl.textContent = `
-    /* Remove persistent yellow/red dashed lines */
     .cts-selected-el { outline: none !important; }
     #ctsTransformGizmo { display: none !important; opacity: 0 !important; }
     #blurBox { border: none !important; }
 
-    /* Direct touch-through on preview layers unless locked */
     body.cts-drag-free #wmContainer,
     body.cts-drag-free #subOverlay,
     body.cts-drag-free #blurBox,
@@ -21741,27 +21739,27 @@ body.cts-desktop-mode #cueList .cue-card {
     body.cts-drag-free #ctsSponsorOverlay { pointer-events: auto !important; touch-action: none !important; cursor: move; }
     body.cts-drag-locked #videoBox * { pointer-events: none !important; }
 
-    /* Keep #ctsTouchLayerBar & #ctsQuickZoomBar visible and neat! */
     body.cts-v47-on .bottom-nav { display: none !important; }
-    #ctsTouchLayerBar { padding: 4px 6px !important; }
+    #ctsTouchLayerBar { padding: 4px 6px !important; flex-wrap: wrap !important; gap: 4px !important; }
 
     /* Pro 8-Handle 1-Finger Bounding Box (#ctsProGizmo8) */
     #ctsProGizmo8 { position:absolute; z-index:30; display:none; border:1.5px solid #fbbf24; border-radius:4px; box-shadow:0 0 0 1px rgba(0,0,0,0.65),0 0 14px rgba(251,191,36,0.28); touch-action:none; box-sizing:border-box; cursor:move; }
-    #ctsG8Tag { position:absolute; left:50%; top:-24px; transform:translateX(-50%); display:inline-flex; align-items:center; gap:5px; padding:2px 7px; border-radius:99px; background:rgba(15,10,20,0.92); border:1px solid #fbbf24; color:#fef08a; font-size:10px; font-weight:800; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.7); }
-    #ctsG8Close { background:rgba(239,68,68,0.75); color:#fff; border:none; border-radius:50%; width:15px; height:15px; font-size:10px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; }
+    #ctsG8Tag { position:absolute; left:50%; top:-23px; transform:translateX(-50%); display:inline-flex; align-items:center; gap:5px; padding:2px 7px; border-radius:99px; background:rgba(15,10,20,0.94); border:1px solid #fbbf24; color:#fef08a; font-size:10px; font-weight:800; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.75); }
+    #ctsG8Tag.flip-bot { top:auto; bottom:-23px; }
+    #ctsG8Close { background:rgba(239,68,68,0.8); color:#fff; border:none; border-radius:50%; width:15px; height:15px; font-size:10px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; }
     .cts-g8-h { position:absolute; width:26px; height:26px; display:flex; align-items:center; justify-content:center; touch-action:none; z-index:32; }
     .cts-g8-h::after { content:''; display:block; background:#fff; border:2px solid #f59e0b; box-shadow:0 1px 5px rgba(0,0,0,0.85); }
     .cts-g8-h.c::after { width:12px; height:12px; border-radius:50%; }
     .cts-g8-h.ex::after { width:6px; height:16px; border-radius:99px; background:#38bdf8; border-color:#fff; }
     .cts-g8-h.ey::after { width:16px; height:6px; border-radius:99px; background:#38bdf8; border-color:#fff; }
-    .cts-g8-tl { left:-13px; top:-13px; cursor:nwse-resize; }
-    .cts-g8-tr { right:-13px; top:-13px; cursor:nesw-resize; }
-    .cts-g8-bl { left:-13px; bottom:-13px; cursor:nesw-resize; }
-    .cts-g8-br { right:-13px; bottom:-13px; cursor:nwse-resize; }
-    .cts-g8-ml { left:-13px; top:50%; transform:translateY(-50%); cursor:ew-resize; }
-    .cts-g8-mr { right:-13px; top:50%; transform:translateY(-50%); cursor:ew-resize; }
-    .cts-g8-tm { left:50%; top:-13px; transform:translateX(-50%); cursor:ns-resize; }
-    .cts-g8-bm { left:50%; bottom:-13px; transform:translateX(-50%); cursor:ns-resize; }
+    .cts-g8-tl { left:-12px; top:-12px; cursor:nwse-resize; }
+    .cts-g8-tr { right:-12px; top:-12px; cursor:nesw-resize; }
+    .cts-g8-bl { left:-12px; bottom:-12px; cursor:nesw-resize; }
+    .cts-g8-br { right:-12px; bottom:-12px; cursor:nwse-resize; }
+    .cts-g8-ml { left:-12px; top:50%; transform:translateY(-50%); cursor:ew-resize; }
+    .cts-g8-mr { right:-12px; top:50%; transform:translateY(-50%); cursor:ew-resize; }
+    .cts-g8-tm { left:50%; top:-12px; transform:translateX(-50%); cursor:ns-resize; }
+    .cts-g8-bm { left:50%; bottom:-12px; transform:translateX(-50%); cursor:ns-resize; }
 
     /* Top ProFlow Bar */
     #ctsPf46Bar { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:6px 10px; background:linear-gradient(180deg,rgba(16,8,18,0.98),rgba(10,6,14,0.96)); border-bottom:1.5px solid var(--pf-c1,#38bdf8); flex-shrink:0; position:relative; z-index:50; overflow:hidden; }
@@ -21771,7 +21769,7 @@ body.cts-desktop-mode #cueList .cue-card {
     .cts-pf46-btn.glow { border-color:var(--pf-c1,#38bdf8); box-shadow:0 0 12px rgba(56,189,248,0.32); }
     #ctsPf46Title { flex:1; text-align:center; font-size:12.5px; font-weight:800; color:#fef3c7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-    /* Preview Control Strip (Always visible in cues even when preview hidden!) */
+    /* Preview Control Strip */
     #ctsPf46PvStrip { display:none; align-items:center; justify-content:space-between; gap:5px; padding:5px 10px; background:rgba(12,18,32,0.88); border-bottom:1px solid rgba(255,255,255,0.1); flex-shrink:0; }
     body.cts-v47-with-pv #ctsPf46PvStrip,
     body.cts-v47-preview #ctsPf46PvStrip,
@@ -21848,8 +21846,8 @@ body.cts-desktop-mode #cueList .cue-card {
   `;
   document.head.appendChild(styleEl);
 
-  // === PRO 8-HANDLE 1-FINGER TRANSFORM ENGINE ===
-  let g8ActiveLayer = null; // null | 'vid' | 'sub' | 'logo' | 'blur' | 'ticker' | 'sponsor'
+  // === PRO 8-HANDLE 1-FINGER TRANSFORM ENGINE (ALL 6 LAYERS!) ===
+  let g8ActiveLayer = null;
 
   const LAYER_NAMES = {
     vid: '🎬 Video', sub: '💬 Text', logo: '👑 Logo',
@@ -21866,6 +21864,26 @@ body.cts-desktop-mode #cueList .cue-card {
     return null;
   }
 
+  function applyExtraLayerProps() {
+    const p = window.__ctsPro;
+    if (!p) return;
+    const bb = document.getElementById('blurBox');
+    if (bb) bb.style.height = (p.blurH || 14) + '%';
+    const subOv = document.getElementById('subOverlay');
+    if (subOv && p.subW) subOv.style.width = p.subW + '%';
+    const tk = document.getElementById('ctsTickerOverlay');
+    if (tk) {
+      const ts = p.tickerScale || 1.0;
+      tk.style.transformOrigin = 'center center';
+      tk.style.transform = `scale(${ts})`;
+      if (p.tickerW) {
+        tk.style.width = p.tickerW + '%';
+        tk.style.left = ((100 - p.tickerW) / 2) + '%';
+        tk.style.right = 'auto';
+      }
+    }
+  }
+
   function syncQuickZoomBar(layer) {
     const p = window.__ctsPro;
     if (!p) return;
@@ -21878,15 +21896,10 @@ body.cts-desktop-mode #cueList .cue-card {
     else if (layer === 'sub') val = p.subScale || 1.0;
     else if (layer === 'logo') val = p.logoScale || 1.0;
     else if (layer === 'sponsor') val = p.sponsorScale || 1.0;
+    else if (layer === 'ticker') val = p.tickerScale || 1.0;
     else if (layer === 'blur') val = (p.blurW || 88) / 88;
     if (sl) sl.value = String(Math.max(0.4, Math.min(2.4, val)));
     if (vt) vt.textContent = layer === 'blur' ? `${Math.round(p.blurW || 88)}%` : `${Number(val).toFixed(2)}x`;
-  }
-
-  function applyBlurBoxHeight() {
-    const p = window.__ctsPro;
-    const bb = document.getElementById('blurBox');
-    if (p && bb) bb.style.height = (p.blurH || 14) + '%';
   }
 
   function positionGizmo8() {
@@ -21904,30 +21917,30 @@ body.cts-desktop-mode #cueList .cue-card {
     let x = 8, y = 8, w = vbr.width - 16, h = vbr.height - 16;
     if (g8ActiveLayer === 'vid') {
       const sc = Math.max(0.4, Math.min(2.4, p.vidScale || 1.0));
-      const bw = Math.min(vbr.width * 0.94, Math.max(54, vbr.width * 0.72 * sc));
-      const bh = Math.min(vbr.height * 0.94, Math.max(54, vbr.height * 0.72 * sc));
+      const bw = Math.min(vbr.width - 14, Math.max(54, vbr.width * 0.72 * sc));
+      const bh = Math.min(vbr.height - 14, Math.max(54, vbr.height * 0.72 * sc));
       const cx = vbr.width / 2 + ((p.vidX || 0) / 100) * vbr.width;
       const cy = vbr.height / 2 + ((p.vidY || 0) / 100) * vbr.height;
-      x = Math.max(4, Math.min(vbr.width - bw - 4, cx - bw / 2));
-      y = Math.max(4, Math.min(vbr.height - bh - 4, cy - bh / 2));
+      x = Math.max(7, Math.min(vbr.width - bw - 7, cx - bw / 2));
+      y = Math.max(7, Math.min(vbr.height - bh - 7, cy - bh / 2));
       w = bw; h = bh;
     } else if (g8ActiveLayer === 'blur') {
-      x = ((p.blurX ?? 6) / 100) * vbr.width;
-      y = ((p.blurY ?? 80) / 100) * vbr.height;
-      w = Math.max(36, ((p.blurW ?? 88) / 100) * vbr.width);
-      h = Math.max(22, ((p.blurH ?? 14) / 100) * vbr.height);
+      x = Math.max(6, ((p.blurX ?? 6) / 100) * vbr.width);
+      y = Math.max(6, ((p.blurY ?? 80) / 100) * vbr.height);
+      w = Math.min(vbr.width - x - 6, Math.max(36, ((p.blurW ?? 88) / 100) * vbr.width));
+      h = Math.min(vbr.height - y - 6, Math.max(22, ((p.blurH ?? 14) / 100) * vbr.height));
     } else {
       const el = getLayerEl(g8ActiveLayer);
       if (!el) { g.style.display = 'none'; return; }
       const r = el.getBoundingClientRect();
       if (r.width < 6 || r.height < 6) {
-        x = vbr.width * 0.12; y = vbr.height * 0.4; w = vbr.width * 0.76; h = 40;
+        x = 12; y = vbr.height * 0.4; w = vbr.width - 24; h = 36;
       } else {
-        const pad = 5;
-        x = Math.max(2, r.left - vbr.left - pad);
-        y = Math.max(2, r.top - vbr.top - pad);
-        w = Math.max(38, r.width + pad * 2);
-        h = Math.max(28, r.height + pad * 2);
+        const pad = 4;
+        x = Math.max(7, r.left - vbr.left - pad);
+        y = Math.max(7, r.top - vbr.top - pad);
+        w = Math.min(vbr.width - x - 7, Math.max(36, r.width + pad * 2));
+        h = Math.min(vbr.height - y - 7, Math.max(26, r.height + pad * 2));
       }
     }
 
@@ -21937,21 +21950,37 @@ body.cts-desktop-mode #cueList .cue-card {
     g.style.width = Math.round(w) + 'px';
     g.style.height = Math.round(h) + 'px';
 
+    const tagEl = document.getElementById('ctsG8Tag');
+    if (tagEl) tagEl.classList.toggle('flip-bot', y < 26);
+
     const tag = document.getElementById('ctsG8Txt');
     if (tag) {
       if (g8ActiveLayer === 'blur') tag.textContent = `${LAYER_NAMES.blur} ${Math.round(p.blurW || 88)}%×${Math.round(p.blurH || 14)}%`;
       else {
-        const sc = g8ActiveLayer === 'vid' ? p.vidScale : (g8ActiveLayer === 'sub' ? p.subScale : (g8ActiveLayer === 'logo' ? p.logoScale : (g8ActiveLayer === 'sponsor' ? p.sponsorScale : 1)));
+        const sc = g8ActiveLayer === 'vid' ? p.vidScale
+          : (g8ActiveLayer === 'sub' ? p.subScale
+          : (g8ActiveLayer === 'logo' ? p.logoScale
+          : (g8ActiveLayer === 'ticker' ? (p.tickerScale || 1)
+          : (g8ActiveLayer === 'sponsor' ? p.sponsorScale : 1))));
         tag.textContent = `${LAYER_NAMES[g8ActiveLayer] || g8ActiveLayer} ${Number(sc || 1).toFixed(2)}x`;
       }
     }
   }
 
   function selectGizmo8(layer) {
+    if (layer === 'blur') {
+      const bb = document.getElementById('blurBox');
+      if (bb && !bb.classList.contains('on')) {
+        if (typeof toggleBlur === 'function') toggleBlur();
+        else bb.classList.add('on');
+        applyBlurPreviewStyle();
+      }
+    }
     g8ActiveLayer = layer;
     if (typeof window.__ctsSelLayer === 'function') {
       try { window.__ctsSelLayer(layer); } catch (e) {}
     }
+    applyExtraLayerProps();
     syncQuickZoomBar(layer);
     positionGizmo8();
   }
@@ -21980,18 +22009,13 @@ body.cts-desktop-mode #cueList .cue-card {
       positionGizmo8();
     };
 
-    // Hide bounding box cleanly while video plays or on empty tap outside elements
     const vp = document.getElementById('videoPlayer');
     if (vp) vp.addEventListener('play', () => { g8ActiveLayer = null; positionGizmo8(); });
 
-    // 1-Finger Drag on any Handle or inside the Box
     let dragInfo = null;
-    g.addEventListener('pointerdown', (e) => {
-      if (e.target && e.target.id === 'ctsG8Close') return;
+    function startGizmoDrag(e, handleOverride) {
       if (cfg.dragLocked || !g8ActiveLayer || !window.__ctsPro) return;
-      e.stopPropagation();
-      e.preventDefault();
-      const handle = e.target.closest('[data-h]')?.getAttribute('data-h') || 'move';
+      const handle = handleOverride || e.target.closest('[data-h]')?.getAttribute('data-h') || 'move';
       const p = window.__ctsPro;
       const vbr = vb.getBoundingClientRect();
       dragInfo = {
@@ -22001,13 +22025,19 @@ body.cts-desktop-mode #cueList .cue-card {
         sy: e.clientY,
         vw: vbr.width || 200,
         vh: vbr.height || 300,
-        snap: Object.assign({}, p),
-        subW: parseFloat(document.getElementById('subOverlay')?.style.width || '90') || 90
+        snap: Object.assign({}, p)
       };
       try { g.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+
+    g.addEventListener('pointerdown', (e) => {
+      if (e.target && e.target.id === 'ctsG8Close') return;
+      e.stopPropagation();
+      e.preventDefault();
+      startGizmoDrag(e, null);
     });
 
-    g.addEventListener('pointermove', (e) => {
+    const onMove = (e) => {
       if (!dragInfo || e.pointerId !== dragInfo.pid || !window.__ctsPro) return;
       e.stopPropagation();
       e.preventDefault();
@@ -22026,7 +22056,6 @@ body.cts-desktop-mode #cueList .cue-card {
         else if (L === 'ticker') { p.tickerY = +(Math.max(4, Math.min(94, (sn.tickerY || 16) + dyPct))).toFixed(1); }
         else if (L === 'sponsor') { p.sponsorX = +(Math.max(0, Math.min(90, (sn.sponsorX || 68) + dxPct))).toFixed(1); p.sponsorY = +(Math.max(0, Math.min(90, (sn.sponsorY || 14) + dyPct))).toFixed(1); }
       } else if (L === 'blur') {
-        // Precise 8-handle width/height/corner stretch for Blur box!
         if (h.includes('r')) p.blurW = +(Math.max(10, Math.min(98 - (sn.blurX || 0), (sn.blurW || 88) + dxPct))).toFixed(1);
         if (h.includes('l')) {
           const nw = Math.max(10, Math.min((sn.blurX || 0) + (sn.blurW || 88), (sn.blurW || 88) - dxPct));
@@ -22040,29 +22069,29 @@ body.cts-desktop-mode #cueList .cue-card {
           p.blurH = +nh.toFixed(1);
         }
       } else {
-        // Scale / Zoom In & Out (4 Corners) + Width/Height stretch (4 Edges)
         const dirX = h.includes('l') ? -dxPct : (h.includes('r') ? dxPct : 0);
         const dirY = h.includes('t') ? -dyPct : (h.includes('b') ? dyPct : 0);
         const delta = (h === 'ml' || h === 'mr') ? dirX : ((h === 'tm' || h === 'bm') ? dirY : (dirX + dirY) * 0.65);
 
         if (L === 'sub' && (h === 'ml' || h === 'mr')) {
-          const nw = Math.max(30, Math.min(96, dragInfo.subW + dirX * 1.4));
-          const subOv = document.getElementById('subOverlay');
-          if (subOv) subOv.style.width = nw.toFixed(1) + '%';
+          p.subW = Math.round(Math.max(30, Math.min(96, (sn.subW || 90) + dirX * 1.4)));
+        } else if (L === 'ticker' && (h === 'ml' || h === 'mr')) {
+          p.tickerW = Math.round(Math.max(35, Math.min(100, (sn.tickerW || 100) + dirX * 1.4)));
         } else {
-          const factor = 1 + delta / 55;
+          const factor = 1 + delta / 52;
           if (L === 'vid') p.vidScale = +(Math.max(0.4, Math.min(2.6, (sn.vidScale || 1) * factor))).toFixed(2);
           else if (L === 'sub') p.subScale = +(Math.max(0.5, Math.min(2.4, (sn.subScale || 1) * factor))).toFixed(2);
           else if (L === 'logo') p.logoScale = +(Math.max(0.4, Math.min(2.8, (sn.logoScale || 1) * factor))).toFixed(2);
+          else if (L === 'ticker') p.tickerScale = +(Math.max(0.5, Math.min(2.0, (sn.tickerScale || 1) * factor))).toFixed(2);
           else if (L === 'sponsor') p.sponsorScale = +(Math.max(0.4, Math.min(2.4, (sn.sponsorScale || 1) * factor))).toFixed(2);
         }
       }
 
       if (typeof window.__ctsApplyPro === 'function') window.__ctsApplyPro();
-      applyBlurBoxHeight();
+      applyExtraLayerProps();
       syncQuickZoomBar(L);
       positionGizmo8();
-    });
+    };
 
     const endDrag = (e) => {
       if (!dragInfo || e.pointerId !== dragInfo.pid) return;
@@ -22070,41 +22099,79 @@ body.cts-desktop-mode #cueList .cue-card {
       if (typeof window.__ctsSavePro === 'function') window.__ctsSavePro();
       positionGizmo8();
     };
-    g.addEventListener('pointerup', endDrag);
-    g.addEventListener('pointercancel', endDrag);
+    window.addEventListener('pointermove', onMove, true);
+    window.addEventListener('pointerup', endDrag, true);
+    window.addEventListener('pointercancel', endDrag, true);
 
-    // Tap directly on any layer inside #videoBox to activate 8-Handle Transform!
+    // Capture-phase touch interception: stops old v34 double-drag fighting AND hides box on empty tap!
     vb.addEventListener('pointerdown', (e) => {
       if (cfg.dragLocked) return;
-      if (e.target && e.target.closest && (e.target.closest('#ctsProGizmo8') || e.target.closest('#demoCover'))) return;
       const t = e.target;
-      let hit = 'vid';
+      if (t && t.closest && t.closest('#demoCover')) return;
+      if (t && t.closest && t.closest('#ctsProGizmo8')) {
+        e.stopPropagation();
+        return;
+      }
+
+      let hit = null;
       if (document.getElementById('wmContainer')?.contains(t)) hit = 'logo';
       else if (document.getElementById('subOverlay')?.contains(t)) hit = 'sub';
       else if (document.getElementById('blurBox')?.contains(t)) hit = 'blur';
       else if (document.getElementById('ctsTickerOverlay')?.contains(t)) hit = 'ticker';
       else if (document.getElementById('ctsSponsorOverlay')?.contains(t)) hit = 'sponsor';
-      selectGizmo8(hit);
+
+      if (hit) {
+        e.stopPropagation();
+        e.preventDefault();
+        selectGizmo8(hit);
+        startGizmoDrag(e, 'move');
+      } else {
+        // Tapped empty space inside #videoBox -> hide 8-Handle Box cleanly!
+        e.stopPropagation();
+        g8ActiveLayer = null;
+        positionGizmo8();
+      }
     }, true);
 
-    // Sync #ctsTouchLayerBar pills + rename "🔒 Video" -> "🎬 Video"
+    // Tapping empty stage outside #videoBox also hides 8-Handle Box cleanly!
+    const stageWrap = vb.closest('.stage-wrap');
+    if (stageWrap) {
+      stageWrap.addEventListener('pointerdown', (e) => {
+        if (!vb.contains(e.target)) {
+          g8ActiveLayer = null;
+          positionGizmo8();
+        }
+      }, true);
+    }
+
+    // Wire #ctsTouchLayerBar pills + rename "🔒 Video" -> "🎬 Video" & hide duplicate "🔒 សោ Video"
     const tbar = document.getElementById('ctsTouchLayerBar');
     if (tbar) {
-      const vpPill = tbar.querySelector('[data-layer="vid"]');
-      if (vpPill) vpPill.innerHTML = '🎬 Video';
+      tbar.querySelectorAll('button').forEach(btn => {
+        if (btn.getAttribute('data-layer') === 'vid') btn.innerHTML = '🎬 Video';
+        if (/សោ Video/i.test(btn.textContent || '')) btn.style.display = 'none';
+      });
       tbar.addEventListener('click', (e) => {
         const b = e.target.closest('[data-layer]');
         if (b) setTimeout(() => selectGizmo8(b.getAttribute('data-layer')), 20);
       });
     }
 
-    // Keep Gizmo synced when user drags #qzSlider
+    // Hook Quick Zoom Slider for Ticker too + sync Gizmo8
     const qz = document.getElementById('qzSlider');
-    if (qz) qz.addEventListener('input', () => setTimeout(() => { applyBlurBoxHeight(); positionGizmo8(); }, 15));
     const qm = document.getElementById('qzMinus');
     const qp = document.getElementById('qzPlus');
-    if (qm) qm.addEventListener('click', () => setTimeout(() => { applyBlurBoxHeight(); positionGizmo8(); }, 15));
-    if (qp) qp.addEventListener('click', () => setTimeout(() => { applyBlurBoxHeight(); positionGizmo8(); }, 15));
+    const syncAfterQz = () => {
+      const p = window.__ctsPro;
+      if (p && g8ActiveLayer === 'ticker' && qz) {
+        p.tickerScale = +(parseFloat(qz.value) || 1).toFixed(2);
+      }
+      applyExtraLayerProps();
+      positionGizmo8();
+    };
+    if (qz) qz.addEventListener('input', () => setTimeout(syncAfterQz, 15));
+    if (qm) qm.addEventListener('click', () => setTimeout(syncAfterQz, 20));
+    if (qp) qp.addEventListener('click', () => setTimeout(syncAfterQz, 20));
   }
 
   function updateLockUI() {
@@ -22121,7 +22188,7 @@ body.cts-desktop-mode #cueList .cue-card {
   function applyBlurPreviewStyle() {
     const bb = document.getElementById('blurBox');
     if (!bb) return;
-    applyBlurBoxHeight();
+    applyExtraLayerProps();
     const pwr = cfg.blurPower || 14;
     const st = cfg.blurStyle || 'soft';
     bb.style.backgroundImage = '';
@@ -22561,7 +22628,8 @@ body.cts-desktop-mode #cueList .cue-card {
       pvToggle.style.color = cfg.cuesShowPv ? '#f8fafc' : '#bae6fd';
     }
 
-    setTimeout(positionGizmo8, 60);
+    g8ActiveLayer = null;
+    setTimeout(() => { applyExtraLayerProps(); positionGizmo8(); }, 60);
     closeCmdModal();
   }
 
@@ -22729,7 +22797,11 @@ body.cts-desktop-mode #cueList .cue-card {
     document.getElementById('ctsPf46Next').onclick = () => stepView(1);
     document.getElementById('ctsPf46Cmd').onclick = openCmdModal;
     document.getElementById('ctsPf46LockBtn').onclick = () => { cfg.dragLocked = !cfg.dragLocked; saveCfg(); updateLockUI(); };
-    document.getElementById('ctsPf46ResetPos').onclick = () => { document.getElementById('ctsResetPosBtn')?.click(); setTimeout(() => { applyBlurBoxHeight(); positionGizmo8(); }, 40); };
+    document.getElementById('ctsPf46ResetPos').onclick = () => {
+      if (window.__ctsPro) { window.__ctsPro.subW = 90; window.__ctsPro.tickerScale = 1.0; window.__ctsPro.tickerW = 100; }
+      document.getElementById('ctsResetPosBtn')?.click();
+      setTimeout(() => { applyExtraLayerProps(); positionGizmo8(); }, 40);
+    };
     document.getElementById('ctsPf46ClrVid').onclick = clearVideoPreview;
     document.getElementById('ctsPf46PvTog').onclick = () => { cfg.cuesShowPv = !cfg.cuesShowPv; saveCfg(); setView('cues', false); };
 
@@ -22748,6 +22820,7 @@ body.cts-desktop-mode #cueList .cue-card {
   setTimeout(() => {
     installGizmo8();
     installBlurExportHook();
+    applyExtraLayerProps();
     ['recap', 'cues', 'design', 'settings'].forEach(renderTabSlot);
     positionGizmo8();
   }, 1650);
