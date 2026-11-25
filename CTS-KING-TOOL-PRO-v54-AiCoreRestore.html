@@ -8475,7 +8475,7 @@
             let s = Math.max(ps, abs ? rs : ps + rs); if (s > pe - 0.3) s = Math.max(ps, pE); if (i > 0 && s < pE && pE - s < 0.25) s = Math.min(pe - 0.35, pE + 0.02);
             if (isNaN(re)) re = (abs ? s : s - ps) + Math.max(1.0, Math.min(3.8, (tr || st).length / 13));
             let e = Math.min(pe, abs ? re : ps + re); if (e <= s + 0.4) e = Math.min(pe, s + 1.25);
-            let rl = normV13(x.voice || x.v, tr || st, pR); const hz = pitchHz(compact, s, e); if (hz) { if (rl !== 'sreymom' && hz >= 188) rl = 'sreymom'; else if (rl !== 'piseth' && hz <= 148) rl = 'piseth'; }
+            let rl = normV13(x.voice || x.v, tr || st, pR); const hz = pitchHz(compact, s, e); if (hz) { if (rl !== 'sreymom' && hz >= (window.__ctsV54GetFemaleHz ? window.__ctsV54GetFemaleHz() : 188)) rl = 'sreymom'; else if (rl !== 'piseth' && hz <= 148) rl = 'piseth'; }
             pR = rl; pE = e;
             out.push({ id: Date.now() + Math.floor(Math.random() * 999999) + i + Math.round(ps * 10), start: +s.toFixed(2), end: +e.toFixed(2), _mouthStart: +s.toFixed(2), _mouthEnd: +e.toFixed(2), src: st, km: doTl ? (tr || st) : st, voice: rl, _audioVoice: rl, _audioVoice: rl, audioUrl: null });
           }
@@ -24514,10 +24514,20 @@ body.cts-desktop-mode #cueList .cue-card {
 })();
 </script>
 
+
 <script id="cts-addon-54-aicorerestore">
-// === ADD-ON #54: AI CORE RESTORE (AUTO-HEAL 1-CLICK + PISETH/SREYMOM GUARD + FAST 4X AUDIO + MULTI-KEY ROTATOR) ===
+// === ADD-ON #54: AI CORE RESTORE (VISIBLE IN + ADD FEATURE MENU + AUTO-HEAL + PISETH/SREYMOM + 4X AUDIO) ===
 (function() {
   let rrIdx54 = 0;
+  const CFG54_KEY = 'cts_v54_aicore_cfg';
+  let cfg54 = { autoHeal: true, femaleHz: 188 };
+  try {
+    const saved = JSON.parse(localStorage.getItem(CFG54_KEY) || '{}');
+    if (typeof saved.autoHeal === 'boolean') cfg54.autoHeal = saved.autoHeal;
+    if (saved.femaleHz) cfg54.femaleHz = Number(saved.femaleHz) || 188;
+  } catch (e) {}
+  function saveCfg54() { try { localStorage.setItem(CFG54_KEY, JSON.stringify(cfg54)); } catch (e) {} }
+  window.__ctsV54GetFemaleHz = () => cfg54.femaleHz || 188;
 
   const SAFETY_NONE = [
     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
@@ -24527,7 +24537,7 @@ body.cts-desktop-mode #cueList .cue-card {
   ];
   window.__ctsV54Safety = SAFETY_NONE;
 
-  // 1. Validate HTTP 200 Gemini response actually contains text or audio (never return silent empty!)
+  // 1. Validate HTTP 200 Gemini response actually contains text or audio
   window.__ctsV54ValidateGeminiResp = function(data, isTts) {
     const c0 = data && data.candidates && data.candidates[0];
     const parts = c0 && c0.content && c0.content.parts;
@@ -24543,7 +24553,7 @@ body.cts-desktop-mode #cueList .cue-card {
     return true;
   };
 
-  // 2. Restore fast, smart multi-key/model rotation for window.callGeminiParts & window.callAI
+  // 2. Fast Multi-Key / Model Rotation (fixes broken Add-on #27 callAI & callGeminiParts)
   window.callGeminiParts = async function(apiKey, model, sys, parts, signal) {
     const hasMedia = Array.isArray(parts) && parts.some(p => p && p.inlineData);
     const timeoutMs = hasMedia ? 120000 : 75000;
@@ -24611,7 +24621,7 @@ body.cts-desktop-mode #cueList .cue-card {
               if (e.status === 429) {
                 const ms = String(e.message).match(/retry in\s+(\d+(?:\.\d+)?)s/i);
                 waitMs = Math.max(waitMs, ms ? Math.ceil(parseFloat(ms[1]) * 1000) + 800 : 3500);
-                continue; // Immediately switch to NEXT key on same strong model!
+                continue;
               }
               if (![503, 500, 400, 502, 504].includes(e.status)) throw e;
             }
@@ -24645,7 +24655,7 @@ body.cts-desktop-mode #cueList .cue-card {
     throw new Error('Unknown AI provider');
   };
 
-  // 3. 1-Click Auto-Heal Translation Rescue (automatically rescues any missed cues via AI before finishing!)
+  // 3. 1-Click Auto-Heal Translation Rescue
   window.__ctsV54AutoHealTranslate = async function(cueList, srcC, tgtC, tgtN, signal, logFn) {
     const needFix = (c) => {
       const sr = String(c.src || '').trim();
@@ -24658,11 +24668,12 @@ body.cts-desktop-mode #cueList .cue-card {
     };
 
     let missing = cueList.filter(needFix);
-    if (!missing.length) return { total: cueList.length, fixed: cueList.length, remaining: 0, lastErr: '' };
+    if (!missing.length || !cfg54.autoHeal) {
+      return { total: cueList.length, fixed: cueList.length - missing.length, remaining: missing.length, lastErr: '' };
+    }
 
     let lastErr = '';
     if (logFn) logFn('🔄 Auto-Heal: កំពុងស្រង់-បកប្រែ ' + missing.length + ' ឃ្លាដែលខ្វះដោយស្វ័យប្រវត្តិ...');
-
     const sys = 'You are an expert ' + tgtN + ' movie dubbing translator. Translate every spoken line naturally, clearly, and completely into ' + tgtN + '. Do NOT skip or leave lines untranslated. Return ONLY JSON array: [{"id":1,"t":"translated text"}]';
 
     const tryChunk = async (chunk) => {
@@ -24682,20 +24693,15 @@ body.cts-desktop-mode #cueList .cue-card {
         const it = byId[idx + 1] || arr[idx];
         const tr = String((it && (it.t || it.tr || it.km || it.text)) || '').trim();
         if (tr && (tgtC !== 'km' || /[\u1780-\u17ff]/.test(tr) || srcC === 'km')) {
-          c.km = tr;
-          c.audioUrl = null;
-          c._rawAudioUrl = null;
+          c.km = tr; c.audioUrl = null; c._rawAudioUrl = null;
         }
       });
     };
 
-    // Pass A: mini-batches of 8 via AI
     for (let i = 0; i < missing.length; i += 8) {
       if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
       try { await tryChunk(missing.slice(i, i + 8)); } catch (e) { if (e.name === 'AbortError') throw e; lastErr = String(e.message || e); }
     }
-
-    // Pass B: 1-by-1 rescue for any stubborn cues
     missing = cueList.filter(needFix);
     if (missing.length && missing.length <= 25) {
       for (const c of missing) {
@@ -24703,8 +24709,6 @@ body.cts-desktop-mode #cueList .cue-card {
         try { await tryChunk([c]); } catch (e) { if (e.name === 'AbortError') throw e; lastErr = String(e.message || e); }
       }
     }
-
-    // Pass C: Last-resort freeTranslate ONLY if AI completely exhausted on specific lines
     missing = cueList.filter(needFix);
     if (missing.length && typeof freeTranslate === 'function') {
       for (const c of missing) {
@@ -24715,13 +24719,13 @@ body.cts-desktop-mode #cueList .cue-card {
         } catch {}
       }
     }
-
     const rem = cueList.filter(needFix).length;
     return { total: cueList.length, fixed: cueList.length - rem, remaining: rem, lastErr };
   };
 
-  // 4. 1-Click Auto-Heal Dubber Audio (retries any cue still missing audioUrl)
+  // 4. 1-Click Auto-Heal Dubber Audio
   window.__ctsV54AutoHealDubberAudio = async function(cueList, signal, synthFn, logFn) {
+    if (!cfg54.autoHeal) return 0;
     const missing = cueList.filter(c => String(c.km || c.src || '').trim() && !c.audioUrl);
     if (!missing.length) return 0;
     if (logFn) logFn('🔄 Auto-Heal Audio: កំពុងបង្កើតបំពេញ ' + missing.length + ' ឃ្លាដែលខ្វះសំឡេង...');
@@ -24749,7 +24753,7 @@ body.cts-desktop-mode #cueList .cue-card {
     return fixed;
   };
 
-  // 5. Gentle 55ms Soft-Pad + Ultra-Fast Clean Audio Fitter (Zero word clipping, Zero WSOLA lag!)
+  // 5. Gentle 55ms Soft-Pad + Ultra-Fast Clean Audio Fitter
   window.__ctsV54TrimAndFitAudio = function(ab, slotDur, pcm16ToWavBytesFn) {
     if (!ab || ab.length < 256) return null;
     const sr = ab.sampleRate, pcm = ab.getChannelData(0), win = Math.max(1, Math.round(sr * 0.01));
@@ -24782,6 +24786,116 @@ body.cts-desktop-mode #cueList .cue-card {
     }
     return new Blob([pcm16ToWavBytesFn(res, sr)], { type: 'audio/wav' });
   };
+
+  // 6. Visible UI inside "+ រើសមុខងារបន្ថែម (គ្មានកំណត់)" + Control Modal
+  const stEl = document.createElement('style');
+  stEl.id = 'cts-v54-style';
+  stEl.textContent = `
+    #ctsV54PanelModal { position:fixed; inset:0; z-index:99998; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,0.76); backdrop-filter:blur(6px); }
+    #ctsV54PanelModal.open { display:flex; }
+    #ctsV54PanelBox { width:100%; max-width:390px; border-radius:18px; background:var(--cts-ui-bg, #120714); color:var(--cts-ui-text, #f8fafc); border:1.5px solid var(--cts-ui-border, rgba(251,191,36,0.5)); box-shadow:0 22px 54px rgba(0,0,0,0.88); padding:15px; display:flex; flex-direction:column; gap:10px; }
+    .cts-v54-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 11px; border-radius:12px; background:var(--cts-ui-card, rgba(255,255,255,0.05)); border:1px solid var(--cts-ui-card-border, rgba(255,255,255,0.14)); font-size:12px; font-weight:800; }
+    .cts-v54-btn { width:100%; padding:10px 12px; border-radius:12px; font-size:12.5px; font-weight:900; cursor:pointer; border:1.5px solid var(--cts-ui-card-border, rgba(251,191,36,0.38)); background:var(--cts-ui-card, rgba(251,191,36,0.1)); color:var(--cts-ui-text, #fff); text-align:left; }
+    .cts-v54-btn:active { transform:scale(0.985); }
+    .cts-v54-pill { padding:4px 10px; border-radius:99px; font-size:11px; font-weight:900; cursor:pointer; border:1px solid var(--cts-ui-accent, #fbbf24); background:var(--cts-ui-card-hover, rgba(251,191,36,0.18)); color:var(--cts-ui-title, #fde68a); }
+  `;
+  document.head.appendChild(stEl);
+
+  function openV54Modal() {
+    let m = document.getElementById('ctsV54PanelModal');
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'ctsV54PanelModal';
+      m.setAttribute('data-no-i18n', '1');
+      m.innerHTML = `
+        <div id="ctsV54PanelBox">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <b style="font-size:14px;color:var(--cts-ui-title,#fde68a)">🛡️ AI Core Restore Pro (v54)</b>
+            <button type="button" id="ctsV54CloseBtn" style="width:30px;height:30px;border-radius:99px;border:1px solid var(--cts-ui-card-border,rgba(255,255,255,0.2));background:transparent;color:inherit;font-weight:900;cursor:pointer">✕</button>
+          </div>
+          <div class="cts-v54-row" style="border-color:rgba(16,185,129,0.45);background:rgba(16,185,129,0.12);color:#a7f3d0">
+            <span>✅ ម៉ាស៊ីន v54 Active 100%</span>
+            <span style="font-size:10.5px">3.8-TTS • 4x • Auto-Heal</span>
+          </div>
+          <div class="cts-v54-row">
+            <span>🔄 Auto-Heal 1-Click ស្វ័យប្រវត្តិ</span>
+            <button type="button" id="ctsV54HealToggle" class="cts-v54-pill"></button>
+          </div>
+          <div class="cts-v54-row">
+            <span>🎙️ កម្រិតចាប់សំឡេងស្រី (ស្រីមុំ)</span>
+            <select id="ctsV54HzSel" style="background:#0f172a;color:#fff;border:1px solid rgba(251,191,36,0.45);border-radius:8px;padding:4px 7px;font-size:11px;font-weight:800">
+              <option value="178">178Hz (ចាប់ស្រីងាយ)</option>
+              <option value="188">188Hz (ស្តង់ដារ v54)</option>
+              <option value="198">198Hz (តួប្រុសច្បាស់)</option>
+            </select>
+          </div>
+          <button type="button" id="ctsV54RunTrNow" class="cts-v54-btn">🌐 រត់បកប្រែ + Auto-Heal ឃ្លាខ្វះឥឡូវនេះ</button>
+          <button type="button" id="ctsV54RunAuNow" class="cts-v54-btn">🔊 រត់បង្កើតសំឡេង + Auto-Heal ឥឡូវនេះ</button>
+        </div>`;
+      m.onclick = (e) => { if (e.target === m) m.classList.remove('open'); };
+      document.body.appendChild(m);
+      document.getElementById('ctsV54CloseBtn').onclick = () => m.classList.remove('open');
+      const tBtn = document.getElementById('ctsV54HealToggle');
+      const syncUI = () => {
+        tBtn.textContent = cfg54.autoHeal ? 'បើក (ON)' : 'បិទ (OFF)';
+        document.getElementById('ctsV54HzSel').value = String(cfg54.femaleHz || 188);
+      };
+      tBtn.onclick = () => { cfg54.autoHeal = !cfg54.autoHeal; saveCfg54(); syncUI(); };
+      document.getElementById('ctsV54HzSel').onchange = (e) => { cfg54.femaleHz = Number(e.target.value) || 188; saveCfg54(); };
+      document.getElementById('ctsV54RunTrNow').onclick = () => {
+        m.classList.remove('open');
+        if (typeof window.translateAllCues === 'function') window.translateAllCues();
+        else if (typeof toast === 'function') toast('⚠️ សូមផ្ទុក Video/Cues ក្នុង Dubber & AI ជាមុន!');
+      };
+      document.getElementById('ctsV54RunAuNow').onclick = () => {
+        m.classList.remove('open');
+        if (typeof window.generateAllCuesAudio === 'function') window.generateAllCuesAudio();
+        else if (typeof toast === 'function') toast('⚠️ សូមផ្ទុក Cues ក្នុង Dubber & AI ជាមុន!');
+      };
+      syncUI();
+    }
+    m.classList.add('open');
+  }
+
+  function injectIntoAddFeatureModal() {
+    if (document.getElementById('ctsV54AddMenuCard')) return;
+    const allEls = document.querySelectorAll('button, div, [role="button"]');
+    let viralCard = null;
+    for (const el of allEls) {
+      if (el.children.length <= 4 && /AI Viral Title\s*&\s*Hashtags/i.test(el.textContent || '') && !el.closest('#ctsV54PanelModal')) {
+        if (el.tagName === 'BUTTON' || el.className) { viralCard = el; break; }
+      }
+    }
+    if (!viralCard || !viralCard.parentElement) return;
+    // Confirm it's inside the "+ រើសមុខងារបន្ថែម" modal
+    const modalRoot = viralCard.closest('[id*="Modal"], [id*="modal"], [class*="modal"], div[style*="fixed"]') || viralCard.parentElement.parentElement;
+    if (!modalRoot || !/រើសមុខងារបន្ថែម/.test(modalRoot.textContent || '')) return;
+
+    const card = document.createElement(viralCard.tagName === 'BUTTON' ? 'button' : 'div');
+    if (card.tagName === 'BUTTON') card.type = 'button';
+    card.id = 'ctsV54AddMenuCard';
+    card.className = viralCard.className;
+    card.style.cssText = viralCard.style.cssText;
+    card.innerHTML = `
+      <div style="font-weight:900;font-size:13.5px;display:flex;align-items:center;gap:6px">
+        <span>🛡️</span><span>AI Core Restore Pro (v54)</span>
+      </div>
+      <div style="font-size:11px;opacity:0.78;margin-top:2px">Auto-Heal 100% • ពិសិដ្ឋ/ស្រីមុំ • 3.8-TTS 4x</div>`;
+    card.onclick = (e) => {
+      e.stopPropagation();
+      const closeBtn = modalRoot.querySelector('button[id*="Close"], button[id*="close"], button:has(> svg), button');
+      // Try clicking the top-right '×' button of the Add Feature modal cleanly
+      for (const b of modalRoot.querySelectorAll('button')) {
+        if (/^[✕×X]$/.test((b.textContent || '').trim())) { b.click(); break; }
+      }
+      openV54Modal();
+    };
+    viralCard.insertAdjacentElement('afterend', card);
+  }
+
+  new MutationObserver(() => injectIntoAddFeatureModal()).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('click', () => setTimeout(injectIntoAddFeatureModal, 60), true);
+  setTimeout(injectIntoAddFeatureModal, 1000);
 })();
 </script>
 
