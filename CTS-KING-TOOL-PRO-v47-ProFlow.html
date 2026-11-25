@@ -21743,11 +21743,11 @@ body.cts-desktop-mode #cueList .cue-card {
     #ctsTouchLayerBar { padding: 4px 6px !important; flex-wrap: wrap !important; gap: 4px !important; }
 
     /* Pro 8-Handle 1-Finger Bounding Box (#ctsProGizmo8) */
-    #ctsProGizmo8 { position:absolute; z-index:30; display:none; border:1.5px solid #fbbf24; border-radius:4px; box-shadow:0 0 0 1px rgba(0,0,0,0.65),0 0 14px rgba(251,191,36,0.28); touch-action:none; box-sizing:border-box; cursor:move; }
+    #ctsProGizmo8 { position:absolute; z-index:30; display:none; pointer-events:auto!important; border:1.5px solid #fbbf24; border-radius:4px; box-shadow:0 0 0 1px rgba(0,0,0,0.65),0 0 14px rgba(251,191,36,0.28); touch-action:none; box-sizing:border-box; cursor:move; }
     #ctsG8Tag { position:absolute; left:50%; top:-23px; transform:translateX(-50%); display:inline-flex; align-items:center; gap:5px; padding:2px 7px; border-radius:99px; background:rgba(15,10,20,0.94); border:1px solid #fbbf24; color:#fef08a; font-size:10px; font-weight:800; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.75); }
     #ctsG8Tag.flip-bot { top:auto; bottom:-23px; }
     #ctsG8Close { background:rgba(239,68,68,0.8); color:#fff; border:none; border-radius:50%; width:15px; height:15px; font-size:10px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; }
-    .cts-g8-h { position:absolute; width:26px; height:26px; display:flex; align-items:center; justify-content:center; touch-action:none; z-index:32; }
+    .cts-g8-h { position:absolute; width:26px; height:26px; pointer-events:auto!important; display:flex; align-items:center; justify-content:center; touch-action:none; z-index:32; }
     .cts-g8-h::after { content:''; display:block; background:#fff; border:2px solid #f59e0b; box-shadow:0 1px 5px rgba(0,0,0,0.85); }
     .cts-g8-h.c::after { width:12px; height:12px; border-radius:50%; }
     .cts-g8-h.ex::after { width:6px; height:16px; border-radius:99px; background:#38bdf8; border-color:#fff; }
@@ -22027,7 +22027,7 @@ body.cts-desktop-mode #cueList .cue-card {
         vh: vbr.height || 300,
         snap: Object.assign({}, p)
       };
-      try { g.setPointerCapture(e.pointerId); } catch (err) {}
+      
     }
 
     g.addEventListener('pointerdown', (e) => {
@@ -22099,7 +22099,7 @@ body.cts-desktop-mode #cueList .cue-card {
       if (typeof window.__ctsSavePro === 'function') window.__ctsSavePro();
       positionGizmo8();
     };
-    window.addEventListener('pointermove', onMove, true);
+    window.addEventListener('pointermove', onMove, { passive: false, capture: true });
     window.addEventListener('pointerup', endDrag, true);
     window.addEventListener('pointercancel', endDrag, true);
 
@@ -22109,7 +22109,6 @@ body.cts-desktop-mode #cueList .cue-card {
       const t = e.target;
       if (t && t.closest && t.closest('#demoCover')) return;
       if (t && t.closest && t.closest('#ctsProGizmo8')) {
-        e.stopPropagation();
         return;
       }
 
