@@ -24858,14 +24858,23 @@ body.cts-desktop-mode #cueList .cue-card {
   function injectIntoAddFeatureModal() {
     if (document.getElementById('ctsV54AddMenuCard')) return;
     let viralCard = null;
-    for (const el of document.querySelectorAll('button, [role="button"], .cts-pf46-mitem, div')) {
-      if (el.id === 'ctsV54AddMenuCard' || el.closest('#ctsV54PanelModal')) continue;
-      const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
-      if (!/AI Viral Title\s*&\s*Hashtags/i.test(t)) continue;
-      if (/រើសមុខងារបន្ថែម|Blur\s*៥\s*ជម្រើស|Thumbnail\s*\/\s*Cover/i.test(t)) continue;
-      if (t.length > 130) continue;
-      if (getComputedStyle(el).position === 'fixed') continue;
-      viralCard = el;
+    for (const b of document.querySelectorAll('button, [role="button"]')) {
+      if (b.id === 'ctsV54AddMenuCard' || b.closest('#ctsV54PanelModal')) continue;
+      const t = (b.textContent || '').replace(/\s+/g, ' ').trim();
+      if (/AI Viral Title\s*&\s*Hashtags/i.test(t) && !/រើសមុខងារបន្ថែម|Blur/i.test(t) && t.length < 140) {
+        viralCard = b;
+        break;
+      }
+    }
+    if (!viralCard) {
+      let inner = null;
+      for (const el of document.querySelectorAll('div, span, b')) {
+        if (el.closest('#ctsV54PanelModal')) continue;
+        const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (/AI Viral Title\s*&\s*Hashtags/i.test(t) && !/រើសមុខងារបន្ថែម|Blur/i.test(t) && t.length < 140) inner = el;
+      }
+      while (inner && inner.parentElement && inner.parentElement.children.length < 4) inner = inner.parentElement;
+      if (inner && inner.parentElement && inner.parentElement.children.length >= 4) viralCard = inner;
     }
     if (!viralCard || !viralCard.parentElement) return;
     const modalRoot = viralCard.closest('[id*="Modal"], [id*="modal"], .open') || viralCard.parentElement.parentElement;
@@ -24875,12 +24884,7 @@ body.cts-desktop-mode #cueList .cue-card {
     card.id = 'ctsV54AddMenuCard';
     card.className = viralCard.className;
     card.style.cssText = viralCard.style.cssText;
-    card.style.position = 'relative';
-    card.innerHTML = `
-      <div style="font-weight:900;font-size:13.5px;display:flex;align-items:center;gap:6px">
-        <span>🛡️</span><span>AI Core Restore Pro (v54)</span>
-      </div>
-      <div style="font-size:11px;opacity:0.78;margin-top:2px">Auto-Heal 100% • ពិសិដ្ឋ/ស្រីមុំ • 3.8-TTS 4x</div>`;
+    card.innerHTML = `<div style="font-weight:900;font-size:13.5px;display:flex;align-items:center;gap:6px"><span>🛡️</span><span>AI Core Restore Pro (v54)</span></div><div style="font-size:11px;opacity:0.78;margin-top:2px">Auto-Heal 100% • ពិសិដ្ឋ/ស្រីមុំ • 3.8-TTS 4x</div>`;
     card.onclick = (e) => {
       e.stopPropagation();
       if (modalRoot) {
