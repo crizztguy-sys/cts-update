@@ -2021,7 +2021,7 @@
     try {
       if (useRealAI() && chunks.length >= 3 && !document.getElementById('optGlossary').value.trim()) {
         document.getElementById('recapProgTxt').textContent = '🔍 កំពុងរៀបចំឈ្មោះតួអង្គ...';
-        try { const gl = await callAI('Extract main character names/terms as Original=' + tgtName + ' lines only (max 15 lines).', src.slice(0, 3500), recapAbort.signal); if (gl?.trim()) { document.getElementById('optGlossary').value = gl.trim(); autoSaveOptions(); } } catch (e) { if (e.name === 'AbortError') throw e; }
+        try { const gl = await callAI('Extract main character names/terms as Original=' + tgtName + ' lines only (max 15 lines).', src.slice(0, 3500), recapAbort.signal); if (gl?.trim()) { document.getElementById('optGlossary').value = gl.trim(); autoSaveOptions(); } } catch (e) { if (e.name === 'AbortError') throw e; addLog('⚠️ Translate Batch: ' + String(e.message || e).slice(0, 80)); }
       }
       const sysPrompt = buildStoryPrompt(srcCode, tgtCode), pending = [];
       for (let i = 0; i < chunks.length; i++) if (!doneMap[i]) pending.push({ text: chunks[i], idx: i });
@@ -4482,6 +4482,17 @@
               renderAll();
             }
           }));
+      if (window.__ctsV54AutoHealDubberAudio && !sig.aborted) {
+        await window.__ctsV54AutoHealDubberAudio(cues, sig, async (tTxt, tRole, tIdx) => {
+          if (eng === 'edge_proxy') {
+            const vidId = (vMap[langC] || vMap.km)[tRole] || 'km-KH-PisethNeural';
+            const r = await v13Fetch(url, isOai ? { model: 'tts-1', input: tTxt, voice: vidId, response_format: 'mp3' } : { text: tTxt, voice: vidId }, 35000, sig, 'blob');
+            return (r.ok && r.data && r.data.size > 120) ? r.data : null;
+          }
+          return await window.generateGeminiTtsBlob(tTxt, tRole, sig, tIdx, 'Heal Audio');
+        }, addLog);
+        schedR(true);
+      }
         } else {
           for (const seg of segs) {
             if (pipeAbort.signal.aborted) break;
@@ -8078,7 +8089,7 @@
   const sGet = (k, f = null) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch { return f; } };
   const sSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
   const sleepAb = (ms, sig) => new Promise((res, rej) => { if (sig?.aborted) return rej(new DOMException('Aborted', 'AbortError')); const t = setTimeout(res, ms); sig?.addEventListener('abort', () => { clearTimeout(t); rej(new DOMException('Aborted', 'AbortError')); }, { once: true }); });
-  const TTS_ACTIVE = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'];
+  const TTS_ACTIVE = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts'];
   const ACTIVE_FREE_MODELS = ['gemini-4-hydrogen', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
 
   // 1. INDEXEDDB AUDIO PERSISTENCE
@@ -8224,7 +8235,7 @@
           const isTts = Boolean(cfg._isTts); delete cfg._isTts; delete cfg._audioIn;
 
           if (!isTts && /3\.8|4-hydrogen/i.test(m)) cfg.thinkingConfig = { thinkingLevel: 'LOW' };
-          const payload = { contents: [{ role: 'user', parts }], generationConfig: cfg };
+          const payload = { contents: [{ role: 'user', parts }], generationConfig: cfg, safetySettings: window.__ctsV54Safety || [] };
           if (sys) payload.systemInstruction = { parts: [{ text: sys }] };
 
           try {
@@ -8236,6 +8247,7 @@
               r = await v13Fetch(ep, payload, timeoutMs, sig);
             }
             if (!r.ok) { const e = new Error(r.data?.error?.message || ('HTTP ' + r.status)); e.status = r.status; throw e; }
+          if (window.__ctsV54ValidateGeminiResp) window.__ctsV54ValidateGeminiResp(r.data, isTts);
             addLog('✅ ' + label + ' Key #' + kNum + ' (' + m + ') OK!');
             return r.data;
           } catch (e) {
@@ -8463,9 +8475,9 @@
             let s = Math.max(ps, abs ? rs : ps + rs); if (s > pe - 0.3) s = Math.max(ps, pE); if (i > 0 && s < pE && pE - s < 0.25) s = Math.min(pe - 0.35, pE + 0.02);
             if (isNaN(re)) re = (abs ? s : s - ps) + Math.max(1.0, Math.min(3.8, (tr || st).length / 13));
             let e = Math.min(pe, abs ? re : ps + re); if (e <= s + 0.4) e = Math.min(pe, s + 1.25);
-            let rl = normV13(x.voice || x.v, tr || st, pR); const hz = pitchHz(compact, s, e); if (hz) { if (rl !== 'sreymom' && hz >= 198) rl = 'sreymom'; else if (rl !== 'piseth' && hz <= 150) rl = 'piseth'; }
+            let rl = normV13(x.voice || x.v, tr || st, pR); const hz = pitchHz(compact, s, e); if (hz) { if (rl !== 'sreymom' && hz >= 188) rl = 'sreymom'; else if (rl !== 'piseth' && hz <= 148) rl = 'piseth'; }
             pR = rl; pE = e;
-            out.push({ id: Date.now() + Math.floor(Math.random() * 999999) + i + Math.round(ps * 10), start: +s.toFixed(2), end: +e.toFixed(2), _mouthStart: +s.toFixed(2), _mouthEnd: +e.toFixed(2), src: st, km: doTl ? (tr || st) : st, voice: rl, _audioVoice: rl, audioUrl: null });
+            out.push({ id: Date.now() + Math.floor(Math.random() * 999999) + i + Math.round(ps * 10), start: +s.toFixed(2), end: +e.toFixed(2), _mouthStart: +s.toFixed(2), _mouthEnd: +e.toFixed(2), src: st, km: doTl ? (tr || st) : st, voice: rl, _audioVoice: rl, _audioVoice: rl, audioUrl: null });
           }
           return out;
         }
@@ -8528,7 +8540,7 @@
               const data = await execV13Gemini(models, wId, [{ text: pr }], sys, { maxOutputTokens: 8192, responseMimeType: 'application/json' }, 24000, extSig, 'បកប្រែ ' + (bi + 1) + '/' + bs.length);
               const arr = extArr(data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || ''), byId = {};
               arr.forEach((it, ix) => { if (it && typeof it === 'object') byId[parseInt(it.id, 10) || (ix + 1)] = it; });
-              let prev = 'piseth'; b.forEach((c, ix) => { const it = byId[ix + 1], tr = String(it?.t || it?.tr || '').trim(); if (tr) { c.km = tr; if (!c._audioVoice) { c.voice = normV13(it.v || it.voice, c.km, prev); prev = c.voice; } c.audioUrl = null; c._rawAudioUrl = null; } });
+              let prev = 'piseth'; b.forEach((c, ix) => { const it = byId[ix + 1], tr = String(it?.t || it?.tr || '').trim(); if (tr) { c.km = tr; if (!c._audioVoice && !c.voice) { c.voice = normV13(it.v || it.voice, c.km, prev); prev = c.voice; } c.audioUrl = null; c._rawAudioUrl = null; } });
             } catch (e) { if (e.name === 'AbortError') throw e; }
           } else if (useRealAI()) {
             const arr = extArr(await window.callAI(sys, 'JSON ONLY [{"id":1,"t":"...","v":"piseth|sreymom|narrator"}]:\n' + b.map((c, ix) => '[' + (ix + 1) + '] ' + (c.src || c.km)).join('\n'), extSig));
@@ -8539,7 +8551,18 @@
         }
       }));
       isDemoCues = false; schedR(true); if (pp) pp.textContent = '100%'; if (pf) pf.style.width = '100%';
-      setBoxStatus('cuesStatus', 'ok', '🎉 បកប្រែគ្រប់ ' + cues.length + ' Cues ទៅ ' + tgtN + ' ពេញលេញ 100%!'); document.getElementById('cuesExportBanner').classList.add('show');
+      let _hRes = { remaining: 0, fixed: cues.length, lastErr: '' };
+      if (window.__ctsV54AutoHealTranslate) {
+        _hRes = await window.__ctsV54AutoHealTranslate(cues, srcC, tgtC, tgtN, extSig, addLog);
+      }
+      schedR(true);
+      if (cues.length && _hRes.remaining >= cues.length) {
+        throw new Error(_hRes.lastErr || 'API មិនអាចបកប្រែបានទេ (សូមពិនិត្យ API Key ឬអ៊ីនធឺណិត)');
+      } else if (_hRes.remaining > 0) {
+        setBoxStatus('cuesStatus', 'warn', '⚠️ បកប្រែបាន ' + _hRes.fixed + '/' + cues.length + ' Cues (ខ្វះ ' + _hRes.remaining + ' ឃ្លា' + (_hRes.lastErr ? ' • ' + _hRes.lastErr.slice(0, 50) : '') + ')');
+      } else {
+        setBoxStatus('cuesStatus', 'ok', '🎉 បកប្រែគ្រប់ ' + cues.length + ' Cues ទៅ ' + tgtN + ' ពេញលេញ 100%!');
+      } document.getElementById('cuesExportBanner').classList.add('show');
     } catch (e) { schedR(true); addLog('🛑 បកប្រែ: ' + e.message); setBoxStatus('cuesStatus', e.name === 'AbortError' ? 'info' : 'err', e.name === 'AbortError' ? '⏹️ បានបញ្ឈប់' : '❌ ' + e.message); }
     finally { if (loc) stopLogTimer(); btn.disabled = false; btn.textContent = '🌐 បកប្រែ Cues ទាំងអស់'; ensureCtsSoundReady(); }
   };
@@ -20310,20 +20333,22 @@
     if (settings.provider !== 'gemini') return await callAI(sys, user, signal, extraParts);
     const keys = getProviderKeys('gemini');
     if (!keys.length) throw new Error('មិនទាន់មាន Gemini API Key!');
-    const models = extraParts
-      ? ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite']
-      : ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite'];
+    const _selM = (typeof settings !== 'undefined' && settings.geminiModel) ? settings.geminiModel : 'gemini-4-hydrogen';
+      const models = (extraParts
+        ? ['gemini-3.8-flash', 'gemini-3.6-flash', _selM, 'gemini-2.5-flash', 'gemini-3.5-flash-lite']
+        : [_selM, 'gemini-4-hydrogen', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite']
+      ).filter((m, i, a) => m && a.indexOf(m) === i);
     const parts = extraParts ? [...extraParts, { text: user }] : [{ text: user }];
     let lastErr = null;
 
     for (let r = 0; r < 3; r++) {
       let waitMs = 0;
-      for (let kOff = 0; kOff < keys.length; kOff++) {
-        const key = keys[(prefKeyIdx + kOff) % keys.length];
-        for (const model of models) {
+      for (const model of models) {
+          for (let kOff = 0; kOff < keys.length; kOff++) {
+            const key = keys[(prefKeyIdx + kOff) % keys.length];
           try {
             const genCfg = { temperature: extraParts ? 0.15 : 0.35, maxOutputTokens: 16384 };
-            if (/gemini-(3\.8|4)/i.test(model)) genCfg.thinkingConfig = { thinkingLevel: useHeavyThink ? 'MEDIUM' : 'LOW' };
+            if (/gemini-(3\.8|4)/i.test(model)) genCfg.thinkingConfig = { thinkingLevel: 'LOW' };
             const send = async cfg => {
               const body = {
                 systemInstruction: { parts: [{ text: sys }] },
@@ -20507,45 +20532,11 @@
       return await generateGeminiTtsBlob(txt, role, signal);
     };
 
-    const trimAndStretch = (ab, slotDur) => {
-      const sr = ab.sampleRate, pcm = ab.getChannelData(0), win = Math.max(1, Math.round(sr * 0.01)), nW = Math.floor(pcm.length / win);
-      let maxR = 0; const rms = new Float32Array(nW);
-      for (let w = 0; w < nW; w++) { let s = 0, b = w * win; for (let k = 0; k < win; k++) { const v = pcm[b + k]; s += v * v; } rms[w] = Math.sqrt(s / win); if (rms[w] > maxR) maxR = rms[w]; }
-      if (maxR < 0.004 || ab.duration < 0.12) return null;
-      const sTh = Math.max(0.010, maxR * 0.055), eTh = Math.max(0.007, maxR * 0.032);
-      let fw = 0, lw = nW - 1;
-      while (fw < nW - 3 && rms[fw] < sTh) fw++;
-      while (lw > fw + 2 && rms[lw] < eTh) lw--;
-      const trimmed = pcm.slice(Math.max(0, fw * win - Math.round(sr * 0.006)), Math.min(pcm.length, (lw + 1) * win + Math.round(sr * 0.012)));
-      const rawDur = trimmed.length / sr, spd = Math.max(0.82, Math.min(1.42, rawDur / slotDur));
-      if (Math.abs(spd - 1.0) < 0.03 || trimmed.length < sr * 0.12) return new Blob([pcm16ToWavBytes(trimmed, sr)], { type: 'audio/wav' });
-      const wL = Math.round(sr * 0.026) & ~1, hW = wL >> 1, sL = Math.round(sr * 0.012), outLen = Math.round(trimmed.length / spd);
-      if (trimmed.length <= wL * 3 || outLen <= wL) return new Blob([pcm16ToWavBytes(trimmed, sr)], { type: 'audio/wav' });
-      const hann = new Float32Array(wL); for (let j = 0; j < wL; j++) hann[j] = 0.5 * (1 - Math.cos((2 * Math.PI * j) / (wL - 1)));
-      const out = new Float32Array(outLen + wL), norm = new Float32Array(outLen + wL);
-      for (let j = 0; j < wL; j++) { out[j] += trimmed[j] * hann[j]; norm[j] += hann[j]; }
-      let oP = hW, aP = hW * spd, lEnd = wL;
-      while (oP + wL <= out.length && aP < trimmed.length - wL) {
-        const iS = Math.round(aP), rS = lEnd - hW; let bS = iS;
-        if (rS >= 0 && rS + hW < trimmed.length) {
-          let bC = -1e18;
-          for (let ca = Math.max(0, iS - sL); ca <= Math.min(trimmed.length - wL, iS + sL); ca += 2) {
-            let num = 0, d1 = 1e-9, d2 = 1e-9;
-            for (let k = 0; k < hW; k += 2) { const a = trimmed[rS + k], b = trimmed[ca + k]; num += a * b; d1 += a * a; d2 += b * b; }
-            const co = num / Math.sqrt(d1 * d2); if (co > bC) { bC = co; bS = ca; }
-          }
-        }
-        for (let j = 0; j < wL; j++) if (bS + j < trimmed.length) { out[oP + j] += trimmed[bS + j] * hann[j]; norm[oP + j] += hann[j]; }
-        lEnd = bS + wL; oP += hW; aP += hW * spd;
-      }
-      const res = new Float32Array(Math.min(outLen, oP + hW));
-      for (let j = 0; j < res.length; j++) res[j] = norm[j] > 1e-4 ? Math.max(-0.98, Math.min(0.98, out[j] / norm[j])) : 0;
-      return new Blob([pcm16ToWavBytes(res, sr)], { type: 'audio/wav' });
-    };
+    const trimAndStretch = (ab, slotDur) => window.__ctsV54TrimAndFitAudio(ab, slotDur, pcm16ToWavBytes);
 
     const audioBlobs = new Array(partCues.length).fill(null);
     let done = 0, cursor = 0;
-    const conc = eng === 'edge_proxy' ? 5 : 1;
+    const conc = eng === 'edge_proxy' ? 5 : Math.min(4, Math.max(1, getProviderKeys('gemini').length));
     await Promise.all(Array.from({ length: Math.min(conc, Math.max(1, partCues.length)) }, async () => {
       while (cursor < partCues.length && !signal.aborted) {
         const idx = cursor++, c = partCues[idx], txt = (c.km || c.src || '').trim();
@@ -20734,7 +20725,7 @@
               const cleaned = stripCodeFences(raw), m = cleaned.match(/\[[\s\S]*\]/);
               if (m) { try { arr = JSON.parse(m[0]); } catch {} }
               if (!arr.length) { const re = /\{[^{}]*\}/g; let mt; while ((mt = re.exec(cleaned)) !== null) { try { arr.push(JSON.parse(mt[0])); } catch {} } }
-            } catch (e) { if (e.name === 'AbortError' || e.status === 401 || e.status === 403) throw e; arr = []; }
+            } catch (e) { if (e.name === 'AbortError' || e.status === 401 || e.status === 403) throw e; arr = []; addLog && addLog('⚠️ BigProject Step1: ' + (e.message || e)); }
 
             const out = [];
             if (item.ext.slots && arr.length) {
@@ -20804,7 +20795,7 @@
                 if (it && it.t && !isKhmerGibberish(it.t)) {
                   c.km = String(it.t).trim();
                   const v = String(it.v || '').toLowerCase();
-                  if (v === 'piseth' || v === 'sreymom' || v === 'narrator') c.voice = v;
+                  if (!c.voice && (v === 'piseth' || v === 'sreymom' || v === 'narrator')) c.voice = v;
                 } else {
                   // Fallback line-by-line clean translation if batch failed or gibberish detected
                   try { c.km = await freeTranslate(c.src, srcCode, tgtCode); } catch { c.km = c.src; }
@@ -20827,7 +20818,8 @@
         }
 
         // STEP 3: Generate Termux Piseth/Sreymom Audio + Zero-Drift Mouth Lip-Sync
-        let audioBlobs = [];
+        if (!sig.aborted && partCues.length && window.__ctsV54AutoHealTranslate) { await window.__ctsV54AutoHealTranslate(partCues, srcCode, tgtCode, tgtName, sig, addLog); }
+          let audioBlobs = [];
         if (!sig.aborted && partCues.length) {
           audioBlobs = await synthAndRepair30(partCues, tgtCode, audioCtx, sig, (dn, tot) => {
             updateProg(pi, 62 + Math.round((dn / Math.max(1, tot)) * 37), '🔊 សំឡេង ពិសិទ្ធ/ស្រីមុំ & ទម្រឹមមាត់ (' + dn + '/' + tot + ')');
@@ -24521,5 +24513,277 @@ body.cts-desktop-mode #cueList .cue-card {
   }, 45);
 })();
 </script>
+
+<script id="cts-addon-54-aicorerestore">
+// === ADD-ON #54: AI CORE RESTORE (AUTO-HEAL 1-CLICK + PISETH/SREYMOM GUARD + FAST 4X AUDIO + MULTI-KEY ROTATOR) ===
+(function() {
+  let rrIdx54 = 0;
+
+  const SAFETY_NONE = [
+    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+  ];
+  window.__ctsV54Safety = SAFETY_NONE;
+
+  // 1. Validate HTTP 200 Gemini response actually contains text or audio (never return silent empty!)
+  window.__ctsV54ValidateGeminiResp = function(data, isTts) {
+    const c0 = data && data.candidates && data.candidates[0];
+    const parts = c0 && c0.content && c0.content.parts;
+    const ok = isTts
+      ? !!(Array.isArray(parts) && parts.some(p => p && p.inlineData && p.inlineData.data))
+      : !!(Array.isArray(parts) && parts.map(p => (p && p.text) || '').join('').trim());
+    if (!ok) {
+      const reason = (c0 && c0.finishReason) || (data && data.promptFeedback && data.promptFeedback.blockReason) || 'Empty AI response';
+      const err = new Error(reason);
+      err.status = 502;
+      throw err;
+    }
+    return true;
+  };
+
+  // 2. Restore fast, smart multi-key/model rotation for window.callGeminiParts & window.callAI
+  window.callGeminiParts = async function(apiKey, model, sys, parts, signal) {
+    const hasMedia = Array.isArray(parts) && parts.some(p => p && p.inlineData);
+    const timeoutMs = hasMedia ? 120000 : 75000;
+    const genCfg = { temperature: hasMedia ? 0.2 : 0.3, maxOutputTokens: 16384 };
+    if (/gemini-(3\.8|4)/i.test(model)) genCfg.thinkingConfig = { thinkingLevel: 'LOW' };
+
+    const sendReq = async cfg => {
+      const bodyObj = { contents: [{ role: 'user', parts }], generationConfig: cfg, safetySettings: SAFETY_NONE };
+      if (sys) bodyObj.systemInstruction = { parts: [{ text: sys }] };
+      const res = await ctsFetchTimeout(
+        'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(apiKey),
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyObj) },
+        timeoutMs, signal
+      );
+      const data = await res.json().catch(() => ({}));
+      return { res, data };
+    };
+
+    let resp = await sendReq(genCfg);
+    if (!resp.res.ok && resp.res.status === 400 && genCfg.thinkingConfig) {
+      delete genCfg.thinkingConfig;
+      resp = await sendReq(genCfg);
+    }
+    if (!resp.res.ok) {
+      const err = new Error((resp.data && resp.data.error && resp.data.error.message) || ('HTTP ' + resp.res.status));
+      err.status = resp.res.status;
+      throw err;
+    }
+    const cand = resp.data && resp.data.candidates && resp.data.candidates[0];
+    const txt = (cand && cand.content && cand.content.parts && cand.content.parts.map(p => p.text || '').join('')) || '';
+    if (!txt.trim()) {
+      const err3 = new Error((cand && cand.finishReason) || (resp.data && resp.data.promptFeedback && resp.data.promptFeedback.blockReason) || 'Empty response');
+      err3.status = 502;
+      throw err3;
+    }
+    return txt;
+  };
+
+  window.callAI = async function(sys, user, signal, extraParts = null) {
+    if (settings.provider === 'gemini') {
+      const keys = getProviderKeys('gemini');
+      if (!keys.length) throw new Error('មិនទាន់មាន Gemini API Key!');
+      const sel = settings.geminiModel || 'gemini-4-hydrogen';
+      const rawModels = extraParts
+        ? ['gemini-3.8-flash', 'gemini-3.6-flash', sel, 'gemini-2.5-flash', 'gemini-3.5-flash-lite']
+        : [sel, 'gemini-4-hydrogen', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+      const models = rawModels.filter((m, i, a) => m && a.indexOf(m) === i);
+      const parts = extraParts ? [...extraParts, { text: user }] : [{ text: user }];
+      const startOff = (rrIdx54++) % keys.length;
+      const orderedKeys = keys.slice(startOff).concat(keys.slice(0, startOff));
+
+      let lastErr = null;
+      for (let r = 0; r < 3; r++) {
+        let waitMs = 0;
+        for (const m of models) {
+          for (const key of orderedKeys) {
+            if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
+            try {
+              return await window.callGeminiParts(key, m, sys, parts, signal);
+            } catch (e) {
+              lastErr = e;
+              if (e.name === 'AbortError') throw e;
+              if (e.status === 404) break;
+              if (e.status === 401 || e.status === 403) continue;
+              if (e.status === 429) {
+                const ms = String(e.message).match(/retry in\s+(\d+(?:\.\d+)?)s/i);
+                waitMs = Math.max(waitMs, ms ? Math.ceil(parseFloat(ms[1]) * 1000) + 800 : 3500);
+                continue; // Immediately switch to NEXT key on same strong model!
+              }
+              if (![503, 500, 400, 502, 504].includes(e.status)) throw e;
+            }
+          }
+        }
+        if (lastErr && [429, 503, 500, 502, 504].includes(lastErr.status) && r < 2) {
+          await sleepAbortable(Math.min(18000, waitMs || 3500), signal);
+        } else break;
+      }
+      throw lastErr || new Error('API Error');
+    }
+    if (settings.provider === 'openai') {
+      if (extraParts) throw new Error('Audio Transcript ត្រូវការ Gemini API Key!');
+      const keys = getProviderKeys('openai');
+      if (!keys.length) throw new Error('មិនទាន់មាន OpenAI API Key!');
+      let lastErr = null;
+      for (const key of keys) {
+        try {
+          const res = await ctsFetchTimeout('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+            body: JSON.stringify({ model: settings.openaiModel || 'gpt-4o-mini', temperature: 0.3, messages: [{ role: 'system', content: sys }, { role: 'user', content: user }] })
+          }, 75000, signal);
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) { const er = new Error((data && data.error && data.error.message) || ('HTTP ' + res.status)); er.status = res.status; throw er; }
+          return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+        } catch (e) { lastErr = e; if (e.name === 'AbortError') throw e; }
+      }
+      throw lastErr || new Error('OpenAI API Error');
+    }
+    throw new Error('Unknown AI provider');
+  };
+
+  // 3. 1-Click Auto-Heal Translation Rescue (automatically rescues any missed cues via AI before finishing!)
+  window.__ctsV54AutoHealTranslate = async function(cueList, srcC, tgtC, tgtN, signal, logFn) {
+    const needFix = (c) => {
+      const sr = String(c.src || '').trim();
+      const km = String(c.km || '').trim();
+      if (!sr) return false;
+      if (!km) return true;
+      if (tgtC !== srcC && km.toLowerCase() === sr.toLowerCase() && sr.length > 3) return true;
+      if (tgtC === 'km' && srcC !== 'km' && !/[\u1780-\u17ff]/.test(km)) return true;
+      return false;
+    };
+
+    let missing = cueList.filter(needFix);
+    if (!missing.length) return { total: cueList.length, fixed: cueList.length, remaining: 0, lastErr: '' };
+
+    let lastErr = '';
+    if (logFn) logFn('🔄 Auto-Heal: កំពុងស្រង់-បកប្រែ ' + missing.length + ' ឃ្លាដែលខ្វះដោយស្វ័យប្រវត្តិ...');
+
+    const sys = 'You are an expert ' + tgtN + ' movie dubbing translator. Translate every spoken line naturally, clearly, and completely into ' + tgtN + '. Do NOT skip or leave lines untranslated. Return ONLY JSON array: [{"id":1,"t":"translated text"}]';
+
+    const tryChunk = async (chunk) => {
+      const payload = chunk.map((c, i) => ({ id: i + 1, s: String(c.src || '').trim() }));
+      const raw = await window.callAI(sys, 'Translate ALL ' + chunk.length + ' lines into ' + tgtN + '. JSON ONLY:\n' + JSON.stringify(payload), signal);
+      let arr = [];
+      const cleaned = String(raw || '').replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+      const m = cleaned.match(/\[[\s\S]*\]/);
+      if (m) { try { const p = JSON.parse(m[0]); if (Array.isArray(p)) arr = p; } catch {} }
+      if (!arr.length) {
+        const re = /\{[^{}]*\}/g; let mt;
+        while ((mt = re.exec(cleaned))) { try { arr.push(JSON.parse(mt[0])); } catch {} }
+      }
+      const byId = {};
+      arr.forEach((x, idx) => { if (x && typeof x === 'object') byId[parseInt(x.id, 10) || (idx + 1)] = x; });
+      chunk.forEach((c, idx) => {
+        const it = byId[idx + 1] || arr[idx];
+        const tr = String((it && (it.t || it.tr || it.km || it.text)) || '').trim();
+        if (tr && (tgtC !== 'km' || /[\u1780-\u17ff]/.test(tr) || srcC === 'km')) {
+          c.km = tr;
+          c.audioUrl = null;
+          c._rawAudioUrl = null;
+        }
+      });
+    };
+
+    // Pass A: mini-batches of 8 via AI
+    for (let i = 0; i < missing.length; i += 8) {
+      if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
+      try { await tryChunk(missing.slice(i, i + 8)); } catch (e) { if (e.name === 'AbortError') throw e; lastErr = String(e.message || e); }
+    }
+
+    // Pass B: 1-by-1 rescue for any stubborn cues
+    missing = cueList.filter(needFix);
+    if (missing.length && missing.length <= 25) {
+      for (const c of missing) {
+        if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        try { await tryChunk([c]); } catch (e) { if (e.name === 'AbortError') throw e; lastErr = String(e.message || e); }
+      }
+    }
+
+    // Pass C: Last-resort freeTranslate ONLY if AI completely exhausted on specific lines
+    missing = cueList.filter(needFix);
+    if (missing.length && typeof freeTranslate === 'function') {
+      for (const c of missing) {
+        if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        try {
+          const ft = await freeTranslate(String(c.src || '').trim(), srcC, tgtC);
+          if (ft && ft.trim()) { c.km = ft.trim(); c.audioUrl = null; c._rawAudioUrl = null; }
+        } catch {}
+      }
+    }
+
+    const rem = cueList.filter(needFix).length;
+    return { total: cueList.length, fixed: cueList.length - rem, remaining: rem, lastErr };
+  };
+
+  // 4. 1-Click Auto-Heal Dubber Audio (retries any cue still missing audioUrl)
+  window.__ctsV54AutoHealDubberAudio = async function(cueList, signal, synthFn, logFn) {
+    const missing = cueList.filter(c => String(c.km || c.src || '').trim() && !c.audioUrl);
+    if (!missing.length) return 0;
+    if (logFn) logFn('🔄 Auto-Heal Audio: កំពុងបង្កើតបំពេញ ' + missing.length + ' ឃ្លាដែលខ្វះសំឡេង...');
+    let fixed = 0;
+    for (let i = 0; i < missing.length; i++) {
+      if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
+      const c = missing[i];
+      const txt = String(c.km || c.src || '').replace(/[\r\n]+/g, ' ').trim();
+      const role = c.voice || c._audioVoice || 'piseth';
+      for (let t = 0; t < 2; t++) {
+        try {
+          const blob = await synthFn(t === 0 ? txt : ('«' + txt + '»'), role, i);
+          if (blob && blob.size > 120) {
+            c._rawAudioUrl = URL.createObjectURL(blob);
+            c.audioUrl = c._rawAudioUrl;
+            fixed++;
+            break;
+          }
+        } catch (e) {
+          if (e.name === 'AbortError') throw e;
+          await sleepAbortable(450, signal);
+        }
+      }
+    }
+    return fixed;
+  };
+
+  // 5. Gentle 55ms Soft-Pad + Ultra-Fast Clean Audio Fitter (Zero word clipping, Zero WSOLA lag!)
+  window.__ctsV54TrimAndFitAudio = function(ab, slotDur, pcm16ToWavBytesFn) {
+    if (!ab || ab.length < 256) return null;
+    const sr = ab.sampleRate, pcm = ab.getChannelData(0), win = Math.max(1, Math.round(sr * 0.01));
+    const nW = Math.floor(pcm.length / win);
+    if (nW < 3) return new Blob([pcm16ToWavBytesFn(pcm, sr)], { type: 'audio/wav' });
+    const rms = new Float32Array(nW); let maxR = 0;
+    for (let w = 0; w < nW; w++) {
+      let s = 0, b = w * win;
+      for (let k = 0; k < win; k++) { const v = pcm[b + k]; s += v * v; }
+      const r = Math.sqrt(s / win); rms[w] = r; if (r > maxR) maxR = r;
+    }
+    if (maxR < 0.0025 || ab.duration < 0.10) return null;
+    const sTh = Math.max(0.0025, maxR * 0.015), eTh = Math.max(0.0020, maxR * 0.010);
+    let fw = 0, lw = nW - 1;
+    while (fw < nW - 4 && rms[fw] < sTh) fw++;
+    while (lw > fw + 3 && rms[lw] < eTh) lw--;
+    const padS = Math.round(sr * 0.055);
+    const trimmed = pcm.slice(Math.max(0, fw * win - padS), Math.min(pcm.length, (lw + 1) * win + padS));
+    const rawDur = trimmed.length / sr;
+    const spd = (slotDur > 0.25 && rawDur > slotDur * 1.04) ? Math.min(1.45, rawDur / slotDur) : 1.0;
+    if (spd <= 1.04 || trimmed.length < sr * 0.14) {
+      return new Blob([pcm16ToWavBytesFn(trimmed, sr)], { type: 'audio/wav' });
+    }
+    const outLen = Math.max(256, Math.round(trimmed.length / spd));
+    const res = new Float32Array(outLen);
+    for (let i = 0; i < outLen; i++) {
+      const pos = i * spd;
+      const i0 = Math.floor(pos), i1 = Math.min(trimmed.length - 1, i0 + 1), fr = pos - i0;
+      res[i] = trimmed[i0] * (1 - fr) + trimmed[i1] * fr;
+    }
+    return new Blob([pcm16ToWavBytesFn(res, sr)], { type: 'audio/wav' });
+  };
+})();
+</script>
+
 </body>
 </html>
