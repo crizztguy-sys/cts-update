@@ -23959,5 +23959,179 @@ body.cts-desktop-mode #cueList .cue-card {
 })();
 </script>
 
+
+<script id="cts-addon-51-splitaudio">
+// === ADD-ON #51: BIG PROJECT SPLIT VIDEO AUDIO FIX (SAFE NATIVE AUDIO + AAC CONFIG FALLBACK) ===
+(function() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  let realSrcBound = false;
+  let modalCtx = null;
+  let modalProxyNode = null;
+  let allowModalGraph = false;
+  let audioHookInstalled = false;
+
+  // 1. Safe AudioContext intercept ONLY for #ctsSpModVid so native video audio is NEVER hijacked/suspended on raw split playback
+  if (AC && AC.prototype && AC.prototype.createMediaElementSource && !AC.prototype.__cts51Wrapped) {
+    const origCreateMES = AC.prototype.createMediaElementSource;
+    AC.prototype.createMediaElementSource = function(mediaEl) {
+      if (mediaEl && mediaEl.id === 'ctsSpModVid') {
+        modalCtx = this;
+        if (!modalProxyNode || modalProxyNode.context !== this) {
+          modalProxyNode = this.createGain();
+        }
+        if (allowModalGraph && !realSrcBound) {
+          try {
+            const realSrc = origCreateMES.call(this, mediaEl);
+            realSrc.connect(modalProxyNode);
+            realSrcBound = true;
+          } catch (e) {}
+        }
+        return modalProxyNode;
+      }
+      return origCreateMES.apply(this, arguments);
+    };
+    AC.prototype.__cts51Wrapped = true;
+    AC.prototype.__cts51OrigMES = origCreateMES;
+    audioHookInstalled = true;
+  }
+
+  function bindModalGraphNow() {
+    allowModalGraph = true;
+    const v = document.getElementById('ctsSpModVid');
+    if (modalCtx && modalCtx.state === 'suspended') {
+      modalCtx.resume().catch(() => {});
+    }
+    if (audioHookInstalled && modalCtx && modalProxyNode && v && !realSrcBound) {
+      try {
+        const realSrc = AC.prototype.__cts51OrigMES.call(modalCtx, v);
+        realSrc.connect(modalProxyNode);
+        realSrcBound = true;
+      } catch (e) {}
+    }
+  }
+
+  function ensureModalVideoLoud() {
+    const v = document.getElementById('ctsSpModVid');
+    if (!v) return;
+    v.muted = false;
+    v.defaultMuted = false;
+    v.volume = 1.0;
+    v.controls = true;
+    v.setAttribute('playsinline', '');
+  }
+
+  function showAudioStatusPill(msg, ok) {
+    const mod = document.getElementById('ctsSplitPreviewModal');
+    if (!mod) return;
+    let pill = document.getElementById('ctsV51AudStatus');
+    if (!pill) {
+      pill = document.createElement('div');
+      pill.id = 'ctsV51AudStatus';
+      pill.style.cssText = 'font-size:11px;font-weight:700;padding:4px 8px;border-radius:7px;margin-top:6px;text-align:center;';
+      const v = document.getElementById('ctsSpModVid');
+      if (v && v.parentElement) v.parentElement.insertAdjacentElement('afterend', pill);
+    }
+    pill.style.background = ok ? 'rgba(16,185,129,0.16)' : 'rgba(245,158,11,0.18)';
+    pill.style.border = ok ? '1px solid rgba(16,185,129,0.4)' : '1px solid rgba(245,158,11,0.45)';
+    pill.style.color = ok ? '#a7f3d0' : '#fde68a';
+    pill.textContent = msg;
+  }
+
+  // 2. Intercept user clicks in capture phase for Split Video Watch & Modal Mode buttons
+  document.addEventListener('click', (e) => {
+    const watchBtn = e.target.closest && e.target.closest('.sp-watch-btn');
+    if (watchBtn) {
+      ensureModalVideoLoud();
+      const inSplitList = !!watchBtn.closest('#bpSplitResList');
+      if (inSplitList) {
+        allowModalGraph = false;
+        setTimeout(() => {
+          ensureModalVideoLoud();
+          document.getElementById('ctsSpModeOrig')?.click();
+          showAudioStatusPill('🔊 កំពុងចាក់សំឡេងដើម 100% (Native Audio)', true);
+        }, 40);
+      } else {
+        // Dubbed part watch: resume AudioContext inside user gesture!
+        setTimeout(() => {
+          ensureModalVideoLoud();
+          bindModalGraphNow();
+        }, 40);
+      }
+      return;
+    }
+
+    const dubBtn = e.target.closest && e.target.closest('#ctsSpModeDub');
+    if (dubBtn) {
+      ensureModalVideoLoud();
+      bindModalGraphNow();
+      showAudioStatusPill('🎙️ មុខងារ៖ សំឡេងខ្មែរ + កាត់សំឡេងដើម', true);
+      return;
+    }
+
+    const origBtn = e.target.closest && e.target.closest('#ctsSpModeOrig');
+    if (origBtn) {
+      ensureModalVideoLoud();
+      if (modalCtx && modalCtx.state === 'suspended') modalCtx.resume().catch(() => {});
+      showAudioStatusPill('🔊 កំពុងចាក់សំឡេងដើម 100%', true);
+    }
+  }, true);
+
+  // Also check if opened video element actually has decoded audio once loaded
+  function attachAudioDiagnostics() {
+    const v = document.getElementById('ctsSpModVid');
+    if (!v || v.__ctsV51Diag) return;
+    v.__ctsV51Diag = true;
+    v.addEventListener('loadedmetadata', () => {
+      ensureModalVideoLoud();
+      if (modalCtx && modalCtx.state === 'suspended' && allowModalGraph) {
+        modalCtx.resume().catch(() => {});
+      }
+    });
+    v.addEventListener('playing', () => {
+      ensureModalVideoLoud();
+      setTimeout(() => {
+        if (v.paused || !v.src) return;
+        const hasTracks = v.audioTracks ? v.audioTracks.length > 0 : null;
+        if (hasTracks === false) {
+          showAudioStatusPill('⚠️ ភាគ Video នេះគ្មាន Track សំឡេងទេ (Video ដើមអត់សំឡេង ឬ Codec មិនគាំទ្រ)', false);
+        }
+      }, 900);
+    });
+  }
+
+  // 3. AAC AudioSpecificConfig (2-byte ESDS) fallback wrapper for probeMp4V25 / probeMp4V30 / probeMp4ForSplit
+  function buildAacLcConfig(sampleRate, channels) {
+    const rates = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+    let srIdx = rates.indexOf(Number(sampleRate) || 44100);
+    if (srIdx < 0) srIdx = 4; // 44100Hz default
+    const ch = Math.max(1, Math.min(7, Number(channels) || 2));
+    const b0 = ((2 << 3) | (srIdx >> 1)) & 0xff;
+    const b1 = (((srIdx & 1) << 7) | (ch << 3)) & 0xff;
+    return new Uint8Array([b0, b1]);
+  }
+
+  ['probeMp4V25', 'probeMp4V30', 'probeMp4ForSplit'].forEach(fnName => {
+    const orig = window[fnName];
+    if (typeof orig === 'function' && !orig.__cts51Wrapped) {
+      const wrapped = async function() {
+        const res = await orig.apply(this, arguments);
+        if (res && res.aTrack && !res.aDesc) {
+          const codec = String(res.aTrack.codec || '').toLowerCase();
+          if (codec.includes('mp4a')) {
+            res.aDesc = buildAacLcConfig(res.aTrack.audio?.sample_rate, res.aTrack.audio?.channel_count);
+          }
+        }
+        return res;
+      };
+      wrapped.__cts51Wrapped = true;
+      window[fnName] = wrapped;
+    }
+  });
+
+  setTimeout(attachAudioDiagnostics, 800);
+  setTimeout(attachAudioDiagnostics, 2200);
+})();
+</script>
+
 </body>
 </html>
