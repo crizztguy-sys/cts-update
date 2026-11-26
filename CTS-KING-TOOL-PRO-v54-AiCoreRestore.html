@@ -19669,61 +19669,68 @@
 
   // 2. Real-Time Web Audio 3-Band Vocal Remover Graph (reusable for #videoPlayer AND Big Project Modal!)
   function createVrGraph(ctx, srcNode) {
-    const splitter = ctx.createChannelSplitter(2);
-    const sideSum = ctx.createGain();
-    const lGain = ctx.createGain(); lGain.gain.value = 1;
-    const rInv = ctx.createGain(); rInv.gain.value = -0.85;
-    srcNode.connect(splitter);
-    splitter.connect(lGain, 0); lGain.connect(sideSum);
-    splitter.connect(rInv, 1); rInv.connect(sideSum);
+  const splitter = ctx.createChannelSplitter(2);
+  const sideSum = ctx.createGain();
+  const lGain = ctx.createGain(); lGain.gain.value = 0.65;
+  const rInv = ctx.createGain(); rInv.gain.value = -0.65;
+  srcNode.connect(splitter);
+  splitter.connect(lGain, 0); lGain.connect(sideSum);
+  splitter.connect(rInv, 1); rInv.connect(sideSum);
 
-    const lowPass = ctx.createBiquadFilter(); lowPass.type = 'lowpass'; lowPass.frequency.value = 185;
-    const bassGain = ctx.createGain(); bassGain.gain.value = 0.55;
-    srcNode.connect(lowPass); lowPass.connect(bassGain);
+  const sideNotch = ctx.createBiquadFilter();
+  sideNotch.type = 'peaking'; sideNotch.frequency.value = 1150; sideNotch.Q.value = 0.65; sideNotch.gain.value = 0;
+  sideSum.connect(sideNotch);
 
-    const notch = ctx.createBiquadFilter(); notch.type = 'peaking'; notch.frequency.value = 1150; notch.Q.value = 0.65; notch.gain.value = -14;
-    const monoGuard = ctx.createGain(); monoGuard.gain.value = 0.22;
-    srcNode.connect(notch); notch.connect(monoGuard);
+  const lowPass = ctx.createBiquadFilter(); lowPass.type = 'lowpass'; lowPass.frequency.value = 155; lowPass.Q.value = 0.707;
+  const bassGain = ctx.createGain(); bassGain.gain.value = 0.50;
+  srcNode.connect(lowPass); lowPass.connect(bassGain);
 
-    const vrBus = ctx.createGain();
-    sideSum.connect(vrBus); bassGain.connect(vrBus); monoGuard.connect(vrBus);
+  const highPass = ctx.createBiquadFilter(); highPass.type = 'highpass'; highPass.frequency.value = 4200; highPass.Q.value = 0.707;
+  const airGain = ctx.createGain(); airGain.gain.value = 0.40;
+  srcNode.connect(highPass); highPass.connect(airGain);
 
-    const vrOut = ctx.createGain();
-    vrBus.connect(vrOut);
-    vrOut.connect(ctx.destination);
+  const notch = ctx.createBiquadFilter(); notch.type = 'peaking'; notch.frequency.value = 1150; notch.Q.value = 0.65;
+  const monoGuard = ctx.createGain(); monoGuard.gain.value = 0;
+  srcNode.connect(notch); notch.connect(monoGuard);
 
-    const dryOut = ctx.createGain();
-    srcNode.connect(dryOut);
-    dryOut.connect(ctx.destination);
+  const vrBus = ctx.createGain();
+  sideNotch.connect(vrBus); bassGain.connect(vrBus); airGain.connect(vrBus); monoGuard.connect(vrBus);
 
-    const update = (enabled, mode, cutPct, bgPct, baseVol) => {
-      const c = Math.max(0, Math.min(1, cutPct / 100));
-      const bg = Math.max(0, Math.min(1.5, bgPct / 100));
-      if (!enabled) {
-        dryOut.gain.value = baseVol;
-        vrOut.gain.value = 0;
-        return;
-      }
-      dryOut.gain.value = 0;
-      vrOut.gain.value = baseVol * bg;
-      if (mode === 'notch') {
-        lGain.gain.value = 0; rInv.gain.value = 0; bassGain.gain.value = 0;
-        notch.gain.value = -18 * c; monoGuard.gain.value = 1.0;
-      } else if (mode === 'stereo') {
-        lGain.gain.value = 1.0; rInv.gain.value = -c; bassGain.gain.value = 0.25;
-        monoGuard.gain.value = 1 - c;
-      } else {
-        // auto / max / cue-cut
-        lGain.gain.value = 0.95; rInv.gain.value = -(0.5 + 0.5 * c);
-        bassGain.gain.value = 0.60 * c;
-        notch.gain.value = -16 * c;
-        monoGuard.gain.value = mode === 'max' ? (0.12 * (1 - c * 0.5)) : 0.22;
-      }
-    };
-    return { update, vrOut, dryOut };
-  }
+  const vrOut = ctx.createGain();
+  vrBus.connect(vrOut); vrOut.connect(ctx.destination);
 
-  let mainVrGraph = null;
+  const dryOut = ctx.createGain();
+  srcNode.connect(dryOut); dryOut.connect(ctx.destination);
+
+  const update = (enabled, mode, cutPct, bgPct, baseVol) => {
+    const c = Math.max(0, Math.min(1, cutPct / 100));
+    const bg = Math.max(0, Math.min(1.5, bgPct / 100));
+    if (!enabled) {
+      dryOut.gain.value = baseVol; vrOut.gain.value = 0;
+      return;
+    }
+    dryOut.gain.value = 0;
+    vrOut.gain.value = baseVol * bg;
+    if (mode === 'notch') {
+      lGain.gain.value = 0; rInv.gain.value = 0; bassGain.gain.value = 0.45; airGain.gain.value = 0.35;
+      notch.gain.value = -24 * c; monoGuard.gain.value = Math.max(0, 0.75 * (1 - c * 0.85));
+    } else if (mode === 'stereo') {
+      lGain.gain.value = 0.65; rInv.gain.value = -0.65 * Math.max(0.85, c);
+      sideNotch.gain.value = -8 * c;
+      bassGain.gain.value = 0.45; airGain.gain.value = 0.35;
+      monoGuard.gain.value = Math.max(0, (1 - c) * 0.6);
+    } else {
+      lGain.gain.value = 0.65; rInv.gain.value = -0.65;
+      sideNotch.gain.value = -10 * c;
+      bassGain.gain.value = 0.55; airGain.gain.value = 0.40;
+      notch.gain.value = -22 * c;
+      monoGuard.gain.value = Math.max(0, 0.15 * (1 - c));
+    }
+  };
+  return { update, vrOut, dryOut };
+}
+
+let mainVrGraph = null;
   function applyMainPlayerVrGraph() {
     const vid = document.getElementById('videoPlayer');
     if (!vid || !vid.src) return;
@@ -19762,7 +19769,7 @@
     const isStereo = Boolean(c1 && diffSum > totSum * 0.04);
     const c = Math.max(0, Math.min(1, cfg.vocalCutPct / 100));
     const bg = Math.max(0, Math.min(1.5, cfg.bgGainPct / 100));
-    const useCueCut = cfg.mode === 'cue-cut' || cfg.mode === 'max' || cfg.mode === 'auto';
+    const useCueCut = cfg.mode !== 'off';
 
     // Build fast cue speech mask
     let speechMask = null;
@@ -19775,7 +19782,7 @@
     }
 
     const out = new Float32Array(len);
-    const lpAlpha = 1 - Math.exp(-2 * Math.PI * 185 / sr);
+    const lpAlpha = 1 - Math.exp(-2 * Math.PI * 155 / sr);
     const hpAlpha = Math.exp(-2 * Math.PI * 260 / sr);
     const lp2Alpha = 1 - Math.exp(-2 * Math.PI * 3400 / sr);
     let lpState = 0, hpX = 0, hpY = 0, lp2State = 0, duck = 1.0;
@@ -19789,23 +19796,21 @@
 
       let val;
       if (cfg.mode === 'notch' || !isStereo) {
-        val = mid - lp2State * (0.82 * c);
-      } else if (cfg.mode === 'stereo') {
-        const side = L - R;
-        val = side * (0.55 + 0.55 * c) + lpState * (0.3 * c) + mid * (1 - c);
-      } else {
-        // auto / max / cue-cut (3-Band Stereo + Bass + Mild Notch)
-        const side = L - R;
-        const notchedMid = mid - lp2State * (0.78 * c);
-        val = side * (0.6 + 0.5 * c) + lpState * (0.55 * c) + notchedMid * (cfg.mode === 'max' ? 0.18 : 0.28) + mid * (1 - c) * 0.4;
-      }
-
-      if (speechMask) {
-        const targetD = speechMask[i] ? (1 - 0.52 * c) : 1.0;
-        duck += (targetD - duck) * 0.0025;
-        val *= duck;
-      }
-      out[i] = Math.max(-0.98, Math.min(0.98, val * bg));
+      val = lpState * 0.65 + (mid - lp2State * (0.98 * c)) * (1 - 0.88 * c);
+    } else if (cfg.mode === 'stereo') {
+      const side = (L - R) * 0.65;
+      val = side * (0.75 + 0.25 * c) + lpState * (0.55 * c) + (mid - lp2State * (0.98 * c)) * (1 - c);
+    } else {
+      const side = (L - R) * 0.65;
+      const notchedMid = mid - lp2State * (0.98 * c);
+      val = side * (0.80 + 0.20 * c) + lpState * (0.60 * c) + notchedMid * (cfg.mode === 'max' ? 0.05 * (1 - c) : 0.15 * (1 - c));
+    }
+    if (speechMask) {
+      const targetD = speechMask[i] ? Math.max(0.08, 1 - 0.88 * c) : 1.0;
+      duck += (targetD - duck) * 0.004;
+      val = lpState * 0.48 + (val - lpState * 0.48) * duck;
+    }
+    out[i] = Math.max(-0.98, Math.min(0.98, val * bg));
     }
 
     const resBuf = new AudioBuffer({ length: len, numberOfChannels: 1, sampleRate: sr });
@@ -20262,7 +20267,7 @@
       try {
         if (!mod30Src) {
           mod30Src = mod30Ctx.createMediaElementSource(v);
-          mod30Graph = buildTrueBgPreservingGraph(mod30Ctx, mod30Src);
+          mod30Graph = (typeof window.__ctsTrueBgGraph56 === 'function' ? window.__ctsTrueBgGraph56(mod30Ctx, mod30Src) : buildTrueBgPreservingGraph(mod30Ctx, mod30Src));
         }
         syncModBtns(false);
       } catch {}
@@ -24632,8 +24637,8 @@ body.cts-desktop-mode #cueList .cue-card {
       // Skip top switcher tabs & main action buttons
       if (['bpStartBtn', 'bpResumeBtn', 'bpSplitStartBtn', 'bpSplitStopBtn'].includes(btn.id)) return;
       const txt = (btn.textContent || '').replace(/\s+/g, ' ').trim();
-      const isSplitDub = btn.classList.contains('sp-dub-btn');
-      const isResultSend = /^(🎬|🎙️|📤|🚀)?\s*(បកប្រែភាគនេះ|ចូល\s*Dubber(\s*&\s*AI)?|នាំចូលទៅ\s*Dubber)$/i.test(txt)
+      const isSplitDub = btn.classList.contains('sp-dub-btn') || btn.classList.contains('bp27-edit') || btn.classList.contains('mg-edit');
+      const isResultSend = /^(🎬|🎙️|📤|🚀)?\s*(Edit\s*ក្នុង\s*Dubber|បកប្រែភាគនេះ|ចូល\s*Dubber(\s*&\s*AI)?|នាំចូលទៅ\s*Dubber)$/i.test(txt)
         || (txt.includes('បកប្រែភាគនេះ') && !btn.closest('.sub-tabs'));
       if (isSplitDub || isResultSend) {
         btn.dataset.ctsV52Send = '1';
@@ -24645,7 +24650,7 @@ body.cts-desktop-mode #cueList .cue-card {
 
   // Intercept clicks on any relabeled Send button in capture phase BEFORE its original handler runs
   document.addEventListener('click', (e) => {
-    const btn = e.target.closest && e.target.closest('button[data-cts-v52-send="1"], button.sp-dub-btn');
+    const btn = e.target.closest && e.target.closest('button[data-cts-v52-send="1"], button.sp-dub-btn, button.bp27-edit, button.mg-edit');
     if (!btn) return;
     hookSwitchTabSafely();
     pendingDest = true;
@@ -25125,7 +25130,7 @@ if (typeof window.addLog !== 'function') {
     if (projPanel) {
       projPanel.querySelectorAll('button').forEach(b => {
         const bt = (b.textContent || '').trim();
-        if (!/Edit\s*ក្នុង\s*Dubber|អត្ថបទ/i.test(bt)) return;
+        if (!b.classList.contains('bp27-edit') && !/Edit\s*ក្នុង\s*Dubber|អត្ថបទ/i.test(bt)) return;
         const btnRow = b.parentElement;
         if (!btnRow || btnRow.querySelector('.cts55-del-part')) return;
         let rowCard = btnRow.parentElement;
@@ -25182,6 +25187,70 @@ if (typeof window.addLog !== 'function') {
   new MutationObserver(() => enhancePartLists55()).observe(document.body, { childList: true, subtree: true });
   setTimeout(enhancePartLists55, 600);
   setTimeout(enhancePartLists55, 1800);
+})();
+</script>
+<script id="cts-addon-56-vocalcut-pro">
+// === ADD-ON #56: STUDIO BACKGROUND-ONLY VOCAL CUT FOR MODAL PREVIEW + AUTO SYNC MAIN VR ===
+(function() {
+  window.__ctsTrueBgGraph56 = function(ctx, srcNode) {
+    const splitter = ctx.createChannelSplitter(2);
+    const sideSum = ctx.createGain();
+    const lGain = ctx.createGain(); lGain.gain.value = 0.65;
+    const rInv = ctx.createGain(); rInv.gain.value = -0.65;
+    srcNode.connect(splitter);
+    splitter.connect(lGain, 0); lGain.connect(sideSum);
+    splitter.connect(rInv, 1); rInv.connect(sideSum);
+
+    const sideGain = ctx.createGain(); sideGain.gain.value = 1.0;
+    const vocalNotch = ctx.createBiquadFilter();
+    vocalNotch.type = 'peaking'; vocalNotch.frequency.value = 1150; vocalNotch.Q.value = 0.60; vocalNotch.gain.value = 0;
+    const presNotch = ctx.createBiquadFilter();
+    presNotch.type = 'peaking'; presNotch.frequency.value = 2600; presNotch.Q.value = 0.75; presNotch.gain.value = 0;
+    sideSum.connect(vocalNotch); vocalNotch.connect(presNotch); presNotch.connect(sideGain);
+
+    const subBass = ctx.createBiquadFilter();
+    subBass.type = 'lowpass'; subBass.frequency.value = 155; subBass.Q.value = 0.707;
+    const bassGain = ctx.createGain(); bassGain.gain.value = 0.55;
+    srcNode.connect(subBass); subBass.connect(bassGain);
+
+    const highAir = ctx.createBiquadFilter();
+    highAir.type = 'highpass'; highAir.frequency.value = 4200; highAir.Q.value = 0.707;
+    const airGain = ctx.createGain(); airGain.gain.value = 0.40;
+    srcNode.connect(highAir); highAir.connect(airGain);
+
+    const vrBus = ctx.createGain();
+    sideGain.connect(vrBus); bassGain.connect(vrBus); airGain.connect(vrBus);
+    const vrOut = ctx.createGain();
+    vrBus.connect(vrOut); vrOut.connect(ctx.destination);
+
+    const dryOut = ctx.createGain();
+    srcNode.connect(dryOut); dryOut.connect(ctx.destination);
+
+    const update = (enabled, mode, cutPct, bgPct, baseVol, speakingNow) => {
+      const t = ctx.currentTime;
+      const c = Math.max(0, Math.min(1, cutPct / 100));
+      const bg = Math.max(0, Math.min(1.5, bgPct / 100));
+      if (!enabled) {
+        dryOut.gain.setTargetAtTime(baseVol, t, 0.02);
+        vrOut.gain.setTargetAtTime(0, t, 0.02);
+        return;
+      }
+      dryOut.gain.setTargetAtTime(0, t, 0.015);
+      vrOut.gain.setTargetAtTime(baseVol * bg, t, 0.02);
+
+      // Kill original speech aggressively (especially when Khmer dubbing speaks), keep Music & SFX alive!
+      const vCut = speakingNow ? (-22 * c) : (-7 * c);
+      const pCut = speakingNow ? (-16 * c) : (-3 * c);
+      const sLevel = speakingNow ? Math.max(0.25, 1 - 0.65 * c) : 1.0;
+
+      vocalNotch.gain.setTargetAtTime(vCut, t, 0.025);
+      presNotch.gain.setTargetAtTime(pCut, t, 0.025);
+      sideGain.gain.setTargetAtTime(mode === 'notch' ? 0.15 : sLevel, t, 0.03);
+      bassGain.gain.setTargetAtTime(0.55, t, 0.03);
+      airGain.gain.setTargetAtTime(0.40, t, 0.03);
+    };
+    return { update, vrOut, dryOut };
+  };
 })();
 </script>
 </body>
