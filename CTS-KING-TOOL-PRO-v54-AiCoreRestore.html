@@ -20999,7 +20999,7 @@ async function probeMp4V30(rawFile) {
         toast('🎉 Big Project បកប្រែខ្មែរច្បាស់ 100% រួចរាល់!');
       }
     } catch (e) {
-      setBoxStatus('bpStatusBox', e.name === 'AbortError' ? 'info' : 'err', e.name === 'AbortError' ? '⏹️ បានផ្អាក — ចុច "▶️ បន្តភាគ"!' : '❌ ' + e.message);
+      setBoxStatus('bpStatusBox', e.name === 'AbortError' ? 'info' : 'err', e.name === 'AbortError' ? '⏹️ បានបញ្ឈប់ Big Project (អាចចុច ▶ បន្តភាគ បាន!)' : ('❌ ' + (e?.message || e) + (e?.stack ? ' [' + String(e.stack).split('\n').slice(0,3).map(x=>x.trim()).join(' | ') + ']' : '')));
       rBtn.style.display = 'inline-flex';
     } finally {
       bpRun30 = false; try { await audioCtx.close(); } catch {}
