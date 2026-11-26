@@ -20242,11 +20242,23 @@ let mainVrGraph = null;
     dClone.textContent = '🎙️ សម្លេងបកប្រែ + Background';
     oClone.textContent = '🎬 ស្តាប់សម្លេងដើម';
     const syncModBtns = (speakingNow = false) => {
-      const ban = document.getElementById('ctsSpModModeBanner') || dClone.parentElement?.previousElementSibling;
-      if (ban) {
+      const barEl = dClone.parentElement;
+      let ban = document.getElementById('ctsSpModModeBanner');
+      if (!ban && barEl && barEl.parentElement) {
+        ban = document.createElement('div');
+        ban.id = 'ctsSpModModeBanner';
         ban.setAttribute('data-no-i18n', '1');
+        ban.style.cssText = 'padding:6px 10px;border-radius:8px;background:rgba(16,185,129,0.16);border:1px solid rgba(16,185,129,0.5);color:#a7f3d0;font-size:11.5px;font-weight:800;text-align:center;';
+        barEl.parentElement.insertBefore(ban, barEl);
+      }
+      const isRawSplit = Boolean(window.__ctsModIsRawSplit);
+      if (barEl) barEl.style.display = isRawSplit ? 'none' : 'grid';
+      if (ban) {
+        ban.style.display = isRawSplit ? 'none' : 'block';
         ban.textContent = mod30DubOn ? '🎙️ មុខងារ៖ សម្លេងបកប្រែ + Background' : '🎬 មុខងារ៖ ស្តាប់សម្លេងដើម (និយាយដើម + ភ្លេង)';
       }
+      const infoEl = document.getElementById('ctsSpModInfo');
+      if (infoEl) infoEl.style.display = isRawSplit ? 'none' : 'block';
       dClone.className = 'btn btn-sm ' + (mod30DubOn ? 'btn-primary' : '');
       oClone.className = 'btn btn-sm ' + (!mod30DubOn ? 'btn-primary' : '');
       const cfg = getVr();
@@ -20254,7 +20266,7 @@ let mainVrGraph = null;
         // FIX: Pass real percentage (e.g. 100, NOT 0.55!), so background SFX/music actually plays loud & clear!
         const bgPct = cfg.enabled ? cfg.bgGainPct : 85;
         const cutPct = cfg.enabled ? cfg.vocalCutPct : 80;
-        mod30Graph.update(mod30DubOn, cfg.mode, cutPct, bgPct, 1.0, speakingNow);
+        mod30Graph.update(mod30DubOn && !window.__ctsModIsRawSplit, cfg.mode, cutPct, bgPct, 1.0, speakingNow);
       }
       if (!mod30DubOn && mod30CueNode) { try { mod30CueNode.stop(); } catch {} mod30CueNode = null; }
     };
@@ -20288,7 +20300,7 @@ let mainVrGraph = null;
         const act = mod30Cues.find(c => t >= c.start && v.currentTime <= c.end);
         const speakingPad = Boolean(act) || mod30Cues.some(c => (v.currentTime + 0.35) >= c.start && (v.currentTime - 0.35) <= c.end);
         syncModBtns(speakingPad);
-        if (!mod30Graph) v.volume = mod30DubOn ? (speakingPad ? 0.04 : 0.45) : 1.0;
+        if (!mod30Graph) v.volume = (mod30DubOn && !window.__ctsModIsRawSplit) ? (speakingPad ? 0.04 : 0.45) : 1.0;
         const sub = document.getElementById('ctsSpModSub'), pill = document.getElementById('ctsSpModSubPill');
         if (act) {
           if (sub) sub.style.display = 'block';
@@ -20314,10 +20326,25 @@ let mainVrGraph = null;
   }
 
   document.addEventListener('click', async e => {
+    const spWatch = e.target.closest('.sp-watch-btn');
+    if (spWatch) {
+      window.__ctsModIsRawSplit = true;
+      mod30Cues = []; mod30Bufs.clear(); mod30LastId = null; mod30DubOn = false;
+      patchModalPreview30();
+      const bar = document.getElementById('ctsSpModBar'); if (bar) bar.style.display = 'none';
+      const ban = document.getElementById('ctsSpModModeBanner'); if (ban) ban.style.display = 'none';
+      const inf = document.getElementById('ctsSpModInfo'); if (inf) inf.style.display = 'none';
+      return;
+    }
     const bpWatch = e.target.closest('.bp27-watch');
     const mgWatch = e.target.closest('.mg-watch');
     if (!bpWatch && !mgWatch) return;
+    window.__ctsModIsRawSplit = false;
+    mod30DubOn = true;
     patchModalPreview30();
+    const bar = document.getElementById('ctsSpModBar'); if (bar) bar.style.display = 'grid';
+    const ban = document.getElementById('ctsSpModModeBanner'); if (ban) ban.style.display = 'block';
+    const inf = document.getElementById('ctsSpModInfo'); if (inf) inf.style.display = 'block';
     mod30Cues = []; mod30Bufs.clear(); mod30LastId = null;
     const card = (bpWatch || mgWatch).closest('div')?.parentElement;
     const title = card?.querySelector('b')?.textContent || '';
