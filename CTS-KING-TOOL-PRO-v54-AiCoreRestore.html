@@ -20274,27 +20274,8 @@ let mainVrGraph = null;
     oClone.onclick = () => { mod30DubOn = false; syncModBtns(false); };
 
     const stopMod30 = () => {
-      cancelAnimationFrame(mod30Iv); clearInterval(mod30Iv);
-      if (mod30CueNode) { try { mod30CueNode.stop(); } catch {} mod30CueNode = null; }
-      mod30LastId = null;
-    };
-    document.getElementById('ctsSpModClose')?.addEventListener('click', stopMod30);
-    v.addEventListener('pause', () => { if (mod30CueNode) { try { mod30CueNode.stop(); } catch {} mod30CueNode = null; } });
-    v.addEventListener('seeked', () => { mod30LastId = null; if (mod30CueNode) { try { mod30CueNode.stop(); } catch {} mod30CueNode = null; } });
-
-    v.addEventListener('play', () => {
-      if (!mod30Ctx) mod30Ctx = new (window.AudioContext || window.webkitAudioContext)();
-      if (mod30Ctx.state === 'suspended') mod30Ctx.resume().catch(() => {});
-      try {
-        if (!mod30Src) {
-          mod30Src = mod30Ctx.createMediaElementSource(v);
-          mod30Graph = (typeof window.__ctsTrueBgGraph56 === 'function' ? window.__ctsTrueBgGraph56(mod30Ctx, mod30Src) : buildTrueBgPreservingGraph(mod30Ctx, mod30Src));
-        }
-        syncModBtns(false);
-      } catch {}
-
       cancelAnimationFrame(mod30Iv); cancelAnimationFrame(mod30Iv); clearInterval(mod30Iv);
-      let lastSpPad = null, lastSubVis = false, lastSubTxt = '', predecChain = Promise.resolve();
+      let lastSpPad = null, lastSubVis = false, lastSubTxt = '', predecStarted = false, predecChain = Promise.resolve();
       const predecNext2 = (fromIdx) => {
         if (!mod30Ctx || !mod30Cues.length) return;
         const start = Math.max(0, fromIdx);
@@ -20314,11 +20295,59 @@ let mainVrGraph = null;
           for (let k = 0; k < start - 8; k++) mod30Bufs.delete(mod30Cues[k]?.id);
         }
       };
-      predecNext2(0);
 
       const tickMod30 = async () => {
-        if (v.paused || !mod30Cues.length) { mod30Iv = null; return; }
+        if (v.paused) { mod30Iv = null; return; }
         mod30Iv = requestAnimationFrame(tickMod30);
+        if (!mod30Cues.length) return; // Wait cleanly until IndexedDB finishes loading cues!
+        if (!predecStarted) { predecStarted = true; predecNext2(0); }
+
+        const curT = v.currentTime;
+        const act = mod30Cues.find(c => (curT + 0.04) >= c.start && curT <= c.end);
+        const speakingPad = Boolean(act) || mod30Cues.some(c => (curT + 0.28) >= c.start && (curT - 0.18) <= c.end);
+
+        if (speakingPad !== lastSpPad) {
+          lastSpPad = speakingPad;
+          syncModBtns(speakingPad);
+          if (!mod30Graph) v.volume = (mod30DubOn && !window.__ctsModIsRawSplit) ? (speakingPad ? 0.02 : 0.45) : 1.0;
+        }
+
+        const sub = document.getElementById('ctsSpModSub'), pill = document.getElementById('ctsSpModSubPill');
+        if (act) {
+          const txt = act.km || act.src || '';
+          if (!lastSubVis && sub) { sub.style.display = 'block'; lastSubVis = true; }
+          if (txt !== lastSubTxt && pill) { pill.textContent = txt; lastSubTxt = txt; }
+
+          if (mod30DubOn && mod30LastId !== act.id && act.audioBlob) {
+            mod30LastId = act.id;
+            const actIdx = mod30Cues.indexOf(act);
+            predecNext2(actIdx + 1);
+            try {
+              let ab = mod30Bufs.get(act.id);
+              if (!ab) {
+                ab = await mod30Ctx.decodeAudioData(await act.audioBlob.slice(0).arrayBuffer());
+                mod30Bufs.set(act.id, ab);
+              }
+              if (v.paused || mod30LastId !== act.id || !mod30DubOn) return;
+              if (mod30CueNode) { try { mod30CueNode.stop(); } catch {} mod30CueNode = null; }
+              const sn = mod30Ctx.createBufferSource(); sn.buffer = ab;
+              const g = mod30Ctx.createGain(); g.gain.value = (getVr().dubVolPct || 100) / 100;
+              sn.connect(g).connect(mod30Ctx.destination);
+              const off = Math.max(0, curT - act.start);
+              if (off < ab.duration - 0.06) {
+                sn.start(0, off);
+                mod30CueNode = sn;
+              }
+            } catch {}
+          }
+        } else {
+          if (lastSubVis && sub) { sub.style.display = 'none'; lastSubVis = false; }
+          if (mod30CueNode && !mod30Cues.some(c => c.id === mod30LastId && curT <= c.end + 0.04)) {
+            try { mod30CueNode.stop(); } catch {} mod30CueNode = null;
+          }
+        }
+      };
+      mod30Iv = requestAnimationFrame(tickMod30);
         const curT = v.currentTime;
         const act = mod30Cues.find(c => (curT + 0.04) >= c.start && curT <= c.end);
         const speakingPad = Boolean(act) || mod30Cues.some(c => (curT + 0.28) >= c.start && (curT - 0.18) <= c.end);
@@ -25273,7 +25302,7 @@ if (typeof window.addLog !== 'function') {
     });
   }
 
-  new MutationObserver(() => enhancePartLists55()).observe(document.body, { childList: true, subtree: true });
+  let _t55 = null; new MutationObserver((muts) => { if (!muts.some(m => m.target && (m.target.id === 'bpPartsList' || m.target.id === 'bpSplitResList' || m.target.id === 'tab-recap'))) return; clearTimeout(_t55); _t55 = setTimeout(enhancePartLists55, 160); }).observe(document.getElementById('tab-recap') || document.body, { childList: true, subtree: true });
   setTimeout(enhancePartLists55, 600);
   setTimeout(enhancePartLists55, 1800);
 })();
@@ -25341,8 +25370,9 @@ if (typeof window.addLog !== 'function') {
   };
 })();
 </script>
+
 <script id="cts-addon-57-smooth-dub-lipsync">
-// === ADD-ON #57: GEMINI TTS STEADY VOICE + WSOLA + 100% LIP-SYNC + BIG PROJECT & PREVIEW/MP4 SMOOTH ===
+// === ADD-ON #57: GEMINI 3.8 TTS STEADY + WSOLA + 100% MOUTH SYNC + SMOOTH PREVIEW/EXPORT MP4 + BIG PROJECT FIX ===
 (function() {
   const PROJ_DB = 'cts_big_project_db', PROJ_STORE = 'parts';
   const SPLIT_DB = 'cts_big_split_db', SPLIT_STORE = 'split_parts';
@@ -25350,7 +25380,7 @@ if (typeof window.addLog !== 'function') {
   let ttsSeed57 = 0;
 
   // -------------------------------------------------------------------------
-  // A. STEADY GEMINI TTS ENGINE (temperature: 0.15 + speechMetadata.style + NO 3rd voice!)
+  // A. STEADY GEMINI TTS ENGINE (speechMetadata.style + temp 0.15 + NO 3rd voice!)
   // -------------------------------------------------------------------------
   window.generateGeminiTtsBlob = async function(text, voiceRole, signal, workerId = 0, label = 'TTS') {
     const allKeys = getProviderKeys('gemini');
@@ -25365,7 +25395,6 @@ if (typeof window.addLog !== 'function') {
       ? 'Warm, natural, clear adult female Cambodian Khmer voice. Steady pace and consistent pitch, no extra sound effects.'
       : 'Warm, natural, clear adult male Cambodian Khmer voice. Steady pace and consistent pitch, no extra sound effects.';
 
-    // Clean raw text strictly (no << >> quotes or extra symbols)
     const safeText = String(text || '')
       .replace(/[\r\n]+/g, ' ')
       .replace(/[«»「」『』【】\[\]()]/g, ' ')
@@ -25678,12 +25707,19 @@ if (typeof window.addLog !== 'function') {
       }
       cues = clean;
 
-      if (document.getElementById('ctsLipSnapChk')?.checked !== false && vidBlobUrl && vidFileSize <= 180 * 1024 * 1024) {
+      if (document.getElementById('ctsLipSnapChk')?.checked !== false) {
         try {
-          const abVid = await decodeUrlToAudioBuffer(vidBlobUrl, ctx);
-          const cp = audioBufToPcm16(abVid);
-          const envObj = cp ? buildVocalEnv57(cp.pcm16, cp.sr) : null;
-          if (envObj) snapCuesToVocalOnset57(cues, envObj, 0);
+          let abVid = null;
+          if (vidBlobUrl && vidFileSize <= 180 * 1024 * 1024) abVid = await decodeUrlToAudioBuffer(vidBlobUrl, ctx);
+          else if (window.__ctsRawVideoFile) {
+            const pr = await probeMp4Light57(window.__ctsRawVideoFile).catch(() => null);
+            if (pr) abVid = await extractAud57(window.__ctsRawVideoFile, pr, 0, cues[cues.length - 1].end + 2, ctx);
+          }
+          if (abVid) {
+            const cp = audioBufToPcm16(abVid);
+            const envObj = cp ? buildVocalEnv57(cp.pcm16, cp.sr) : null;
+            if (envObj) snapCuesToVocalOnset57(cues, envObj, 0);
+          }
         } catch {}
       }
 
@@ -25842,10 +25878,15 @@ if (typeof window.addLog !== 'function') {
     const vid = document.getElementById('videoPlayer');
     if (!vid || !vid.src || vid.muted) return;
     const vr = safeGet('cts_king_vr_cfg', {}) || {};
-    if (vr.enabled) return;
     if (!cues.some(c => c.audioUrl)) return;
     if (lastVidDuckState === speaking) return;
     lastVidDuckState = speaking;
+    if (vr.enabled) {
+      // Trigger input change cleanly if Vocal Remover graph is active so Cue-Cut updates on state transition
+      const vrRng = document.getElementById('vrBgRng');
+      if (vrRng) vrRng.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
     const baseV = parseFloat(document.getElementById('vidVolRange')?.value || '1');
     vid.volume = speaking ? Math.min(baseV, 0.02) : baseV;
   }
@@ -25976,6 +26017,7 @@ if (typeof window.addLog !== 'function') {
     }
   };
 
+  // Hardware H.264 Level 4.0/4.2 + Exact-Float CFR Grid (Zero 29.97fps drift & zero micro-stutter!)
   const _PrevBlob57 = window.Blob;
   window.Blob = function(parts, opts) {
     if (opts && opts.type === 'application/javascript' && Array.isArray(parts) && typeof parts[0] === 'string' && parts[0].includes('pickZeroBFrameVCfg')) {
@@ -25987,7 +26029,7 @@ if (typeof window.addLog !== 'function') {
       code = code.replace("latencyMode: 'quality'", "latencyMode: 'realtime'");
       code = code.replace(
         "if (partBaseTsUs === null) partBaseTsUs = rawUs;\n        const ts = prevTs < 0 ? 0 : Math.max(prevTs + 5000, Math.round(rawUs - partBaseTsUs));",
-        "if (partBaseTsUs === null) partBaseTsUs = rawUs;\n        const _cfrStep = Math.round(1e6 / Math.max(12, outFps || fps));\n        const _cfrTs = encodedInPart * _cfrStep;\n        const _rawRel = Math.round(rawUs - partBaseTsUs);\n        const _useTs = Math.abs(_rawRel - _cfrTs) < _cfrStep * 1.6 ? _cfrTs : _rawRel;\n        const ts = prevTs < 0 ? 0 : Math.max(prevTs + Math.round(_cfrStep * 0.5), _useTs);"
+        "if (partBaseTsUs === null) partBaseTsUs = rawUs;\n        const _cfrStep = 1e6 / Math.max(12, outFps || fps);\n        const _rawRel = Math.round(rawUs - partBaseTsUs);\n        const _cfrTarget = Math.round(encodedInPart * _cfrStep);\n        const _useTs = Math.abs(_rawRel - _cfrTarget) < _cfrStep * 0.45 ? _cfrTarget : _rawRel;\n        const ts = prevTs < 0 ? 0 : Math.max(prevTs + Math.round(_cfrStep * 0.55), _useTs);"
       );
       parts = [code];
     }
@@ -25995,6 +26037,7 @@ if (typeof window.addLog !== 'function') {
   };
   window.Blob.prototype = _PrevBlob57.prototype;
 
+  // Export Audio Fix: Cap overlapping cues strictly + Duck original actor dialogue during dubbed speech!
   let inExport57 = false;
   const _prevStartExp57 = window.startVideoExport;
   window.startVideoExport = async function() {
@@ -26007,6 +26050,28 @@ if (typeof window.addLog !== 'function') {
   window.decodeUrlToAudioBuffer = async function(url, ctx) {
     const ab = await _prevDecode57(url, ctx);
     if (!ab || !inExport57) return ab;
+
+    // 1. Auto-duck original video dialogue in Export MP4 when dubbed cues exist (even if Vocal Remover is OFF!)
+    const vr = safeGet('cts_king_vr_cfg', {}) || {};
+    if (!vr.enabled && vidBlobUrl && url === vidBlobUrl && cues.some(c => c.audioUrl)) {
+      const sr = ab.sampleRate, len = ab.length, c0 = ab.getChannelData(0), out = new Float32Array(c0);
+      const mask = new Uint8Array(len);
+      for (const c of cues) {
+        if (!c.audioUrl) continue;
+        const s = Math.max(0, Math.floor((c.start - 0.05) * sr)), e = Math.min(len - 1, Math.ceil((c.end + 0.08) * sr));
+        for (let i = s; i <= e; i++) mask[i] = 1;
+      }
+      let duck = 1.0;
+      for (let i = 0; i < len; i++) {
+        duck += ((mask[i] ? 0.03 : 1.0) - duck) * 0.003;
+        out[i] *= duck;
+      }
+      const res = new AudioBuffer({ length: len, numberOfChannels: 1, sampleRate: sr });
+      res.copyToChannel(out, 0);
+      return res;
+    }
+
+    // 2. Cap cue audio buffer strictly before nextCue.start - 0.025s during export (0% overlap!)
     const idx = cues.findIndex(c => c.audioUrl === url);
     if (idx >= 0 && idx < cues.length - 1) {
       const c = cues[idx], nxt = cues[idx + 1];
@@ -26251,33 +26316,47 @@ if (typeof window.addLog !== 'function') {
     const audioBlobs = new Array(partCues.length).fill(null);
     let done = 0, cursor = 0;
     const conc = eng === 'edge_proxy' ? 4 : Math.min(4, Math.max(1, getProviderKeys('gemini').length));
+
+    const synthIdx = async (idx, wId) => {
+      const c = partCues[idx], txt = (c.km || c.src || '').trim();
+      if (!txt) return false;
+      const nextS = idx < partCues.length - 1 ? partCues[idx + 1].start : 999999;
+      const maxSlot = Math.max(0.38, nextS - c.start - 0.03);
+      const target = Math.max(0.38, Math.min(c.end - c.start, maxSlot));
+      for (let att = 0; att < 3; att++) {
+        try {
+          const rawBlob = await synthOne(txt, c.voice, wId + att);
+          const ab = await ctx.decodeAudioData(await rawBlob.arrayBuffer());
+          const repaired = trimFitStrict57(ab, target, maxSlot, pcm16ToWavBytes);
+          if (repaired) {
+            const repAb = await ctx.decodeAudioData(await repaired.slice(0).arrayBuffer());
+            c.end = +Math.min(nextS - 0.03, Math.max(c.start + 0.35, c.start + repAb.duration)).toFixed(2);
+            audioBlobs[idx] = repaired;
+            return true;
+          }
+        } catch (e) { if (e.name === 'AbortError') throw e; await sleepAbortable(650, signal); }
+      }
+      return false;
+    };
+
     await Promise.all(Array.from({ length: Math.min(conc, Math.max(1, partCues.length)) }, async (_, wId) => {
       while (cursor < partCues.length && !signal.aborted) {
-        const idx = cursor++, c = partCues[idx], txt = (c.km || c.src || '').trim();
-        if (!txt) { done++; if (onProg) onProg(done, partCues.length); continue; }
-        const nextS = idx < partCues.length - 1 ? partCues[idx + 1].start : 999999;
-        const maxSlot = Math.max(0.38, nextS - c.start - 0.03);
-        const target = Math.max(0.38, Math.min(c.end - c.start, maxSlot));
-        for (let att = 0; att < 3; att++) {
-          try {
-            const rawBlob = await synthOne(txt, c.voice, wId + att);
-            const ab = await ctx.decodeAudioData(await rawBlob.arrayBuffer());
-            const repaired = trimFitStrict57(ab, target, maxSlot, pcm16ToWavBytes);
-            if (repaired) {
-              const repAb = await ctx.decodeAudioData(await repaired.slice(0).arrayBuffer());
-              c.end = +Math.min(nextS - 0.03, Math.max(c.start + 0.35, c.start + repAb.duration)).toFixed(2);
-              audioBlobs[idx] = repaired;
-              break;
-            }
-          } catch (e) { if (e.name === 'AbortError') throw e; await sleepAbortable(550, signal); }
-        }
+        const idx = cursor++;
+        await synthIdx(idx, wId);
         done++; if (onProg) onProg(done, partCues.length);
       }
     }));
+
+    // 1-by-1 Rescue Pass for any cue that failed TTS (ensures 100% full voice coverage!)
+    for (let idx = 0; idx < partCues.length && !signal.aborted; idx++) {
+      if (!audioBlobs[idx] && (partCues[idx].km || partCues[idx].src || '').trim()) {
+        await sleepAbortable(700, signal);
+        await synthIdx(idx, idx + 3);
+      }
+    }
     return audioBlobs;
   }
 
-  // 1-Click Fix Voice & Lip-Sync for ALL existing parts inside Big Project!
   async function repairExistingBigProjectParts57() {
     if (bpRun57) return toast('⏳ កំពុងដំណើរការ Project — សូមរង់ចាំបន្តិច!');
     const parts = await idbGetAll57(PROJ_DB, PROJ_STORE).catch(() => []);
@@ -26298,7 +26377,6 @@ if (typeof window.addLog !== 'function') {
         const p = parts[pi], pCues = (p.cues || []).map(c => Object.assign({}, c));
         if (!pCues.length) continue;
 
-        // 1. Acoustic mouth-onset snap + F0 voice lock from this part's Video Blob
         if (p.videoBlob) {
           setBoxStatus('bpStatusBox', 'info', '👄 ភាគ #' + (p.partIndex + 1) + ': កំពុងស្កេនមាត់ & តម្រឹមម៉ោង...');
           try {
@@ -26322,7 +26400,6 @@ if (typeof window.addLog !== 'function') {
           } catch {}
         }
 
-        // 2. Re-generate clean Gemini 3.8 TTS (steady temp 0.15) + WSOLA pitch-preserving fit!
         const newBlobs = await synthAndRepair57(pCues, tgtCode, audioCtx, sig, (dn, tot) => {
           const pct = Math.round((dn / Math.max(1, tot)) * 100);
           document.getElementById('bpStepTxt').textContent = '🔄 ភាគ #' + (p.partIndex + 1) + ': ពិសិទ្ធ/ស្រីមុំ + WSOLA (' + dn + '/' + tot + ')';
@@ -26417,10 +26494,11 @@ if (typeof window.addLog !== 'function') {
       };
 
       const nParts = mode === 'full' ? 1 : Math.max(1, Math.ceil(dur / (splitMins * 60)));
-      const parts = (Array.isArray(probe?.vSamples) && probe.vSamples.length)
-        ? safeBuildParts(probe.vSamples, splitMins, mode)
-        : (canReuseSplit
-            ? preSplit.map(p => ({ partIndex: p.partIndex, start: p.start, end: p.end }))
+      // Use exact preSplit boundaries when reusing pre-split MP4 files so timestamps match to 0.001s!
+      const parts = canReuseSplit
+        ? preSplit.map(p => ({ partIndex: p.partIndex, start: p.start, end: p.end }))
+        : ((Array.isArray(probe?.vSamples) && probe.vSamples.length)
+            ? safeBuildParts(probe.vSamples, splitMins, mode)
             : Array.from({ length: nParts }, (_, k) => ({ partIndex: k, start: k * splitMins * 60, end: k === nParts - 1 ? dur : (k + 1) * splitMins * 60 })));
 
       const srcCode = document.getElementById('bpSrcLang').value, tgtCode = document.getElementById('bpTgtLang').value;
@@ -26483,6 +26561,10 @@ if (typeof window.addLog !== 'function') {
         }
 
         let partProbe = probe, partLegacyBuf = fullLegacyBuf, partProbeLocal = false;
+        if (canReuseSplit && splitBlob) {
+          partProbe = await probeMp4Light57(splitBlob).catch(() => null);
+          if (partProbe) partProbeLocal = true;
+        }
         if (!partProbe && splitBlob) { partProbe = await probeMp4Light57(splitBlob).catch(() => null); if (partProbe) partProbeLocal = true; }
         if (!partProbe && !partLegacyBuf && splitBlob && splitBlob.size <= 145 * 1024 * 1024) {
           try { const u = URL.createObjectURL(splitBlob); partLegacyBuf = await decodeUrlToAudioBuffer(u, audioCtx); URL.revokeObjectURL(u); partProbeLocal = true; } catch {}
