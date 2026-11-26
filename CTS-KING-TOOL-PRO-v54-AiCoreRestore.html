@@ -12152,7 +12152,7 @@
           if (hasV && vid.duration > 0) {
             const tv = el % vid.duration;
             if (Math.abs(vid.currentTime - tv) > 0.01) {
-              await new Promise(r => { const fn = () => { vid.removeEventListener('seeked', fn); r(); }; vid.addEventListener('seeked', fn); vid.currentTime = tv; setTimeout(fn, 350); });
+              await new Promise(r => { const fn = () => { vid.removeEventListener('seeked', fn); r(); }; vid.addEventListener('seeked', fn); vid.currentTime = tv; setTimeout(fn, 1200); });
             }
             renderExportFrame(ctx, w, h, el, getCueAt(el), cfg, { type: 'video', vid });
           } else {
@@ -20264,8 +20264,8 @@ let mainVrGraph = null;
       const cfg = getVr();
       if (mod30Graph) {
         // FIX: Pass real percentage (e.g. 100, NOT 0.55!), so background SFX/music actually plays loud & clear!
-        const bgPct = cfg.enabled ? cfg.bgGainPct : 85;
-        const cutPct = cfg.enabled ? cfg.vocalCutPct : 80;
+        const bgPct = cfg.enabled ? cfg.bgGainPct : 75;
+        const cutPct = cfg.enabled ? Math.max(88, cfg.vocalCutPct) : 95;
         mod30Graph.update(mod30DubOn && !window.__ctsModIsRawSplit, cfg.mode, cutPct, bgPct, 1.0, speakingNow);
       }
       if (!mod30DubOn && mod30CueNode) { try { mod30CueNode.stop(); } catch {} mod30CueNode = null; }
@@ -20274,7 +20274,7 @@ let mainVrGraph = null;
     oClone.onclick = () => { mod30DubOn = false; syncModBtns(false); };
 
     const stopMod30 = () => {
-      clearInterval(mod30Iv);
+      cancelAnimationFrame(mod30Iv); clearInterval(mod30Iv);
       if (mod30CueNode) { try { mod30CueNode.stop(); } catch {} mod30CueNode = null; }
       mod30LastId = null;
     };
@@ -20293,35 +20293,78 @@ let mainVrGraph = null;
         syncModBtns(false);
       } catch {}
 
-      clearInterval(mod30Iv);
-      mod30Iv = setInterval(async () => {
-        if (v.paused || !mod30Cues.length) return;
-        const t = v.currentTime + 0.03;
-        const act = mod30Cues.find(c => t >= c.start && v.currentTime <= c.end);
-        const speakingPad = Boolean(act) || mod30Cues.some(c => (v.currentTime + 0.35) >= c.start && (v.currentTime - 0.35) <= c.end);
-        syncModBtns(speakingPad);
-        if (!mod30Graph) v.volume = (mod30DubOn && !window.__ctsModIsRawSplit) ? (speakingPad ? 0.04 : 0.45) : 1.0;
+      cancelAnimationFrame(mod30Iv); cancelAnimationFrame(mod30Iv); clearInterval(mod30Iv);
+      let lastSpPad = null, lastSubVis = false, lastSubTxt = '', predecChain = Promise.resolve();
+      const predecNext2 = (fromIdx) => {
+        if (!mod30Ctx || !mod30Cues.length) return;
+        const start = Math.max(0, fromIdx);
+        for (let k = start; k < Math.min(mod30Cues.length, start + 3); k++) {
+          const item = mod30Cues[k];
+          if (item && item.audioBlob && !mod30Bufs.has(item.id)) {
+            predecChain = predecChain.then(async () => {
+              if (mod30Bufs.has(item.id) || !mod30Ctx) return;
+              try {
+                const ab = await mod30Ctx.decodeAudioData(await item.audioBlob.slice(0).arrayBuffer());
+                mod30Bufs.set(item.id, ab);
+              } catch {}
+            });
+          }
+        }
+        if (start > 8) {
+          for (let k = 0; k < start - 8; k++) mod30Bufs.delete(mod30Cues[k]?.id);
+        }
+      };
+      predecNext2(0);
+
+      const tickMod30 = async () => {
+        if (v.paused || !mod30Cues.length) { mod30Iv = null; return; }
+        mod30Iv = requestAnimationFrame(tickMod30);
+        const curT = v.currentTime;
+        const act = mod30Cues.find(c => (curT + 0.04) >= c.start && curT <= c.end);
+        const speakingPad = Boolean(act) || mod30Cues.some(c => (curT + 0.28) >= c.start && (curT - 0.18) <= c.end);
+
+        if (speakingPad !== lastSpPad) {
+          lastSpPad = speakingPad;
+          syncModBtns(speakingPad);
+          if (!mod30Graph) v.volume = (mod30DubOn && !window.__ctsModIsRawSplit) ? (speakingPad ? 0.02 : 0.45) : 1.0;
+        }
+
         const sub = document.getElementById('ctsSpModSub'), pill = document.getElementById('ctsSpModSubPill');
         if (act) {
-          if (sub) sub.style.display = 'block';
-          if (pill) pill.textContent = act.km || act.src;
+          const txt = act.km || act.src || '';
+          if (!lastSubVis && sub) { sub.style.display = 'block'; lastSubVis = true; }
+          if (txt !== lastSubTxt && pill) { pill.textContent = txt; lastSubTxt = txt; }
+
           if (mod30DubOn && mod30LastId !== act.id && act.audioBlob) {
             mod30LastId = act.id;
+            const actIdx = mod30Cues.indexOf(act);
+            predecNext2(actIdx + 1);
             try {
               let ab = mod30Bufs.get(act.id);
-              if (!ab) { ab = await mod30Ctx.decodeAudioData(await act.audioBlob.slice(0).arrayBuffer()); mod30Bufs.set(act.id, ab); }
+              if (!ab) {
+                ab = await mod30Ctx.decodeAudioData(await act.audioBlob.slice(0).arrayBuffer());
+                mod30Bufs.set(act.id, ab);
+              }
               if (v.paused || mod30LastId !== act.id || !mod30DubOn) return;
-              if (mod30CueNode) { try { mod30CueNode.stop(); } catch {} }
+              if (mod30CueNode) { try { mod30CueNode.stop(); } catch {} mod30CueNode = null; }
               const sn = mod30Ctx.createBufferSource(); sn.buffer = ab;
               const g = mod30Ctx.createGain(); g.gain.value = (getVr().dubVolPct || 100) / 100;
               sn.connect(g).connect(mod30Ctx.destination);
-              sn.start(0); mod30CueNode = sn;
+              const off = Math.max(0, curT - act.start);
+              if (off < ab.duration - 0.06) {
+                sn.start(0, off);
+                mod30CueNode = sn;
+              }
             } catch {}
           }
-        } else if (sub) {
-          sub.style.display = 'none';
+        } else {
+          if (lastSubVis && sub) { sub.style.display = 'none'; lastSubVis = false; }
+          if (mod30CueNode && !mod30Cues.some(c => c.id === mod30LastId && curT <= c.end + 0.04)) {
+            try { mod30CueNode.stop(); } catch {} mod30CueNode = null;
+          }
         }
-      }, 35);
+      };
+      mod30Iv = requestAnimationFrame(tickMod30);
     });
   }
 
@@ -24391,6 +24434,13 @@ body.cts-desktop-mode #cueList .cue-card {
 
   // 2. Intercept user clicks in capture phase for Split Video Watch & Modal Mode buttons
   document.addEventListener('click', (e) => {
+    const dubWatchBtn = e.target.closest && e.target.closest('.bp27-watch, .mg-watch');
+    if (dubWatchBtn) {
+      ensureModalVideoLoud();
+      allowModalGraph = true;
+      setTimeout(() => { ensureModalVideoLoud(); bindModalGraphNow(); }, 40);
+      return;
+    }
     const watchBtn = e.target.closest && e.target.closest('.sp-watch-btn');
     if (watchBtn) {
       ensureModalVideoLoud();
@@ -24399,6 +24449,7 @@ body.cts-desktop-mode #cueList .cue-card {
         allowModalGraph = false;
         setTimeout(() => {
           ensureModalVideoLoud();
+          if (modalCtx && modalCtx.state === 'suspended') modalCtx.resume().catch(() => {});
           document.getElementById('ctsSpModeOrig')?.click();
           showAudioStatusPill('🔊 កំពុងចាក់សំឡេងដើម 100% (Native Audio)', true);
         }, 40);
@@ -25290,5 +25341,1356 @@ if (typeof window.addLog !== 'function') {
   };
 })();
 </script>
+<script id="cts-addon-57-smooth-dub-lipsync">
+// === ADD-ON #57: GEMINI TTS STEADY VOICE + WSOLA + 100% LIP-SYNC + BIG PROJECT & PREVIEW/MP4 SMOOTH ===
+(function() {
+  const PROJ_DB = 'cts_big_project_db', PROJ_STORE = 'parts';
+  const SPLIT_DB = 'cts_big_split_db', SPLIT_STORE = 'split_parts';
+  const deadTts57 = new Set(), coolTts57 = new Map();
+  let ttsSeed57 = 0;
+
+  // -------------------------------------------------------------------------
+  // A. STEADY GEMINI TTS ENGINE (temperature: 0.15 + speechMetadata.style + NO 3rd voice!)
+  // -------------------------------------------------------------------------
+  window.generateGeminiTtsBlob = async function(text, voiceRole, signal, workerId = 0, label = 'TTS') {
+    const allKeys = getProviderKeys('gemini');
+    if (!allKeys.length) throw new Error('ត្រូវការ Gemini API Key!');
+    const isAuto = (safeGet('cts_king_key_mode', { mode: 'auto' })?.mode !== 'manual');
+    const offset = (ttsSeed57++ + workerId) % allKeys.length;
+    const keys = isAuto ? allKeys.slice(offset).concat(allKeys.slice(0, offset)) : [settings.geminiKey || allKeys[0]];
+
+    const isFemale = (voiceRole === 'sreymom');
+    const voiceName = isFemale ? 'Leda' : 'Charon';
+    const styleDir = isFemale
+      ? 'Warm, natural, clear adult female Cambodian Khmer voice. Steady pace and consistent pitch, no extra sound effects.'
+      : 'Warm, natural, clear adult male Cambodian Khmer voice. Steady pace and consistent pitch, no extra sound effects.';
+
+    // Clean raw text strictly (no << >> quotes or extra symbols)
+    const safeText = String(text || '')
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/[«»「」『』【】\[\]()]/g, ' ')
+      .replace(/\.{2,}/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!safeText) throw new Error('Empty TTS text');
+
+    const models = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts'];
+    let lastErr = null;
+
+    const postTts = async (key, m, withMeta, withTemp) => {
+      const partObj = withMeta ? { text: safeText, speechMetadata: { style: styleDir } } : { text: safeText };
+      const genCfg = {
+        responseModalities: ['AUDIO'],
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } }
+      };
+      if (withTemp) genCfg.temperature = 0.15;
+
+      const ctrl = new AbortController();
+      let to = false;
+      const onAb = () => ctrl.abort();
+      if (signal) {
+        if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        signal.addEventListener('abort', onAb, { once: true });
+      }
+      const tm = setTimeout(() => { to = true; ctrl.abort(); }, 28000);
+      try {
+        const res = await fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(m) + ':generateContent?key=' + encodeURIComponent(key),
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [partObj] }],
+              generationConfig: genCfg,
+              safetySettings: window.__ctsV54Safety || [
+                { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+              ]
+            }),
+            signal: ctrl.signal
+          }
+        );
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, status: res.status, data };
+      } catch (e) {
+        if (to && (!signal || !signal.aborted)) { const te = new Error('Timeout'); te.status = 504; throw te; }
+        throw e;
+      } finally {
+        clearTimeout(tm);
+        if (signal) signal.removeEventListener('abort', onAb);
+      }
+    };
+
+    for (let round = 0; round < (isAuto ? 3 : 1); round++) {
+      let minWaitMs = Infinity;
+      for (const m of models) {
+        for (const key of keys) {
+          if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+          const slotId = key + '|' + m;
+          if (deadTts57.has(slotId)) continue;
+          const u = coolTts57.get(slotId);
+          if (u && Date.now() < u) { minWaitMs = Math.min(minWaitMs, u - Date.now()); continue; }
+
+          try {
+            let r = await postTts(key, m, true, true);
+            if (!r.ok && r.status === 400) r = await postTts(key, m, false, true);
+            if (!r.ok && r.status === 400) r = await postTts(key, m, false, false);
+            if (!r.ok) { const e = new Error(r.data?.error?.message || ('HTTP ' + r.status)); e.status = r.status; throw e; }
+
+            const part = r.data?.candidates?.[0]?.content?.parts?.find(p => p.inlineData?.data);
+            if (!part) { const e2 = new Error(r.data?.candidates?.[0]?.finishReason || 'No audio'); e2.status = 502; throw e2; }
+
+            const mime = (part.inlineData.mimeType || 'audio/wav').toLowerCase();
+            const bin = atob(part.inlineData.data), bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return new Blob(
+              [(mime.includes('l16') || mime.includes('pcm')) ? wrapRawL16InWav(bytes, parseInt((mime.match(/rate=(\d+)/) || [])[1] || '24000', 10)) : bytes],
+              { type: 'audio/wav' }
+            );
+          } catch (e) {
+            lastErr = e;
+            if (e.name === 'AbortError') throw e;
+            const msg = String(e.message || '');
+            if (e.status === 404) break;
+            if ([401, 403].includes(e.status) || /API_KEY_INVALID/i.test(msg)) { deadTts57.add(slotId); continue; }
+            if (e.status === 429 || /quota|rate|limit|exhausted/i.test(msg)) {
+              if (/per_?day|per day|requests_per_model_per_day|limit:\s*0/i.test(msg)) deadTts57.add(slotId);
+              else {
+                const mm = msg.match(/retry in\s+(\d+(?:\.\d+)?)s/i);
+                const ms = (mm ? Math.min(40, Math.max(6, Math.ceil(parseFloat(mm[1])) + 2)) : 14) * 1000;
+                coolTts57.set(slotId, Date.now() + ms);
+                minWaitMs = Math.min(minWaitMs, ms);
+              }
+            }
+            if (!isAuto && [429, 401, 403].includes(e.status)) throw e;
+          }
+        }
+      }
+      if (isAuto && round < 2 && isFinite(minWaitMs)) {
+        const ws = Math.min(18, Math.max(3, Math.ceil(minWaitMs / 1000)));
+        await sleepAbortable(ws * 1000, signal);
+      } else break;
+    }
+    throw lastErr || new Error('Gemini TTS Quota Error');
+  };
+
+  // -------------------------------------------------------------------------
+  // B. TRUE PITCH-PRESERVING WSOLA + FULL SYLLABLE GUARD + ZERO OVERLAP
+  // -------------------------------------------------------------------------
+  function wsolaPitchFit57(pcm, sr, targetDur) {
+    const rawDur = pcm.length / sr;
+    if (!isFinite(targetDur) || targetDur <= 0.18 || rawDur <= targetDur * 1.03) return pcm;
+    const spd = Math.min(1.38, rawDur / targetDur);
+    const wL = Math.round(sr * 0.024) & ~1;
+    const hW = wL >> 1;
+    const sL = Math.round(sr * 0.010);
+    const outLen = Math.round(pcm.length / spd);
+    if (pcm.length <= wL * 3 || outLen <= wL) return pcm;
+
+    const hann = new Float32Array(wL);
+    for (let j = 0; j < wL; j++) hann[j] = 0.5 * (1 - Math.cos((2 * Math.PI * j) / (wL - 1)));
+    const out = new Float32Array(outLen + wL), norm = new Float32Array(outLen + wL);
+    for (let j = 0; j < wL; j++) { out[j] += pcm[j] * hann[j]; norm[j] += hann[j]; }
+
+    let oP = hW, aP = hW * spd, lEnd = wL;
+    while (oP + wL <= out.length && aP < pcm.length - wL) {
+      const iS = Math.round(aP), rS = lEnd - hW;
+      let bS = iS;
+      if (rS >= 0 && rS + hW < pcm.length) {
+        let bC = -1e18;
+        const lo = Math.max(0, iS - sL), hi = Math.min(pcm.length - wL, iS + sL);
+        for (let ca = lo; ca <= hi; ca += 2) {
+          let num = 0, d1 = 1e-9, d2 = 1e-9;
+          for (let k = 0; k < hW; k += 2) {
+            const a = pcm[rS + k], b = pcm[ca + k];
+            num += a * b; d1 += a * a; d2 += b * b;
+          }
+          const co = num / Math.sqrt(d1 * d2);
+          if (co > bC) { bC = co; bS = ca; }
+        }
+      }
+      for (let j = 0; j < wL; j++) {
+        if (bS + j < pcm.length) { out[oP + j] += pcm[bS + j] * hann[j]; norm[oP + j] += hann[j]; }
+      }
+      lEnd = bS + wL; oP += hW; aP += hW * spd;
+    }
+
+    const finalLen = Math.min(outLen, oP + hW);
+    const res = new Float32Array(finalLen);
+    let pk = 0;
+    for (let j = 0; j < finalLen; j++) {
+      const v = norm[j] > 1e-4 ? Math.max(-0.98, Math.min(0.98, out[j] / norm[j])) : 0;
+      res[j] = v;
+      const av = Math.abs(v); if (av > pk) pk = av;
+    }
+    return (finalLen >= sr * 0.14 && pk > 0.003) ? res : pcm;
+  }
+
+  function trimFitStrict57(ab, slotDur, maxSlotDur, pcm16Fn) {
+    if (!ab || ab.length < 256) return null;
+    const sr = ab.sampleRate, pcm = ab.getChannelData(0), win = Math.max(1, Math.round(sr * 0.01));
+    const nW = Math.floor(pcm.length / win);
+    if (nW < 3) return new Blob([pcm16Fn(pcm, sr)], { type: 'audio/wav' });
+    const rms = new Float32Array(nW);
+    let maxR = 0;
+    for (let w = 0; w < nW; w++) {
+      let s = 0, b = w * win;
+      for (let k = 0; k < win; k++) { const v = pcm[b + k]; s += v * v; }
+      const r = Math.sqrt(s / win); rms[w] = r; if (r > maxR) maxR = r;
+    }
+    if (maxR < 0.0025 || ab.duration < 0.10) return null;
+    const sTh = Math.max(0.0025, maxR * 0.015), eTh = Math.max(0.0020, maxR * 0.010);
+    let fw = 0, lw = nW - 1;
+    while (fw < nW - 4 && rms[fw] < sTh) fw++;
+    while (lw > fw + 3 && rms[lw] < eTh) lw--;
+
+    const padStart = Math.round(sr * 0.030), padEnd = Math.round(sr * 0.045);
+    const trimmed = pcm.slice(Math.max(0, fw * win - padStart), Math.min(pcm.length, (lw + 1) * win + padEnd));
+
+    let fitted = wsolaPitchFit57(trimmed, sr, Math.max(0.28, slotDur));
+
+    if (isFinite(maxSlotDur) && maxSlotDur > 0.25) {
+      const capSamples = Math.floor(maxSlotDur * sr);
+      if (fitted.length > capSamples) fitted = fitted.slice(0, capSamples);
+    }
+
+    const fIn = Math.min(Math.round(sr * 0.008), Math.floor(fitted.length / 4));
+    const fOut = Math.min(Math.round(sr * 0.020), Math.floor(fitted.length / 3));
+    for (let i = 0; i < fIn; i++) fitted[i] *= i / fIn;
+    for (let i = 0; i < fOut; i++) fitted[fitted.length - 1 - i] *= i / fOut;
+
+    return new Blob([pcm16Fn(fitted, sr)], { type: 'audio/wav' });
+  }
+
+  window.__ctsV54TrimAndFitAudio = function(ab, slotDur, pcm16ToWavBytesFn) {
+    return trimFitStrict57(ab, slotDur, slotDur, pcm16ToWavBytesFn);
+  };
+
+  // -------------------------------------------------------------------------
+  // C. ACOUSTIC MOUTH-ONSET SNAP & REAL F0 PITCH SPEAKER LOCKING
+  // -------------------------------------------------------------------------
+  function buildVocalEnv57(pcm16, sr) {
+    if (!pcm16 || !pcm16.length) return null;
+    const win = Math.max(1, Math.round(sr * 0.02)), nW = Math.floor(pcm16.length / win), env = new Float32Array(nW);
+    const al = Math.exp(-2 * Math.PI * 280 / sr);
+    let px = 0, py = 0;
+    const samp = [];
+    for (let w = 0; w < nW; w++) {
+      let s = 0, b = w * win;
+      for (let i = 0; i < win; i++) { const x = pcm16[b + i] / 32768, y = al * (py + x - px); px = x; py = y; s += y * y; }
+      env[w] = Math.sqrt(s / win);
+      if (w % 4 === 0) samp.push(env[w]);
+    }
+    samp.sort((a, b) => a - b);
+    const nf = samp[Math.floor(samp.length * 0.20)] || 0.002, pk = samp[Math.floor(samp.length * 0.92)] || 0.02;
+    return { env, nf, pk, dur: pcm16.length / sr, ok: pk > nf * 1.85 && pk > 0.004 };
+  }
+
+  function audioBufToPcm16(abuf) {
+    if (!abuf) return null;
+    const sr = abuf.sampleRate, c0 = abuf.getChannelData(0), c1 = abuf.numberOfChannels > 1 ? abuf.getChannelData(1) : null;
+    const ratio = sr / 16000, n = Math.floor(c0.length / ratio), p16 = new Int16Array(n);
+    for (let i = 0; i < n; i++) {
+      const a0 = Math.floor(i * ratio), a1 = Math.min(c0.length, Math.max(a0 + 1, Math.floor((i + 1) * ratio)));
+      let s = 0; for (let j = a0; j < a1; j++) s += c1 ? (c0[j] + c1[j]) * 0.5 : c0[j];
+      const v = Math.max(-1, Math.min(1, s / (a1 - a0)));
+      p16[i] = v < 0 ? v * 32768 : v * 32767;
+    }
+    return { sr: 16000, pcm16: p16, dur: abuf.duration };
+  }
+
+  function estPitch57(cp, s, e) {
+    if (!cp || !cp.pcm16.length) return null;
+    const { sr, pcm16 } = cp, i0 = Math.max(0, Math.floor(s * sr)), i1 = Math.min(pcm16.length, Math.ceil(e * sr));
+    const w = Math.round(sr * 0.03), h = Math.round(sr * 0.015), minL = Math.floor(sr / 310), maxL = Math.ceil(sr / 85);
+    if (i1 - i0 < w + maxL) return null;
+    const ps = [];
+    for (let p = i0; p + w + maxL < i1; p += h) {
+      let mn = 0, rm = 0;
+      for (let j = 0; j < w; j++) mn += pcm16[p + j]; mn /= w;
+      for (let j = 0; j < w; j++) { const v = (pcm16[p + j] - mn) / 32768; rm += v * v; }
+      if (Math.sqrt(rm / w) < 0.018) continue;
+      const cs = new Float32Array(maxL + 1); let mc = 0;
+      for (let l = minL; l <= maxL; l++) {
+        let num = 0, d1 = 1e-9, d2 = 1e-9;
+        for (let j = 0; j < w; j += 2) { const a = (pcm16[p + j] - mn) / 32768, b = (pcm16[p + j + l] - mn) / 32768; num += a * b; d1 += a * a; d2 += b * b; }
+        cs[l] = num / Math.sqrt(d1 * d2); if (cs[l] > mc) mc = cs[l];
+      }
+      if (mc < 0.56) continue;
+      const th = Math.max(0.54, mc * 0.88);
+      for (let l = minL + 1; l < maxL; l++) if (cs[l] >= th && cs[l] >= cs[l - 1] && cs[l] >= cs[l + 1]) { ps.push(sr / l); break; }
+    }
+    if (ps.length < 3) return null;
+    ps.sort((a, b) => a - b);
+    return ps[Math.floor(ps.length / 2)];
+  }
+
+  function snapCuesToVocalOnset57(list, envObj, offsetSec = 0) {
+    if (!envObj || !envObj.ok || !list.length) return;
+    const { env, nf, pk } = envObj;
+    const th = Math.max(nf * 1.85, nf + (pk - nf) * 0.14);
+    for (let i = 0; i < list.length; i++) {
+      const c = list[i];
+      const absS = c.start + offsetSec, absE = c.end + offsetSec;
+      const prevL = i > 0 ? (list[i - 1].end + offsetSec + 0.03) : 0;
+      const nextL = i < list.length - 1 ? (list[i + 1].start + offsetSec - 0.35) : envObj.dur;
+
+      const w0 = Math.max(Math.floor(prevL / 0.02), Math.floor((absS - 0.45) / 0.02));
+      const w1 = Math.min(env.length - 2, Math.ceil((absS + 0.45) / 0.02));
+      for (let w = w0; w <= w1; w++) {
+        if (env[w] > th && env[w + 1] > th * 0.85) {
+          c.start = +Math.max(prevL - offsetSec, (w * 0.02 - 0.04) - offsetSec).toFixed(2);
+          break;
+        }
+      }
+      const minE = c.start + offsetSec + 0.45;
+      const e0 = Math.max(Math.ceil(minE / 0.02), Math.floor((absE - 0.35) / 0.02));
+      const e1 = Math.min(env.length - 1, Math.floor(Math.min(nextL, absE + 0.45) / 0.02));
+      for (let w = e1; w >= e0; w--) {
+        if (env[w] > th * 0.85) {
+          c.end = +Math.min(nextL - offsetSec, Math.max(minE - offsetSec, ((w + 1) * 0.02 + 0.04) - offsetSec)).toFixed(2);
+          break;
+        }
+      }
+      if (c.end <= c.start + 0.4) c.end = +(c.start + 1.2).toFixed(2);
+      c._mouthStart = c.start; c._mouthEnd = c.end;
+    }
+  }
+
+  window.runManualAutoLipSync = async function() {
+    if (!cues.length) return toast('⚠️ គ្មាន Cues!');
+    const btn = document.getElementById('ctsLipRunBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ កំពុងទម្រឹមមាត់ (WSOLA)...'; }
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    let synced = 0;
+    try {
+      cues.sort((a, b) => a.start - b.start);
+      const clean = [];
+      for (const c of cues) {
+        const prev = clean[clean.length - 1];
+        const ct = (c.km || c.src || '').trim(), pt = prev ? (prev.km || prev.src || '').trim() : '';
+        if (prev && ct && ct === pt && Math.abs(c.start - prev.start) < 0.8) continue;
+        if (prev && c.start < prev.end + 0.03) c.start = +(prev.end + 0.03).toFixed(2);
+        if (c.end <= c.start + 0.35) c.end = +(c.start + 1.2).toFixed(2);
+        clean.push(c);
+      }
+      cues = clean;
+
+      if (document.getElementById('ctsLipSnapChk')?.checked !== false && vidBlobUrl && vidFileSize <= 180 * 1024 * 1024) {
+        try {
+          const abVid = await decodeUrlToAudioBuffer(vidBlobUrl, ctx);
+          const cp = audioBufToPcm16(abVid);
+          const envObj = cp ? buildVocalEnv57(cp.pcm16, cp.sr) : null;
+          if (envObj) snapCuesToVocalOnset57(cues, envObj, 0);
+        } catch {}
+      }
+
+      for (let i = 0; i < cues.length; i++) {
+        const c = cues[i], srcAud = c._rawAudioUrl || c.audioUrl;
+        if (!srcAud) continue;
+        if (!c._rawAudioUrl) c._rawAudioUrl = srcAud;
+        try {
+          const ab = await decodeUrlToAudioBuffer(c._rawAudioUrl, ctx);
+          if (!ab) continue;
+          const nextS = i < cues.length - 1 ? cues[i + 1].start : 999999;
+          const maxSlot = Math.max(0.38, nextS - c.start - 0.03);
+          const target = Math.max(0.38, Math.min(c.end - c.start, maxSlot));
+          const fittedBlob = trimFitStrict57(ab, target, maxSlot, pcm16ToWavBytes);
+          if (fittedBlob) {
+            const fitAb = await ctx.decodeAudioData(await fittedBlob.slice(0).arrayBuffer());
+            if (c.audioUrl && c.audioUrl !== c._rawAudioUrl) try { URL.revokeObjectURL(c.audioUrl); } catch {}
+            c.audioUrl = URL.createObjectURL(fittedBlob);
+            c.end = +Math.min(nextS - 0.03, Math.max(c.start + 0.35, c.start + fitAb.duration)).toFixed(2);
+            c._audioBuf = null;
+            synced++;
+          }
+        } catch {}
+      }
+      const spdEl = document.getElementById('ttsSpeed'); if (spdEl && synced > 0) spdEl.value = '1.0';
+      renderAll();
+      setBoxStatus('ctsLipStatus', 'ok', '🎯 ទម្រឹមមាត់ 100% + រក្សាសំឡេងដើម ពិសិទ្ធ/ស្រីមុំ (' + synced + ' Cues)!');
+    } finally {
+      try { await ctx.close(); } catch {}
+      if (btn) { btn.disabled = false; btn.textContent = '👄 ទម្រឹមសំឡេងឱ្យស្មើមាត់ Video ឥឡូវនេះ'; }
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // D. ZERO-THRASH SMOOTH MAIN PLAYER + EXCLUSIVE SINGLE VOICE + SMART DUCKING
+  // -------------------------------------------------------------------------
+  const activeNodes57 = new Set(), playedIds57 = new Set(), decPromises57 = new Map();
+  let backupEl57 = null, keepOsc57 = null, predecSeqChain = Promise.resolve();
+  let lastVisCueId = '__init__', lastSeekUiMs = 0, lastVidDuckState = null;
+
+  function getBackup57() {
+    if (!backupEl57) {
+      backupEl57 = document.createElement('audio');
+      backupEl57.playsInline = true;
+      backupEl57.style.display = 'none';
+      document.body.appendChild(backupEl57);
+    }
+    return backupEl57;
+  }
+
+  function wakeCtx57() {
+    try {
+      if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume().catch(() => {});
+      if (!keepOsc57 && sharedAudioCtx.state === 'running') {
+        const o = sharedAudioCtx.createOscillator(), g = sharedAudioCtx.createGain();
+        g.gain.value = 0.00001; o.connect(g).connect(sharedAudioCtx.destination); o.start(); keepOsc57 = o;
+      }
+    } catch {}
+  }
+
+  function stopAllDubVoices57(atCtxTime = 0) {
+    if (atCtxTime > 0 && sharedAudioCtx) {
+      const now = sharedAudioCtx.currentTime;
+      for (const item of activeNodes57) {
+        try {
+          item.gain.gain.setValueAtTime(item.gain.gain.value, Math.max(now, atCtxTime - 0.015));
+          item.gain.gain.linearRampToValueAtTime(0, atCtxTime);
+          item.node.stop(atCtxTime + 0.005);
+        } catch {}
+      }
+    } else {
+      for (const item of activeNodes57) {
+        try { item.node.stop(); } catch {}
+        try { item.node.disconnect(); item.gain.disconnect(); } catch {}
+      }
+      activeNodes57.clear();
+    }
+    if (backupEl57) { try { backupEl57.pause(); } catch {} }
+    if (activeRecAudio) { try { activeRecAudio.pause(); } catch {} activeRecAudio = null; }
+    window.speechSynthesis?.cancel();
+  }
+
+  function decodeCue57(c) {
+    if (!c || !c.audioUrl) return Promise.resolve(null);
+    if (c._audioBuf && c._bufUrl === c.audioUrl) return Promise.resolve(c._audioBuf);
+    if (decPromises57.has(c.id)) return decPromises57.get(c.id);
+    wakeCtx57();
+    const p = decodeUrlToAudioBuffer(c.audioUrl, sharedAudioCtx)
+      .then(b => { decPromises57.delete(c.id); if (b) { c._audioBuf = b; c._bufUrl = c.audioUrl; } return b; })
+      .catch(() => { decPromises57.delete(c.id); return null; });
+    decPromises57.set(c.id, p);
+    return p;
+  }
+
+  function predecNext2Main(tSec) {
+    const idx = cues.findIndex(c => c.end >= tSec);
+    if (idx < 0) return;
+    for (let i = idx; i < Math.min(cues.length, idx + 3); i++) {
+      const c = cues[i];
+      if (c && c.audioUrl && (!c._audioBuf || c._bufUrl !== c.audioUrl)) {
+        predecSeqChain = predecSeqChain.then(() => decodeCue57(c));
+      }
+    }
+    for (let i = 0; i < idx - 10; i++) if (cues[i]._audioBuf) cues[i]._audioBuf = null;
+  }
+
+  function fireWebAudio57(c, delay, off) {
+    if (!c._audioBuf || !sharedAudioCtx || sharedAudioCtx.state !== 'running') return false;
+    const spd = parseFloat(document.getElementById('ttsSpeed')?.value || '1') || 1;
+    if (off >= c._audioBuf.duration / spd) return true;
+    const when = sharedAudioCtx.currentTime + Math.max(0, delay);
+    stopAllDubVoices57(when);
+    const sn = sharedAudioCtx.createBufferSource();
+    sn.buffer = c._audioBuf;
+    sn.playbackRate.value = spd;
+    const gn = sharedAudioCtx.createGain();
+    const vr = safeGet('cts_king_vr_cfg', {}) || {};
+    gn.gain.value = (vr.dubVolPct || 100) / 100;
+    sn.connect(gn).connect(sharedAudioCtx.destination);
+    const entry = { node: sn, gain: gn };
+    activeNodes57.add(entry);
+    sn.onended = () => { activeNodes57.delete(entry); try { gn.disconnect(); } catch {} };
+    sn.start(when, Math.max(0, off * spd));
+    return true;
+  }
+
+  function tickScheduler57() {
+    if (!isPlaying) return;
+    if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume().catch(() => {});
+    for (let i = 0; i < cues.length; i++) {
+      const c = cues[i];
+      if (c.start > currentTime + 0.08) break;
+      if (c.end < currentTime - 0.04 || playedIds57.has(c.id)) continue;
+      playedIds57.add(c.id);
+      lastSpokenId = c.id;
+      predecNext2Main(c.start);
+      if (c.audioUrl) {
+        const delay = Math.max(0, c.start - currentTime), off = Math.max(0, currentTime - c.start);
+        if (!fireWebAudio57(c, delay, off)) {
+          stopAllDubVoices57(0);
+          const ma = getBackup57(); ma.src = c.audioUrl;
+          ma.playbackRate = parseFloat(document.getElementById('ttsSpeed')?.value || '1') || 1;
+          try { if (off > 0.05) ma.currentTime = off; } catch {}
+          ma.play().catch(() => {});
+          decodeCue57(c);
+        }
+      } else if (!cues.some(x => x.audioUrl)) {
+        stopAllDubVoices57(0);
+        speakTextDirect(c.km || c.src || '', c.voice, document.getElementById('vidTargetLang')?.value || 'km');
+      }
+    }
+  }
+
+  function applySmartOrigDuck57(speaking) {
+    const vid = document.getElementById('videoPlayer');
+    if (!vid || !vid.src || vid.muted) return;
+    const vr = safeGet('cts_king_vr_cfg', {}) || {};
+    if (vr.enabled) return;
+    if (!cues.some(c => c.audioUrl)) return;
+    if (lastVidDuckState === speaking) return;
+    lastVidDuckState = speaking;
+    const baseV = parseFloat(document.getElementById('vidVolRange')?.value || '1');
+    vid.volume = speaking ? Math.min(baseV, 0.02) : baseV;
+  }
+
+  window.playCueAudio = async function(id) {
+    wakeCtx57(); ensureCtsSoundReady();
+    const c = cues.find(x => x.id === id); if (!c) return;
+    stopAllDubVoices57(0);
+    if (c.audioUrl) {
+      const b = await decodeCue57(c);
+      if (!b || !fireWebAudio57(c, 0, 0)) {
+        const ma = getBackup57(); ma.src = c.audioUrl; ma.play().catch(() => {});
+      }
+      return;
+    }
+    speakTextDirect(c.km || c.src || '', c.voice, document.getElementById('vidTargetLang')?.value || 'km');
+  };
+
+  window.updateVisuals = function(trigger) {
+    const nowMs = performance.now();
+    const active = cues.find(c => currentTime >= c.start && currentTime <= c.end);
+    const activeId = active ? active.id : null;
+
+    if (activeId !== lastVisCueId || !trigger) {
+      lastVisCueId = activeId;
+      const pill = document.getElementById('subPill');
+      if (pill) {
+        if (active) { pill.style.display = 'inline-block'; pill.textContent = active.km || active.src; }
+        else pill.style.display = 'none';
+      }
+      document.querySelectorAll('.cue-card').forEach(el => el.classList.toggle('active-cue', activeId !== null && Number(el.dataset.id) === activeId));
+      document.querySelectorAll('.tl-clip').forEach(el => el.classList.toggle('active', activeId !== null && Number(el.dataset.id) === activeId));
+    }
+
+    if (!trigger || (nowMs - lastSeekUiMs) >= 85) {
+      lastSeekUiMs = nowMs;
+      const sb = document.getElementById('seekBar'), tt = document.getElementById('timeTxt'), ph = document.getElementById('tlPlayhead'), ti = document.getElementById('tlInner');
+      if (sb) sb.value = currentTime;
+      if (tt) tt.textContent = fmtTime(currentTime) + ' / ' + fmtTime(totalDuration);
+      if (ph && ti) ph.style.left = (currentTime * parseFloat(ti.dataset.px || '32')) + 'px';
+    }
+
+    if (trigger) {
+      tickScheduler57();
+      applySmartOrigDuck57(Boolean(active));
+    }
+  };
+
+  window.startPlayback = function() {
+    wakeCtx57(); ensureCtsSoundReady(); stopAllDubVoices57(0);
+    playedIds57.clear(); lastVisCueId = '__init__'; lastVidDuckState = null;
+    const ma = getBackup57(); if (!ma.src) { try { ma.play().catch(() => {}); } catch {} }
+    if ('speechSynthesis' in window) window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+    document.getElementById('playerSection').classList.remove('collapsed');
+    isPlaying = true; document.getElementById('playBtn').textContent = '⏸️ ផ្អាក';
+    predecNext2Main(currentTime);
+
+    const vid = document.getElementById('videoPlayer');
+    if (vid && vid.src) {
+      vid.playbackRate = 1.0;
+      vid.loop = vid.duration && totalDuration > vid.duration + 1;
+      vid.currentTime = vid.duration ? (currentTime % vid.duration) : currentTime;
+      vid.play().catch(() => {});
+    }
+    if (bgmAudio) { bgmAudio.currentTime = currentTime % (bgmAudio.duration || 60); bgmAudio.play().catch(() => {}); }
+
+    cancelAnimationFrame(playInterval); clearInterval(playInterval);
+    let lastTs = performance.now();
+    const loop = (now) => {
+      if (!isPlaying) return;
+      const dt = Math.min(0.1, Math.max(0, (now - lastTs) / 1000)); lastTs = now;
+      if (vid && vid.src && !vid.paused && vid.duration && currentTime <= vid.duration && Math.abs(vid.currentTime - currentTime) < 2.5) {
+        currentTime = vid.currentTime;
+      } else {
+        currentTime += dt;
+      }
+      if (currentTime >= totalDuration) { currentTime = 0; window.pausePlayback(); return; }
+      window.updateVisuals(true);
+      playInterval = requestAnimationFrame(loop);
+    };
+    playInterval = requestAnimationFrame(loop);
+  };
+
+  window.pausePlayback = function() {
+    isPlaying = false;
+    cancelAnimationFrame(playInterval); clearInterval(playInterval);
+    document.getElementById('playBtn').textContent = '▶️ លេង';
+    const vid = document.getElementById('videoPlayer'); if (vid && vid.src) vid.pause();
+    if (bgmAudio) bgmAudio.pause();
+    stopAllDubVoices57(0);
+    playedIds57.clear();
+  };
+
+  window.jumpTo = function(s) {
+    currentTime = Math.max(0, Math.min(totalDuration, s));
+    const v = document.getElementById('videoPlayer'); if (v && v.src && v.duration) v.currentTime = currentTime % v.duration;
+    stopAllDubVoices57(0); playedIds57.clear(); lastSpokenId = null; lastVisCueId = '__init__';
+    predecNext2Main(currentTime); window.updateVisuals(false);
+  };
+
+  // -------------------------------------------------------------------------
+  // E. MOUTH-SYNCED PIPELINE FOR DUBBER & AI + SMOOTH EXPORT MP4 HOOK
+  // -------------------------------------------------------------------------
+  const _prevRunVidPipe57 = window.runVideoAiPipeline;
+  window.runVideoAiPipeline = async function() {
+    const doTr = document.getElementById('pipeDoTranscript')?.checked;
+    const doAu = document.getElementById('pipeDoAudio')?.checked;
+    if (_prevRunVidPipe57) await _prevRunVidPipe57();
+    if (doTr && !doAu && cues.length && vidBlobUrl && vidFileSize <= 180 * 1024 * 1024) {
+      try {
+        const tc = new (window.AudioContext || window.webkitAudioContext)();
+        const ab = await decodeUrlToAudioBuffer(vidBlobUrl, tc);
+        const cp = audioBufToPcm16(ab);
+        const envObj = cp ? buildVocalEnv57(cp.pcm16, cp.sr) : null;
+        if (envObj) {
+          snapCuesToVocalOnset57(cues, envObj, 0);
+          cues.forEach(c => {
+            if (cp) {
+              const hz = estPitch57(cp, c.start, c.end);
+              if (hz && hz >= (window.__ctsV54GetFemaleHz ? window.__ctsV54GetFemaleHz() : 188)) c.voice = 'sreymom';
+              else if (hz && hz <= 150) c.voice = 'piseth';
+            }
+          });
+          renderAll();
+        }
+        try { await tc.close(); } catch {}
+      } catch {}
+    }
+  };
+
+  const _PrevBlob57 = window.Blob;
+  window.Blob = function(parts, opts) {
+    if (opts && opts.type === 'application/javascript' && Array.isArray(parts) && typeof parts[0] === 'string' && parts[0].includes('pickZeroBFrameVCfg')) {
+      let code = parts[0];
+      code = code.replace(
+        "const codecs = is1080 ? ['avc1.42002a', 'avc1.42E028', 'avc1.420028', 'avc1.4d002a'] : ['avc1.42001f', 'avc1.42E01F', 'avc1.42E01E', 'avc1.420028', 'avc1.4d001f'];",
+        "const codecs = is1080 ? ['avc1.4d002a', 'avc1.64002a', 'avc1.42E028', 'avc1.42002a'] : ['avc1.4d0028', 'avc1.42E028', 'avc1.640028', 'avc1.4d001f', 'avc1.42001f'];"
+      );
+      code = code.replace("latencyMode: 'quality'", "latencyMode: 'realtime'");
+      code = code.replace(
+        "if (partBaseTsUs === null) partBaseTsUs = rawUs;\n        const ts = prevTs < 0 ? 0 : Math.max(prevTs + 5000, Math.round(rawUs - partBaseTsUs));",
+        "if (partBaseTsUs === null) partBaseTsUs = rawUs;\n        const _cfrStep = Math.round(1e6 / Math.max(12, outFps || fps));\n        const _cfrTs = encodedInPart * _cfrStep;\n        const _rawRel = Math.round(rawUs - partBaseTsUs);\n        const _useTs = Math.abs(_rawRel - _cfrTs) < _cfrStep * 1.6 ? _cfrTs : _rawRel;\n        const ts = prevTs < 0 ? 0 : Math.max(prevTs + Math.round(_cfrStep * 0.5), _useTs);"
+      );
+      parts = [code];
+    }
+    return new _PrevBlob57(parts, opts);
+  };
+  window.Blob.prototype = _PrevBlob57.prototype;
+
+  let inExport57 = false;
+  const _prevStartExp57 = window.startVideoExport;
+  window.startVideoExport = async function() {
+    inExport57 = true;
+    try { return await _prevStartExp57(); }
+    finally { inExport57 = false; }
+  };
+
+  const _prevDecode57 = window.decodeUrlToAudioBuffer;
+  window.decodeUrlToAudioBuffer = async function(url, ctx) {
+    const ab = await _prevDecode57(url, ctx);
+    if (!ab || !inExport57) return ab;
+    const idx = cues.findIndex(c => c.audioUrl === url);
+    if (idx >= 0 && idx < cues.length - 1) {
+      const c = cues[idx], nxt = cues[idx + 1];
+      const spd = parseFloat(document.getElementById('ttsSpeed')?.value || '1') || 1;
+      const maxDur = Math.max(0.25, (nxt.start - c.start - 0.025) * spd);
+      const maxSamp = Math.floor(maxDur * ab.sampleRate);
+      if (ab.length > maxSamp) {
+        const out = new AudioBuffer({ length: maxSamp, numberOfChannels: 1, sampleRate: ab.sampleRate });
+        const srcD = ab.getChannelData(0), dstD = new Float32Array(srcD.subarray(0, maxSamp));
+        const fOut = Math.min(Math.round(ab.sampleRate * 0.02), Math.floor(maxSamp / 3));
+        for (let k = 0; k < fOut; k++) dstD[maxSamp - 1 - k] *= k / fOut;
+        out.copyToChannel(dstD, 0);
+        return out;
+      }
+    }
+    return ab;
+  };
+
+  // -------------------------------------------------------------------------
+  // F. BIG PROJECT 100% MOUTH-SYNC + 1-CLICK FIX FOR EXISTING PARTS IN BIG PROJECT
+  // -------------------------------------------------------------------------
+  function openDb57(name, store) {
+    return new Promise((res, rej) => {
+      const req = indexedDB.open(name, 1);
+      req.onupgradeneeded = e => { const db = e.target.result; if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath: 'id' }); };
+      req.onsuccess = e => res(e.target.result);
+      req.onerror = e => rej(e.target.error);
+    });
+  }
+  async function idbPut57(dbN, stN, obj) {
+    const db = await openDb57(dbN, stN);
+    return new Promise((res, rej) => { const tx = db.transaction(stN, 'readwrite'); tx.objectStore(stN).put(obj); tx.oncomplete = () => { db.close(); res(); }; tx.onerror = e => { db.close(); rej(e.target.error); }; });
+  }
+  async function idbGetAll57(dbN, stN) {
+    const db = await openDb57(dbN, stN);
+    return new Promise((res, rej) => { const tx = db.transaction(stN, 'readonly'); const r = tx.objectStore(stN).getAll(); r.onsuccess = () => { db.close(); res((r.result || []).sort((a, b) => a.partIndex - b.partIndex)); }; r.onerror = e => { db.close(); rej(e.target.error); }; });
+  }
+  async function idbClear57(dbN, stN) {
+    const db = await openDb57(dbN, stN);
+    return new Promise((res, rej) => { const tx = db.transaction(stN, 'readwrite'); tx.objectStore(stN).clear(); tx.oncomplete = () => { db.close(); res(); }; tx.onerror = e => { db.close(); rej(e.target.error); }; });
+  }
+
+  async function buildSlice57(rawFile, probe, part) {
+    const { vTrack, vSamples, vDesc, rotDeg, aTrack, aSamples, aDesc } = probe;
+    const vSlice = vSamples.slice(part.sIdx, part.eIdx);
+    const mapV = c => !c ? 'avc' : ((c.startsWith('hev') || c.startsWith('hvc')) ? 'hevc' : (c.startsWith('vp09') ? 'vp9' : (c.startsWith('av01') ? 'av1' : 'avc')));
+    const mapA = c => !c ? null : (c.includes('mp4a') ? 'aac' : (c.includes('opus') ? 'opus' : null));
+    const aCodec = aTrack ? mapA(aTrack.codec) : null;
+    const aSlice = aCodec ? aSamples.filter(s => { const t = (Number.isFinite(s.dts) ? s.dts : s.cts) / s.timescale; return t >= part.start - 0.02 && t < part.end; }) : [];
+    const v0Dts = (Number.isFinite(vSlice[0].dts) ? vSlice[0].dts : vSlice[0].cts) / vSlice[0].timescale;
+    let minVCts = v0Dts;
+    for (let k = 0; k < Math.min(12, vSlice.length); k++) {
+      const ct = (Number.isFinite(vSlice[k].cts) ? vSlice[k].cts : vSlice[k].dts) / vSlice[k].timescale;
+      if (ct < minVCts) minVCts = ct;
+    }
+    const a0Dts = aSlice.length ? ((Number.isFinite(aSlice[0].dts) ? aSlice[0].dts : aSlice[0].cts) / aSlice[0].timescale) : v0Dts;
+    const baseDts = Math.min(v0Dts, minVCts, a0Dts);
+
+    const target = new Mp4Muxer.ArrayBufferTarget();
+    const muxOpts = { target, video: { codec: mapV(vTrack.codec), width: vTrack.video?.width || vTrack.track_width || 1280, height: vTrack.video?.height || vTrack.track_height || 720, rotation: rotDeg || 0 }, fastStart: false, firstTimestampBehavior: 'cross-track-offset' };
+    if (aCodec && aSlice.length) muxOpts.audio = { codec: aCodec, numberOfChannels: aTrack.audio?.channel_count || 2, sampleRate: aTrack.audio?.sample_rate || 44100 };
+    const muxer = new Mp4Muxer.Muxer(muxOpts);
+
+    let i = 0, firstV = true, prevDts = -1;
+    while (i < vSlice.length) {
+      const winS = vSlice[i].offset, winE = Math.min(rawFile.size, Math.max(winS + 4 * 1024 * 1024, vSlice[i].offset + vSlice[i].size));
+      const ab = await rawFile.slice(winS, winE).arrayBuffer();
+      while (i < vSlice.length) {
+        const s = vSlice[i]; if (s.offset < winS || s.offset + s.size > winE) break;
+        const sDts = Number.isFinite(s.dts) ? s.dts : s.cts, sCts = Number.isFinite(s.cts) ? s.cts : sDts;
+        const rawDtsUs = Math.round(((sDts / s.timescale) - baseDts) * 1e6);
+        const dtsUs = prevDts < 0 ? Math.max(0, rawDtsUs) : Math.max(prevDts + 1, rawDtsUs); prevDts = dtsUs;
+        const ctoUs = Math.round(((sCts - sDts) / s.timescale) * 1e6), durUs = Math.max(1000, Math.round((s.duration / s.timescale) * 1e6));
+        const meta = firstV ? { decoderConfig: { codec: vTrack.codec, codedWidth: muxOpts.video.width, codedHeight: muxOpts.video.height, ...(vDesc ? { description: vDesc } : {}) } } : undefined;
+        firstV = false;
+        muxer.addVideoChunkRaw(new Uint8Array(ab, s.offset - winS, s.size), s.is_sync ? 'key' : 'delta', dtsUs + ctoUs, durUs, meta, ctoUs);
+        i++;
+      }
+    }
+    if (muxOpts.audio && aSlice.length) {
+      let j = 0, firstA = true, prevADts = -1;
+      while (j < aSlice.length) {
+        const winS = aSlice[j].offset, winE = Math.min(rawFile.size, Math.max(winS + 2 * 1024 * 1024, aSlice[j].offset + aSlice[j].size));
+        const ab = await rawFile.slice(winS, winE).arrayBuffer();
+        while (j < aSlice.length) {
+          const s = aSlice[j]; if (s.offset < winS || s.offset + s.size > winE) break;
+          const sDts = Number.isFinite(s.dts) ? s.dts : s.cts, rawATs = Math.round(((sDts / s.timescale) - baseDts) * 1e6);
+          const aTsUs = prevADts < 0 ? Math.max(0, rawATs) : Math.max(prevADts + 1, rawATs); prevADts = aTsUs;
+          const durUs = Math.max(1000, Math.round((s.duration / s.timescale) * 1e6));
+          const meta = firstA ? { decoderConfig: { codec: aTrack.codec, sampleRate: muxOpts.audio.sampleRate, numberOfChannels: muxOpts.audio.numberOfChannels, ...(aDesc ? { description: aDesc } : {}) } } : undefined;
+          firstA = false;
+          muxer.addAudioChunkRaw(new Uint8Array(ab, s.offset - winS, s.size), 'key', aTsUs, durUs, meta);
+          j++;
+        }
+      }
+    }
+    muxer.finalize();
+    return new Blob([target.buffer], { type: 'video/mp4' });
+  }
+
+  async function extractAud57(rawFile, probe, startSec, endSec, tmpCtx) {
+    if (!probe?.aTrack || !probe.aSamples.length) return null;
+    const c = probe.aTrack.codec;
+    const aCodec = !c ? null : (c.includes('mp4a') ? 'aac' : (c.includes('opus') ? 'opus' : null));
+    if (!aCodec) return null;
+    const slice = probe.aSamples.filter(s => { const t = (Number.isFinite(s.dts) ? s.dts : s.cts) / s.timescale; return t >= startSec - 0.05 && t <= endSec + 0.05; });
+    if (!slice.length) return null;
+    const target = new Mp4Muxer.ArrayBufferTarget();
+    const muxer = new Mp4Muxer.Muxer({ target, audio: { codec: aCodec, numberOfChannels: probe.aTrack.audio?.channel_count || 2, sampleRate: probe.aTrack.audio?.sample_rate || 44100 }, fastStart: false, firstTimestampBehavior: 'offset' });
+    const minOff = slice[0].offset, maxOff = Math.min(rawFile.size, slice[slice.length - 1].offset + slice[slice.length - 1].size), ab = await rawFile.slice(minOff, maxOff).arrayBuffer();
+    const baseT = (Number.isFinite(slice[0].dts) ? slice[0].dts : slice[0].cts) / slice[0].timescale;
+    let first = true, prevTs = -1;
+    for (const s of slice) {
+      if (s.offset < minOff || s.offset + s.size > maxOff) continue;
+      const sDts = Number.isFinite(s.dts) ? s.dts : s.cts, rawTs = Math.max(0, Math.round(((sDts / s.timescale) - baseT) * 1e6));
+      const tsUs = prevTs < 0 ? rawTs : Math.max(prevTs + 1, rawTs); prevTs = tsUs;
+      const durUs = Math.max(1000, Math.round((s.duration / s.timescale) * 1e6));
+      const meta = first ? { decoderConfig: { codec: probe.aTrack.codec, sampleRate: probe.aTrack.audio?.sample_rate || 44100, numberOfChannels: probe.aTrack.audio?.channel_count || 2, ...(probe.aDesc ? { description: probe.aDesc } : {}) } } : undefined;
+      first = false; muxer.addAudioChunkRaw(new Uint8Array(ab, s.offset - minOff, s.size), 'key', tsUs, durUs, meta);
+    }
+    muxer.finalize();
+    try { return await tmpCtx.decodeAudioData(target.buffer); } catch { return null; }
+  }
+
+  function cleanHighPass16kWavB64(abuf) {
+    const cp = audioBufToPcm16(abuf);
+    if (!cp || !cp.pcm16.length) return null;
+    const n = cp.pcm16.length, out = new Float32Array(n), al = Math.exp(-2 * Math.PI * 180 / 16000);
+    let px = 0, py = 0, pk = 0, sumSq = 0;
+    for (let i = 0; i < n; i++) {
+      const x = cp.pcm16[i] / 32768, y = al * (py + x - px); px = x; py = y;
+      out[i] = y; const ay = Math.abs(y); if (ay > pk) pk = ay; sumSq += y * y;
+    }
+    if (Math.sqrt(sumSq / n) < 0.0022) return null;
+    if (pk > 0.02 && pk < 0.68) {
+      const g = Math.min(2.6, 0.85 / pk);
+      for (let i = 0; i < n; i++) out[i] = Math.max(-0.98, Math.min(0.98, out[i] * g));
+    }
+    return { base64: uint8ToBase64(pcm16ToWavBytes(out, 16000)), cp, env: buildVocalEnv57(cp.pcm16, 16000) };
+  }
+
+  async function probeMp4Light57(rawFile) {
+    if (!window.MP4Box) await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/mp4box@0.5.4/dist/mp4box.all.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+    const mp4 = MP4Box.createFile(); let readyInfo = null, err = null;
+    mp4.onError = e => { err = new Error(String(e)); }; mp4.onReady = info => { readyInfo = info; };
+    let pos = 0, feedPos = 0;
+    while (pos + 8 <= rawFile.size && !readyInfo && !err) {
+      const hdr = new DataView(await rawFile.slice(pos, Math.min(rawFile.size, pos + 16)).arrayBuffer());
+      let size = hdr.getUint32(0, false);
+      const type = String.fromCharCode(hdr.getUint8(4), hdr.getUint8(5), hdr.getUint8(6), hdr.getUint8(7));
+      if (size === 1) size = Number(hdr.getBigUint64(8, false)); else if (size === 0) size = rawFile.size - pos;
+      if (size < 8) break;
+      if (type !== 'mdat' && size <= 45 * 1024 * 1024) { const ab = await rawFile.slice(pos, pos + size).arrayBuffer(); ab.fileStart = feedPos; feedPos += ab.byteLength; mp4.appendBuffer(ab); }
+      if (type === 'moov') break;
+      pos += size;
+    }
+    if (!readyInfo) mp4.flush();
+    if (err || !readyInfo || !readyInfo.videoTracks?.length) return null;
+    const vTrack = readyInfo.videoTracks[0], vTrak = mp4.getTrackById(vTrack.id);
+    const aTrack = readyInfo.audioTracks?.[0] || null, aTrak = aTrack ? mp4.getTrackById(aTrack.id) : null;
+    const DS = window.DataStream || window.MP4Box?.DataStream;
+    const getVDesc = tr => { if (!tr || !DS) return undefined; for (const e of (tr?.mdia?.minf?.stbl?.stsd?.entries || [])) { const b = e.avcC || e.hvcC || e.vpcC || e.av1C; if (b) { const st = new DS(undefined, 0, DS.BIG_ENDIAN); b.write(st); return new Uint8Array(st.buffer.slice(8, st.position)); } } };
+    const getADesc = tr => { for (const e of (tr?.mdia?.minf?.stbl?.stsd?.entries || [])) { const f = ds => { for (const d of (ds || [])) { if (d.tag === 5 && d.data) return new Uint8Array(d.data); if (d.descs) { const r = f(d.descs); if (r) return r; } } }; const o = f(e.esds?.esd?.descs); if (o) return o; } };
+    const m = vTrak?.tkhd?.matrix; let rotDeg = 0;
+    if (m && m.length >= 5) { const n = ((Math.round(Math.atan2(m[1] / 65536, m[0] / 65536) * 180 / Math.PI) % 360) + 360) % 360; if ([0, 90, 180, 270].includes(n)) rotDeg = n; }
+    let aDesc = aTrak ? getADesc(aTrak) : undefined;
+    if (aTrack && !aDesc && String(aTrack.codec || '').toLowerCase().includes('mp4a')) {
+      const rates = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+      let srI = rates.indexOf(Number(aTrack.audio?.sample_rate) || 44100); if (srI < 0) srI = 4;
+      const ch = Math.max(1, Math.min(7, Number(aTrack.audio?.channel_count) || 2));
+      aDesc = new Uint8Array([((2 << 3) | (srI >> 1)) & 0xff, (((srI & 1) << 7) | (ch << 3)) & 0xff]);
+    }
+    return { vTrack, vSamples: vTrak?.samples || [], vDesc: getVDesc(vTrak), rotDeg, aTrack, aSamples: aTrak?.samples || [], aDesc };
+  }
+
+  let bpRun57 = false, bpAb57 = null, bpKa57 = null;
+  function startKa57() {
+    try {
+      if (!bpKa57) {
+        const sr = 8000, n = 4000, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+        const ws = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+        ws(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); ws(8, 'WAVE'); ws(12, 'fmt ');
+        v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+        v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+        ws(36, 'data'); v.setUint32(40, n * 2, true);
+        bpKa57 = new Audio(URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })));
+        bpKa57.loop = true; bpKa57.volume = 0.01;
+      }
+      bpKa57.play().catch(() => {});
+    } catch {}
+  }
+
+  async function synthAndRepair57(partCues, tgtCode, ctx, signal, onProg) {
+    const ttsCfg = Object.assign({ engine: 'auto', azureKey: '', azureRegion: 'southeastasia', edgeUrl: '' }, safeGet('cts_king_tts_cfg', {}) || {});
+    if (ttsCfg.engine === 'azure' && !ttsCfg.azureKey) ttsCfg.engine = 'auto';
+    if (ttsCfg.engine === 'edge_proxy' && !ttsCfg.edgeUrl) ttsCfg.engine = 'auto';
+    const eng = ((ttsCfg.engine === 'edge_proxy' || ttsCfg.engine === 'auto') && ttsCfg.edgeUrl) ? 'edge_proxy'
+      : (((ttsCfg.engine === 'azure' || ttsCfg.engine === 'auto') && ttsCfg.azureKey) ? 'azure' : 'gemini');
+
+    const VOICES = {
+      km: { piseth: 'km-KH-PisethNeural', sreymom: 'km-KH-SreymomNeural' },
+      en: { piseth: 'en-US-AndrewNeural', sreymom: 'en-US-AvaNeural' },
+      'zh-CN': { piseth: 'zh-CN-YunxiNeural', sreymom: 'zh-CN-XiaoxiaoNeural' },
+      th: { piseth: 'th-TH-NiwatNeural', sreymom: 'th-TH-PremwadeeNeural' },
+      vi: { piseth: 'vi-VN-NamMinhNeural', sreymom: 'vi-VN-HoaiMyNeural' },
+      ja: { piseth: 'ja-JP-KeitaNeural', sreymom: 'ja-JP-NanamiNeural' },
+      ko: { piseth: 'ko-KR-InJoonNeural', sreymom: 'ko-KR-SunHiNeural' },
+      fr: { piseth: 'fr-FR-HenriNeural', sreymom: 'fr-FR-DeniseNeural' },
+      es: { piseth: 'es-ES-AlvaroNeural', sreymom: 'es-ES-ElviraNeural' },
+      id: { piseth: 'id-ID-ArdiNeural', sreymom: 'id-ID-GadisNeural' }
+    };
+    const vMap = VOICES[tgtCode] || VOICES.km;
+
+    const synthOne = async (txt, role, wId) => {
+      const rKey = role === 'sreymom' ? 'sreymom' : 'piseth';
+      if (eng === 'edge_proxy') {
+        const url = ttsCfg.edgeUrl.trim(), vid = vMap[rKey] || vMap.piseth;
+        const body = /\/audio\/speech/i.test(url) ? { model: 'tts-1', input: txt, voice: vid, response_format: 'mp3' } : { text: txt, voice: vid };
+        const res = await ctsFetchTimeout(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 45000, signal);
+        if (!res.ok) throw new Error('Edge-TTS HTTP ' + res.status);
+        return await res.blob();
+      }
+      if (eng === 'azure') {
+        const sdk = window.SpeechSDK || await new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@latest/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js';
+          s.onload = () => window.SpeechSDK ? res(window.SpeechSDK) : rej(new Error('SDK err'));
+          s.onerror = rej; document.head.appendChild(s);
+        });
+        const sc = sdk.SpeechConfig.fromSubscription(ttsCfg.azureKey, ttsCfg.azureRegion || 'southeastasia');
+        sc.speechSynthesisOutputFormat = sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
+        const bcp = getLangObj(tgtCode).bcp || 'km-KH', esc = s => String(s || '').replace(/[<>&'"]/g, ch => ({ '<':'&lt;', '>':'&gt;', '&':'&amp;', "'":'&apos;', '"':'&quot;' }[ch]));
+        const ssml = '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="' + bcp + '"><voice name="' + (vMap[rKey] || vMap.piseth) + '">' + esc(txt) + '</voice></speak>';
+        const syn = new sdk.SpeechSynthesizer(sc, null);
+        return await new Promise((resolve, reject) => {
+          syn.speakSsmlAsync(ssml, r => { try { syn.close(); } catch {} if (r.reason === sdk.ResultReason.SynthesizingAudioCompleted && r.audioData) resolve(new Blob([r.audioData], { type: 'audio/wav' })); else reject(new Error(r.errorDetails || 'Azure err')); }, e => { try { syn.close(); } catch {} reject(e); });
+        });
+      }
+      return await window.generateGeminiTtsBlob(txt, rKey, signal, wId);
+    };
+
+    const audioBlobs = new Array(partCues.length).fill(null);
+    let done = 0, cursor = 0;
+    const conc = eng === 'edge_proxy' ? 4 : Math.min(4, Math.max(1, getProviderKeys('gemini').length));
+    await Promise.all(Array.from({ length: Math.min(conc, Math.max(1, partCues.length)) }, async (_, wId) => {
+      while (cursor < partCues.length && !signal.aborted) {
+        const idx = cursor++, c = partCues[idx], txt = (c.km || c.src || '').trim();
+        if (!txt) { done++; if (onProg) onProg(done, partCues.length); continue; }
+        const nextS = idx < partCues.length - 1 ? partCues[idx + 1].start : 999999;
+        const maxSlot = Math.max(0.38, nextS - c.start - 0.03);
+        const target = Math.max(0.38, Math.min(c.end - c.start, maxSlot));
+        for (let att = 0; att < 3; att++) {
+          try {
+            const rawBlob = await synthOne(txt, c.voice, wId + att);
+            const ab = await ctx.decodeAudioData(await rawBlob.arrayBuffer());
+            const repaired = trimFitStrict57(ab, target, maxSlot, pcm16ToWavBytes);
+            if (repaired) {
+              const repAb = await ctx.decodeAudioData(await repaired.slice(0).arrayBuffer());
+              c.end = +Math.min(nextS - 0.03, Math.max(c.start + 0.35, c.start + repAb.duration)).toFixed(2);
+              audioBlobs[idx] = repaired;
+              break;
+            }
+          } catch (e) { if (e.name === 'AbortError') throw e; await sleepAbortable(550, signal); }
+        }
+        done++; if (onProg) onProg(done, partCues.length);
+      }
+    }));
+    return audioBlobs;
+  }
+
+  // 1-Click Fix Voice & Lip-Sync for ALL existing parts inside Big Project!
+  async function repairExistingBigProjectParts57() {
+    if (bpRun57) return toast('⏳ កំពុងដំណើរការ Project — សូមរង់ចាំបន្តិច!');
+    const parts = await idbGetAll57(PROJ_DB, PROJ_STORE).catch(() => []);
+    if (!parts.length) return toast('⚠️ មិនទាន់មានភាគរឿងនៅក្នុង Big Project ទេ!');
+    bpRun57 = true; bpAb57 = new AbortController(); const sig = bpAb57.signal;
+    const btn = document.getElementById('cts57BpRepairBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ កំពុងជួសជុល...'; }
+    const sWrap = document.getElementById('bpStepProg');
+    if (sWrap) sWrap.classList.add('show');
+    startKa57(); await acquireWakeLock();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const tgtCode = document.getElementById('bpTgtLang')?.value || 'km';
+    const femaleHz = window.__ctsV54GetFemaleHz ? window.__ctsV54GetFemaleHz() : 188;
+
+    try {
+      for (let pi = 0; pi < parts.length; pi++) {
+        if (sig.aborted) break;
+        const p = parts[pi], pCues = (p.cues || []).map(c => Object.assign({}, c));
+        if (!pCues.length) continue;
+
+        // 1. Acoustic mouth-onset snap + F0 voice lock from this part's Video Blob
+        if (p.videoBlob) {
+          setBoxStatus('bpStatusBox', 'info', '👄 ភាគ #' + (p.partIndex + 1) + ': កំពុងស្កេនមាត់ & តម្រឹមម៉ោង...');
+          try {
+            const probe = await probeMp4Light57(p.videoBlob).catch(() => null);
+            let abPart = null;
+            if (probe) abPart = await extractAud57(p.videoBlob, probe, 0, p.duration || 600, audioCtx);
+            else if (p.videoBlob.size <= 140 * 1024 * 1024) abPart = await audioCtx.decodeAudioData(await p.videoBlob.slice(0).arrayBuffer());
+            if (abPart) {
+              const cp = audioBufToPcm16(abPart);
+              const envObj = cp ? buildVocalEnv57(cp.pcm16, cp.sr) : null;
+              if (envObj) snapCuesToVocalOnset57(pCues, envObj, 0);
+              if (cp) {
+                pCues.forEach(c => {
+                  const hz = estPitch57(cp, c.start, c.end);
+                  if (hz && hz >= femaleHz) c.voice = 'sreymom';
+                  else if (hz && hz <= 150) c.voice = 'piseth';
+                  else if (c.voice !== 'sreymom') c.voice = 'piseth';
+                });
+              }
+            }
+          } catch {}
+        }
+
+        // 2. Re-generate clean Gemini 3.8 TTS (steady temp 0.15) + WSOLA pitch-preserving fit!
+        const newBlobs = await synthAndRepair57(pCues, tgtCode, audioCtx, sig, (dn, tot) => {
+          const pct = Math.round((dn / Math.max(1, tot)) * 100);
+          document.getElementById('bpStepTxt').textContent = '🔄 ភាគ #' + (p.partIndex + 1) + ': ពិសិទ្ធ/ស្រីមុំ + WSOLA (' + dn + '/' + tot + ')';
+          document.getElementById('bpStepPct').textContent = pct + '%';
+          document.getElementById('bpStepFill').style.width = pct + '%';
+        });
+
+        p.cues = pCues.map((c, idx) => ({ id: c.id, start: c.start, end: c.end, src: c.src, km: c.km, voice: c.voice, audioBlob: newBlobs[idx] || c.audioBlob || null }));
+        p.status = 'done';
+        await idbPut57(PROJ_DB, PROJ_STORE, p);
+        document.getElementById('bpRefreshListBtn')?.click();
+      }
+      setBoxStatus('bpStatusBox', 'ok', '🎉 ជួសជុលសំឡេង ពិសិទ្ធ/ស្រីមុំ + ទម្រឹមមាត់ ១០០% គ្រប់ភាគក្នុង Big Project រួចរាល់!');
+      toast('🎉 ជួសជុលគ្រប់ភាគក្នុង Big Project រួចរាល់!');
+    } catch (e) {
+      setBoxStatus('bpStatusBox', 'err', '❌ ' + (e?.message || e));
+    } finally {
+      bpRun57 = false; try { await audioCtx.close(); } catch {}
+      try { if (bpKa57) bpKa57.pause(); } catch {}
+      releaseWakeLock();
+      if (btn) { btn.disabled = false; btn.textContent = '🔄👄 Fix សំឡេង & Lip-Sync'; }
+    }
+  }
+
+  async function runBigProject57(isResume) {
+    if (bpRun57) return;
+    const vid = document.getElementById('videoPlayer');
+    const rawFile = window.__ctsRawVideoFile || (vidBlobUrl ? await fetch(vidBlobUrl).then(r => r.blob()).catch(() => null) : null);
+    let dur = (vid?.duration && isFinite(vid.duration)) ? vid.duration : 0;
+    if (rawFile && !dur) {
+      dur = await new Promise(res => {
+        const tv = document.createElement('video'), u = URL.createObjectURL(rawFile);
+        tv.preload = 'metadata'; tv.muted = true;
+        tv.onloadedmetadata = () => { const d = isFinite(tv.duration) ? tv.duration : 0; URL.revokeObjectURL(u); res(d); };
+        tv.onerror = () => { URL.revokeObjectURL(u); res(0); };
+        tv.src = u;
+      });
+    }
+    if (!rawFile || !dur) return toast('⚠️ សូមបញ្ចូល Video រឿងជាមុនសិន!');
+    if (settings.provider !== 'gemini' || !getProviderKeys('gemini').length) return toast('⚠️ ត្រូវការ Gemini API Key ក្នុង Settings ⚙️!');
+
+    const splitArea = document.getElementById('bpSplitConfigArea');
+    const mode = (!splitArea || splitArea.style.display !== 'none') ? 'split' : 'full';
+    const splitMins = Math.max(1, Math.min(40, parseInt(document.getElementById('bpSplitMinsInp')?.value || '5', 10) || 5));
+
+    bpRun57 = true; bpAb57 = new AbortController(); const sig = bpAb57.signal;
+    const sBtn = document.getElementById('bpStartBtn'), rBtn = document.getElementById('bpResumeBtn'), stBtn = document.getElementById('bpStopBtn');
+    const oWrap = document.getElementById('bpOverallProg'), sWrap = document.getElementById('bpStepProg');
+    sBtn.disabled = true; sBtn.textContent = '⚡ កំពុងដំណើរការ...'; rBtn.style.display = 'none';
+    stBtn.style.display = 'inline-flex'; stBtn.onclick = () => bpAb57?.abort();
+    oWrap.classList.add('show'); sWrap.classList.add('show');
+
+    startKa57(); await acquireWakeLock();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const startWall = performance.now();
+
+    try {
+      setBoxStatus('bpStatusBox', 'info', '🔍 កំពុងវិភាគ & រៀបចំសំឡេង 16kHz...');
+      const probe = await probeMp4Light57(rawFile).catch(() => null);
+      let fullLegacyBuf = null;
+      if (!probe && rawFile.size <= 140 * 1024 * 1024) {
+        try { fullLegacyBuf = await decodeUrlToAudioBuffer(URL.createObjectURL(rawFile), audioCtx); } catch {}
+      }
+
+      const preSplit = mode === 'split' ? await idbGetAll57(SPLIT_DB, SPLIT_STORE).catch(() => []) : [];
+      const canReuseSplit = preSplit.length > 0 && preSplit[0].splitMins === splitMins && preSplit[0].srcSize === rawFile.size;
+      const safeBuildParts = (vSamples, spMins, md) => {
+        if (!Array.isArray(vSamples) || !vSamples.length) return [];
+        const tsOf = s => ((Number.isFinite(s?.dts) ? s.dts : s?.cts) / (s?.timescale || 1000)) || 0;
+        const last = vSamples[vSamples.length - 1];
+        const tLast = Math.max(dur || 0, tsOf(last) + ((last?.duration || 0) / (last?.timescale || 1000)));
+        if (md === 'full') return [{ partIndex: 0, sIdx: 0, eIdx: vSamples.length, start: 0, end: tLast }];
+        const segSec = Math.max(60, (spMins || 10) * 60), res = [];
+        let sIdx = 0, partIndex = 0;
+        while (sIdx < vSamples.length) {
+          const startT = partIndex === 0 ? 0 : tsOf(vSamples[sIdx]), targetEnd = (partIndex + 1) * segSec;
+          let eIdx = vSamples.length;
+          if (targetEnd < tLast - 5) {
+            let kf = -1, fb = -1;
+            for (let k = sIdx + 1; k < vSamples.length; k++) {
+              const tk = tsOf(vSamples[k]);
+              if (tk >= targetEnd) { if (fb === -1) fb = k; if (vSamples[k].is_sync) { kf = k; break; } if (tk - targetEnd > 25) break; }
+            }
+            eIdx = kf !== -1 ? kf : (fb !== -1 ? fb : vSamples.length);
+          }
+          const endT = eIdx < vSamples.length ? tsOf(vSamples[eIdx]) : tLast;
+          res.push({ partIndex, sIdx, eIdx, start: startT, end: endT });
+          if (eIdx <= sIdx) break;
+          sIdx = eIdx; partIndex++;
+        }
+        return res;
+      };
+
+      const nParts = mode === 'full' ? 1 : Math.max(1, Math.ceil(dur / (splitMins * 60)));
+      const parts = (Array.isArray(probe?.vSamples) && probe.vSamples.length)
+        ? safeBuildParts(probe.vSamples, splitMins, mode)
+        : (canReuseSplit
+            ? preSplit.map(p => ({ partIndex: p.partIndex, start: p.start, end: p.end }))
+            : Array.from({ length: nParts }, (_, k) => ({ partIndex: k, start: k * splitMins * 60, end: k === nParts - 1 ? dur : (k + 1) * splitMins * 60 })));
+
+      const srcCode = document.getElementById('bpSrcLang').value, tgtCode = document.getElementById('bpTgtLang').value;
+      const srcName = srcCode === 'auto' ? 'Auto-Detect' : getLangObj(srcCode).name, tgtName = getLangObj(tgtCode).name;
+      const speakStyle = document.getElementById('bpToneSync')?.value || 'natural';
+      const styleMap = {
+        'natural': 'Natural everyday spoken Cambodian Khmer matching the movie mood.',
+        'story-wit': 'Engaging witty storyteller Khmer.',
+        'comedy-banter': 'SMART COMEDY (Friendly Banter): Keep serious scenes faithful, rewrite boasting/arguing into hilarious natural Khmer banter.',
+        'comedy-roast': 'SMART COMEDY (Savage Roast): Add sharp funny Khmer roasts when arrogant characters boast.',
+        'comedy-genz': 'SMART COMEDY (Modern Khmer Gen-Z Slang): Use funny modern Khmer expressions naturally.',
+        'comedy-meme': 'SMART COMEDY (Exaggerated Meme Humor): Funny dramatic Khmer reactions at comedic moments.',
+        'comedy-dry': 'SMART COMEDY (Deadpan Dry Humor): Witty deadpan Khmer humor.',
+        'comedy-country': 'SMART COMEDY (Warm Khmer Countryside Humor): Funny Khmer village expressions.',
+        'dramatic': 'Expressive dramatic Khmer.',
+        'ancient': 'Classical royal/martial-arts Khmer.'
+      };
+
+      const existing = isResume ? await idbGetAll57(PROJ_DB, PROJ_STORE) : [];
+      if (!isResume) await idbClear57(PROJ_DB, PROJ_STORE);
+      const existingByIdx = new Map(existing.map(p => [p.partIndex, p]));
+      let castMemory = existing.length ? (existing[existing.length - 1].castMemory || '') : '';
+
+      const partsState = parts.map(pt => existingByIdx.get(pt.partIndex)?.status === 'done' ? { status: 'done', pct: 100 } : { status: 'wait', pct: 0 });
+      const updateProg = (pi, partPct, stepLabel) => {
+        partsState[pi].pct = partPct; partsState[pi].status = partPct >= 100 ? 'done' : 'running';
+        const overallPct = Math.min(100, partsState.reduce((a, b) => a + b.pct, 0) / Math.max(1, parts.length));
+        const elapsed = Math.max(0.5, (performance.now() - startWall) / 1000);
+        const eta = overallPct > 1 ? Math.round(((100 - overallPct) / overallPct) * elapsed) : 0;
+        document.getElementById('bpOverallTxt').textContent = '📊 សរុបទាំង ' + parts.length + ' ភាគ (ដល់ភាគ ' + (pi + 1) + ')';
+        document.getElementById('bpOverallPct').textContent = overallPct.toFixed(1) + '%';
+        document.getElementById('bpOverallFill').style.width = overallPct + '%';
+        document.getElementById('bpStepTxt').textContent = '⚡ ភាគ #' + (pi + 1) + ': ' + stepLabel;
+        document.getElementById('bpStepPct').textContent = Math.round(partPct) + '%';
+        document.getElementById('bpStepFill').style.width = Math.round(partPct) + '%';
+        const spdTxt = document.getElementById('bpGridSpeedTxt'); if (spdTxt) spdTxt.textContent = eta > 0 ? ('នៅសល់ ~' + fmtTime(eta)) : '';
+        document.title = '⚡ ' + Math.round(overallPct) + '% Big Project';
+        const wrap = document.getElementById('bpAllPartsGridWrap'), grid = document.getElementById('bpAllPartsGrid');
+        if (wrap && grid) {
+          wrap.style.display = 'flex';
+          grid.innerHTML = partsState.map((ps, idx) => `<div style="padding:4px 5px;border-radius:6px;font-size:10px;font-family:var(--mono);text-align:center;border:1px solid ${ps.status === 'done' ? '#10b981;background:rgba(16,185,129,0.16);color:#6ee7b7;' : (ps.status === 'running' ? '#fcd34d;background:rgba(245,158,11,0.22);color:#fef08a;' : '#33141c;background:#12070a;color:#9ca3af;')}"><div>${ps.status === 'done' ? '✅' : (ps.status === 'running' ? '🔥' : '⏳')} #${idx + 1}</div><div style="font-weight:800;">${Math.round(ps.pct)}%</div></div>`).join('');
+        }
+      };
+
+      const keys = getProviderKeys('gemini');
+      const parallelWorkers = Math.min(Math.max(1, keys.length), 6);
+      const femaleHz = window.__ctsV54GetFemaleHz ? window.__ctsV54GetFemaleHz() : 188;
+
+      for (let pi = 0; pi < parts.length; pi++) {
+        if (sig.aborted) break;
+        const part = parts[pi], prevSaved = existingByIdx.get(part.partIndex);
+        if (prevSaved && prevSaved.status === 'done') continue;
+
+        updateProg(pi, 3, 'រៀបចំ Video ភាគ...');
+        let splitBlob = prevSaved?.videoBlob || null;
+        if (!splitBlob) {
+          if (canReuseSplit && preSplit[pi]?.videoBlob) splitBlob = preSplit[pi].videoBlob;
+          else if (parts.length === 1 && rawFile.type === 'video/mp4') splitBlob = rawFile;
+          else if (probe?.vSamples?.length && part.sIdx !== undefined) splitBlob = await buildSlice57(rawFile, probe, part);
+        }
+
+        let partProbe = probe, partLegacyBuf = fullLegacyBuf, partProbeLocal = false;
+        if (!partProbe && splitBlob) { partProbe = await probeMp4Light57(splitBlob).catch(() => null); if (partProbe) partProbeLocal = true; }
+        if (!partProbe && !partLegacyBuf && splitBlob && splitBlob.size <= 145 * 1024 * 1024) {
+          try { const u = URL.createObjectURL(splitBlob); partLegacyBuf = await decodeUrlToAudioBuffer(u, audioCtx); URL.revokeObjectURL(u); partProbeLocal = true; } catch {}
+        }
+
+        const segLen = 28, partDur = part.end - part.start, chunks = [];
+        for (let t = part.start; t < part.end; t += segLen) chunks.push({ idx: chunks.length, t, segEnd: Math.min(part.end, t + segLen) });
+
+        updateProg(pi, 8, '🎙️ ស្ដាប់សំឡេង 16kHz + ចាប់ម៉ោងមាត់...');
+        const step1Results = new Array(chunks.length).fill([]);
+        let s1Done = 0, c1 = 0, capChain = Promise.resolve();
+
+        await Promise.all(Array.from({ length: Math.min(parallelWorkers, Math.max(1, chunks.length)) }, async () => {
+          while (c1 < chunks.length && !sig.aborted) {
+            const ci = c1++, ch = chunks[ci], segDur = ch.segEnd - ch.t;
+            const locS = partProbeLocal ? Math.max(0, ch.t - part.start) : ch.t;
+            const locE = partProbeLocal ? Math.max(locS + 0.1, ch.segEnd - part.start) : ch.segEnd;
+            let prep = null;
+            if (partProbe) {
+              const ab = await extractAud57(partProbeLocal ? splitBlob : rawFile, partProbe, locS, locE, audioCtx);
+              if (ab) prep = cleanHighPass16kWavB64(ab);
+            } else if (partLegacyBuf) {
+              const sr = partLegacyBuf.sampleRate, s0 = Math.floor(locS * sr), s1 = Math.min(partLegacyBuf.length, Math.ceil(locE * sr));
+              const sub = audioCtx.createBuffer(1, Math.max(1, s1 - s0), sr);
+              sub.getChannelData(0).set(partLegacyBuf.getChannelData(0).subarray(s0, s1));
+              prep = cleanHighPass16kWavB64(sub);
+            }
+            let mimeType = 'audio/wav', base64 = prep ? prep.base64 : null;
+            if (!prep && !partProbe && !partLegacyBuf) {
+              const cap = await (capChain = capChain.then(async () => sig.aborted ? null : await captureLiveVideoAudioSegment(vid, ch.t, ch.segEnd, sig)));
+              if (cap) { base64 = cap.data; mimeType = cap.mimeType; }
+            }
+            if (!base64 || sig.aborted) { s1Done++; continue; }
+
+            const p1 = 'Listen to ALL ' + segDur.toFixed(1) + 's of this ' + srcName + ' movie audio (0.0s to ' + segDur.toFixed(1) + 's).\n' +
+              'Transcribe EVERY spoken line VERBATIM in ' + srcName + ' with exact start/end in DECIMAL SECONDS (0.0 to ' + segDur.toFixed(1) + ').\n' +
+              'Detect ACTUAL speaker voice pitch: "M" = Male voice, "F" = Female/child voice. Keep the SAME gender when the same person continues speaking.\n' +
+              'Return ONLY JSON array (or [] if only music/silence): [{"start":0.4,"end":2.8,"g":"M","src":"exact spoken words"}]';
+
+            let arr = [];
+            try {
+              const raw = await window.callAI('Precision movie dialogue transcriber & vocal gender classifier. Exact decimal seconds. JSON array only.', p1, sig, [{ inlineData: { mimeType, data: base64 } }]);
+              const cl = stripCodeFences(raw), m = cl.match(/\[[\s\S]*\]/);
+              if (m) { try { arr = JSON.parse(m[0]); } catch {} }
+              if (!arr.length) { const re = /\{[^{}]*\}/g; let mt; while ((mt = re.exec(cl)) !== null) { try { arr.push(JSON.parse(mt[0])); } catch {} } }
+            } catch (e) { if (e.name === 'AbortError' || e.status === 401 || e.status === 403) throw e; }
+
+            const out = []; let prevE = 0, prevV = 'piseth';
+            for (let k = 0; k < arr.length; k++) {
+              const it = arr[k]; if (!it || !it.src) continue;
+              const srcT = String(it.src).trim(); if (!srcT) continue;
+              let rs = parseFlexTime(it.start), re = parseFlexTime(it.end);
+              if (isNaN(rs) || (k > 0 && rs === 0)) rs = prevE + 0.04;
+              rs = Math.max(0, Math.min(segDur - 0.35, rs));
+              if (k > 0 && rs < prevE && prevE - rs < 0.25) rs = Math.min(segDur - 0.35, prevE + 0.02);
+              if (isNaN(re) || re <= rs + 0.35) re = rs + Math.max(1.0, Math.min(3.5, srcT.length / 13));
+              re = Math.min(segDur, Math.max(rs + 0.4, re));
+              prevE = re;
+
+              const g = String(it.g || it.voice || '').toUpperCase();
+              let voice = (g === 'F' || g === 'SREYMOM' || g === 'FEMALE') ? 'sreymom' : ((g === 'M' || g === 'PISETH' || g === 'MALE') ? 'piseth' : prevV);
+              if (prep?.cp) {
+                const hz = estPitch57(prep.cp, rs, re);
+                if (hz && hz >= femaleHz) voice = 'sreymom';
+                else if (hz && hz <= 150) voice = 'piseth';
+              }
+              prevV = voice;
+
+              const absS = +Math.max(0, (ch.t - part.start) + rs).toFixed(2);
+              const absE = +Math.min(partDur, (ch.t - part.start) + re).toFixed(2);
+              out.push({ id: Date.now() + ci * 1000 + k, start: absS, end: absE, _localS: rs, _localE: re, dur: +(absE - absS).toFixed(2), src: srcT, km: '', voice, audioBlob: null });
+            }
+
+            if (prep?.env && out.length) {
+              const tmpLoc = out.map(x => ({ start: x._localS, end: x._localE }));
+              snapCuesToVocalOnset57(tmpLoc, prep.env, 0);
+              for (let k = 0; k < out.length; k++) {
+                out[k].start = +Math.max(0, (ch.t - part.start) + tmpLoc[k].start).toFixed(2);
+                out[k].end = +Math.min(partDur, Math.max(out[k].start + 0.38, (ch.t - part.start) + tmpLoc[k].end)).toFixed(2);
+                out[k].dur = +(out[k].end - out[k].start).toFixed(2);
+              }
+            }
+
+            step1Results[ci] = out; s1Done++;
+            updateProg(pi, 10 + Math.round((s1Done / Math.max(1, chunks.length)) * 32), '🎙️ ស្ដាប់ + ចាប់មាត់ (' + s1Done + '/' + chunks.length + ')');
+            setBoxStatus('bpStatusBox', 'info', '🎙️ ភាគ ' + (pi + 1) + '/' + parts.length + ' (' + s1Done + '/' + chunks.length + ')');
+          }
+        }));
+
+        const rawMerged = step1Results.flat().filter(Boolean).sort((a, b) => a.start - b.start);
+        const partCues = [];
+        for (const c of rawMerged) {
+          const prev = partCues[partCues.length - 1];
+          if (prev && c.start < prev.end + 0.03) c.start = +(prev.end + 0.03).toFixed(2);
+          if (c.end <= c.start + 0.35) c.end = +(c.start + 1.1).toFixed(2);
+          c.dur = +(c.end - c.start).toFixed(2);
+          partCues.push(c);
+        }
+
+        if (!sig.aborted && partCues.length) {
+          const batches = [];
+          for (let b = 0; b < partCues.length; b += 20) batches.push(partCues.slice(b, b + 20));
+          let bDone = 0, bCursor = 0;
+          await Promise.all(Array.from({ length: Math.min(parallelWorkers, batches.length) }, async () => {
+            while (bCursor < batches.length && !sig.aborted) {
+              const bi = bCursor++, batch = batches[bi];
+              const listStr = batch.map((c, idx) => '[' + (idx + 1) + '] (max ' + c.dur + 's / ~' + Math.max(4, Math.round(c.dur * 5.2)) + ' syllables, ' + (c.voice === 'sreymom' ? 'F' : 'M') + ') ' + c.src).join('\n');
+              const p2 = 'Translate ALL ' + batch.length + ' movie lines into 100% NATURAL conversational ' + tgtName + ' for voice dubbing.\n' +
+                'STRICT RULES:\n' +
+                '1. Match the exact speaking duration & syllable budget shown on each line so the dubbed voice fits the actor\'s mouth timing naturally!\n' +
+                '2. Style: ' + (styleMap[speakStyle] || styleMap.natural) + '\n' +
+                '3. Keep "v" as "piseth" (male) or "sreymom" (female) consistent with the tagged M/F speaker.\n' +
+                'Glossary: ' + (document.getElementById('optGlossary')?.value?.trim() || 'None') + '\n\n' +
+                'Lines:\n' + listStr + '\n\nReturn ONLY JSON: {"cast":"...","items":[{"id":1,"t":"natural ' + tgtName + '","v":"piseth|sreymom"}]}';
+              try {
+                const raw2 = await window.callAI('Elite native ' + tgtName + ' dubbing translator. Natural concise spoken phrasing fitting exact lip duration. Strict JSON only.', p2, sig);
+                const cl2 = stripCodeFences(raw2), om = cl2.match(/\{[\s\S]*\}/), am = cl2.match(/\[[\s\S]*\]/);
+                const parsed = om ? JSON.parse(om[0]) : (am ? { items: JSON.parse(am[0]) } : null);
+                if (parsed?.cast) castMemory = String(parsed.cast).slice(0, 450);
+                const items = Array.isArray(parsed?.items) ? parsed.items : [];
+                const byId = {}; items.forEach((x, idx) => { if (x) byId[parseInt(x.id, 10) || (idx + 1)] = x; });
+                batch.forEach((c, k) => {
+                  const it = byId[k + 1] || items[k];
+                  const tr = String((it && (it.t || it.km || it.text)) || '').trim();
+                  if (tr) {
+                    c.km = tr;
+                    const v = String(it.v || '').toLowerCase();
+                    if (v === 'sreymom' || v === 'piseth') c.voice = v;
+                  }
+                });
+              } catch (e) { if (e.name === 'AbortError') throw e; }
+              bDone++;
+              updateProg(pi, 42 + Math.round((bDone / batches.length) * 20), '🌐 បកប្រែត្រូវមាត់ (' + bDone + '/' + batches.length + ')');
+            }
+          }));
+        }
+
+        if (!sig.aborted && partCues.length && window.__ctsV54AutoHealTranslate) {
+          await window.__ctsV54AutoHealTranslate(partCues, srcCode, tgtCode, tgtName, sig);
+        }
+
+        if (!sig.aborted) {
+          await idbPut57(PROJ_DB, PROJ_STORE, { id: 'part_' + part.partIndex, partIndex: part.partIndex, start: part.start, end: part.end, duration: +(part.end - part.start).toFixed(2), status: 'translating', videoBlob: splitBlob, cues: partCues, castMemory });
+          document.getElementById('bpRefreshListBtn')?.click();
+        }
+
+        let audioBlobs = [];
+        if (!sig.aborted && partCues.length) {
+          audioBlobs = await synthAndRepair57(partCues, tgtCode, audioCtx, sig, (dn, tot) => {
+            updateProg(pi, 62 + Math.round((dn / Math.max(1, tot)) * 37), '🔊 ពិសិទ្ធ/ស្រីមុំ + WSOLA (' + dn + '/' + tot + ')');
+          });
+        }
+
+        if (!sig.aborted) {
+          await idbPut57(PROJ_DB, PROJ_STORE, {
+            id: 'part_' + part.partIndex, partIndex: part.partIndex, start: part.start, end: part.end,
+            duration: +(part.end - part.start).toFixed(2), status: 'done', videoBlob: splitBlob,
+            cues: partCues.map((c, idx) => ({ id: c.id, start: c.start, end: c.end, src: c.src, km: c.km, voice: c.voice, audioBlob: audioBlobs[idx] || null })),
+            castMemory
+          });
+          updateProg(pi, 100, '✅ រួចរាល់ 100%!');
+          document.getElementById('bpRefreshListBtn')?.click();
+        }
+      }
+
+      if (!sig.aborted) {
+        document.getElementById('bpOverallPct').textContent = '100%'; document.getElementById('bpOverallFill').style.width = '100%';
+        document.getElementById('bpStepPct').textContent = '100%'; document.getElementById('bpStepFill').style.width = '100%';
+        document.getElementById('bpOverallTxt').textContent = '✅ ជោគជ័យគ្រប់ភាគ (' + parts.length + '/' + parts.length + ')';
+        document.title = '✅ Big Project រួចរាល់ 100%!';
+        setBoxStatus('bpStatusBox', 'ok', '🎉 រួចរាល់ 100%! សំឡេង ពិសិទ្ធ/ស្រីមុំ ច្បាស់ ត្រូវមាត់ & វីដេអូរលូន!');
+        toast('🎉 Big Project រួចរាល់ 100%!');
+      }
+    } catch (e) {
+      setBoxStatus('bpStatusBox', e.name === 'AbortError' ? 'info' : 'err', e.name === 'AbortError' ? '⏹️ បានបញ្ឈប់ Big Project' : ('❌ ' + (e?.message || e)));
+      rBtn.style.display = 'inline-flex';
+    } finally {
+      bpRun57 = false; try { await audioCtx.close(); } catch {}
+      try { if (bpKa57) bpKa57.pause(); } catch {}
+      releaseWakeLock();
+      sBtn.disabled = false; sBtn.textContent = '🚀 ចាប់ផ្ដើមបកប្រែ / Start Project';
+      stBtn.style.display = 'none';
+    }
+  }
+
+  function mountBigProjectRepairBtn57() {
+    const sb = document.getElementById('bpStartBtn'), rb = document.getElementById('bpResumeBtn');
+    if (sb) sb.onclick = () => runBigProject57(false);
+    if (rb) rb.onclick = () => runBigProject57(true);
+
+    const refBtn = document.getElementById('bpRefreshListBtn');
+    if (refBtn && refBtn.parentElement && !document.getElementById('cts57BpRepairBtn')) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.id = 'cts57BpRepairBtn';
+      b.className = 'btn btn-sm btn-gold';
+      b.style.cssText = 'font-size:10.5px;font-weight:800;margin-left:4px;';
+      b.setAttribute('data-no-i18n', '1');
+      b.textContent = '🔄👄 Fix សំឡេង & Lip-Sync';
+      b.title = 'ជួសជុលសំឡេង ពិសិទ្ធ/ស្រីមុំ + ទម្រឹមមាត់ ១០០% លើភាគរួចរាល់ក្នុង Big Project';
+      b.onclick = repairExistingBigProjectParts57;
+      refBtn.insertAdjacentElement('beforebegin', b);
+    }
+  }
+  mountBigProjectRepairBtn57();
+  setTimeout(mountBigProjectRepairBtn57, 1200);
+})();
+</script>
+
 </body>
 </html>
