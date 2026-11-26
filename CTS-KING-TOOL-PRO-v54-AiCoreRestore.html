@@ -17521,8 +17521,39 @@
       const preSplit = mode === 'split' ? await idbGetAll(SPLIT_DB, SPLIT_STORE).catch(() => []) : [];
       const canReuseSplit = preSplit.length > 0 && preSplit[0].splitMins === splitMins && preSplit[0].srcSize === rawFile.size;
       const nParts = mode === 'full' ? 1 : Math.max(1, Math.ceil(dur / (splitMins * 60)));
-      const parts = probe?.vSamples?.length
-        ? buildParts30(probe.vSamples, splitMins, mode)
+      const safeBuildParts30 = (vSamples, spMins, md) => {
+        if (!Array.isArray(vSamples) || !vSamples.length) return [];
+        const tsOf = s => ((Number.isFinite(s?.dts) ? s.dts : s?.cts) / (s?.timescale || 1000)) || 0;
+        const last = vSamples[vSamples.length - 1];
+        const tLast = Math.max(dur || 0, tsOf(last) + ((last?.duration || 0) / (last?.timescale || 1000)));
+        if (md === 'full') return [{ partIndex: 0, sIdx: 0, eIdx: vSamples.length, start: 0, end: tLast }];
+        const segSec = Math.max(60, (spMins || 20) * 60), res = [];
+        let sIdx = 0, partIndex = 0;
+        while (sIdx < vSamples.length) {
+          const startT = partIndex === 0 ? 0 : tsOf(vSamples[sIdx]);
+          const targetEnd = (partIndex + 1) * segSec;
+          let eIdx = vSamples.length;
+          if (targetEnd < tLast - 5) {
+            let kf = -1, fb = -1;
+            for (let k = sIdx + 1; k < vSamples.length; k++) {
+              const tk = tsOf(vSamples[k]);
+              if (tk >= targetEnd) {
+                if (fb === -1) fb = k;
+                if (vSamples[k].is_sync) { kf = k; break; }
+                if (tk - targetEnd > 25) break;
+              }
+            }
+            eIdx = kf !== -1 ? kf : (fb !== -1 ? fb : vSamples.length);
+          }
+          const endT = eIdx < vSamples.length ? tsOf(vSamples[eIdx]) : tLast;
+          res.push({ partIndex, sIdx, eIdx, start: startT, end: endT });
+          if (eIdx <= sIdx) break;
+          sIdx = eIdx; partIndex++;
+        }
+        return res;
+      };
+      const parts = (Array.isArray(probe?.vSamples) && probe.vSamples.length)
+        ? safeBuildParts30(probe.vSamples, splitMins, mode)
         : (canReuseSplit
             ? preSplit.slice().sort((a, b) => a.partIndex - b.partIndex).map(p => ({ partIndex: p.partIndex, start: p.start, end: p.end }))
             : Array.from({ length: nParts }, (_, k) => ({
