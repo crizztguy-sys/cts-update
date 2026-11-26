@@ -17520,11 +17520,14 @@
       // Reuse already-split parts if they match current file & split length!
       const preSplit = mode === 'split' ? await idbGetAll(SPLIT_DB, SPLIT_STORE).catch(() => []) : [];
       const canReuseSplit = preSplit.length > 0 && preSplit[0].splitMins === splitMins && preSplit[0].srcSize === rawFile.size;
+      const nParts = mode === 'full' ? 1 : Math.max(1, Math.ceil(dur / (splitMins * 60)));
       const parts = probe?.vSamples?.length
-        ? buildKeyParts25(probe.vSamples, splitMins, mode)
-        : Array.from({ length: mode === 'full' ? 1 : Math.max(1, Math.ceil(dur / (splitMins * 60))) }, (_, k, a) => ({
-            partIndex: k, start: k * splitMins * 60, end: k === a.length - 1 ? dur : (k + 1) * splitMins * 60
-          }));
+        ? buildParts30(probe.vSamples, splitMins, mode)
+        : (canReuseSplit
+            ? preSplit.slice().sort((a, b) => a.partIndex - b.partIndex).map(p => ({ partIndex: p.partIndex, start: p.start, end: p.end }))
+            : Array.from({ length: nParts }, (_, k) => ({
+                partIndex: k, start: k * splitMins * 60, end: k === nParts - 1 ? dur : (k + 1) * splitMins * 60
+              })));
 
       const srcCode = document.getElementById('bpSrcLang').value, tgtCode = document.getElementById('bpTgtLang').value;
       const srcName = srcCode === 'auto' ? 'Auto-Detect' : getLangObj(srcCode).name, tgtName = getLangObj(tgtCode).name;
@@ -20735,7 +20738,21 @@ async function probeMp4V30(rawFile) {
           else if (probe?.vSamples?.length && part.sIdx !== undefined) splitBlob = await buildSlice30(rawFile, probe, part);
         }
 
-        // Pipelined 16kHz audio chunks (60s windows) + Parallel Step 1 AI Transcription
+        // Per-part probe / audio buffer fallback (prevents slow 1x capture on 500MB+ movies)
+      let partProbe = probe, partLegacyBuf = fullLegacyBuf, partProbeIsLocal = false;
+      if (!partProbe && splitBlob) {
+        partProbe = await probeMp4V30(splitBlob).catch(() => null);
+        if (partProbe) partProbeIsLocal = true;
+      }
+      if (!partProbe && !partLegacyBuf && splitBlob && splitBlob.size <= 145 * 1024 * 1024) {
+        try {
+          const sbUrl = URL.createObjectURL(splitBlob);
+          partLegacyBuf = await decodeUrlToAudioBuffer(sbUrl, audioCtx);
+          URL.revokeObjectURL(sbUrl);
+          partProbeIsLocal = true;
+        } catch {}
+      }
+      // Pipelined 16kHz audio chunks (60s windows) + Parallel Step 1 AI Transcription
       const segLen = 60, partDur = part.end - part.start, chunks = [];
       for (let t = part.start; t < part.end; t += segLen) {
         chunks.push({ idx: chunks.length, t, segEnd: Math.min(part.end, t + segLen) });
@@ -20747,14 +20764,16 @@ async function probeMp4V30(rawFile) {
         while (c1 < chunks.length && !sig.aborted) {
           const ci = c1++, ch = chunks[ci];
           const segDur = ch.segEnd - ch.t; let ext = null;
-          if (probe) {
-            const ab = await extractAudSlice30(rawFile, probe, ch.t, ch.segEnd, audioCtx);
+          const locS = partProbeIsLocal ? Math.max(0, ch.t - part.start) : ch.t;
+          const locE = partProbeIsLocal ? Math.max(locS + 0.1, ch.segEnd - part.start) : ch.segEnd;
+          if (partProbe) {
+            const ab = await extractAudSlice30(partProbeIsLocal ? splitBlob : rawFile, partProbe, locS, locE, audioCtx);
             if (ab) ext = audioBufTo16kAndSlots30(ab, segDur);
-          } else if (fullLegacyBuf) {
-            const sr = fullLegacyBuf.sampleRate;
-            const s0 = Math.floor(ch.t * sr), s1 = Math.min(fullLegacyBuf.length, Math.ceil(ch.segEnd * sr));
+          } else if (partLegacyBuf) {
+            const sr = partLegacyBuf.sampleRate;
+            const s0 = Math.floor(locS * sr), s1 = Math.min(partLegacyBuf.length, Math.ceil(locE * sr));
             const sub = audioCtx.createBuffer(1, Math.max(1, s1 - s0), sr);
-            sub.getChannelData(0).set(fullLegacyBuf.getChannelData(0).subarray(s0, s1));
+            sub.getChannelData(0).set(partLegacyBuf.getChannelData(0).subarray(s0, s1));
             ext = audioBufTo16kAndSlots30(sub, segDur);
           }
           if (!ext) {
@@ -25018,7 +25037,7 @@ body.cts-desktop-mode #cueList .cue-card {
       delAllBtn.id = 'cts55DelAllProjBtn';
       delAllBtn.className = 'btn btn-sm';
       delAllBtn.style.cssText = 'background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.55);color:#fca5a5;font-weight:800;margin-left:4px;';
-      delAllBtn.textContent = '🗑️ លុបគ្រប់ភាគ';
+      delAllBtn.setAttribute('data-no-i18n', '1'); delAllBtn.textContent = '🗑️ លុបគ្រប់ភាគ';
       delAllBtn.onclick = async () => {
         if (isPipelineBusy55()) return;
         if (!confirm('លុបគ្រប់ភាគ និង Video ដែលDone ទាំងអស់ចេញមែនទេ?')) return;
@@ -25043,7 +25062,7 @@ body.cts-desktop-mode #cueList .cue-card {
         delBtn.type = 'button';
         delBtn.className = 'btn btn-sm cts55-del-part';
         delBtn.style.cssText = 'background:rgba(239,68,68,0.16);border:1px solid rgba(239,68,68,0.55);color:#fca5a5;font-weight:800;';
-        delBtn.textContent = '🗑️ លុបភាគ';
+        delBtn.setAttribute('data-no-i18n', '1'); delBtn.textContent = '🗑️ លុបភាគ';
         delBtn.onclick = async (e) => {
           e.stopPropagation();
           if (isPipelineBusy55()) return;
@@ -25061,7 +25080,7 @@ body.cts-desktop-mode #cueList .cue-card {
     if (splitDubBtns.length) {
       const firstRow = splitDubBtns[0].closest('div[style*="border"], .sp-row, div');
       const splitList = firstRow ? firstRow.parentElement : null;
-      if (splitList && splitList.parentElement && !document.getElementById('cts55DelAllSplitBtn')) {
+      if (false && splitList && splitList.parentElement && !document.getElementById('cts55DelAllSplitBtn')) {
         const bar = document.createElement('div');
         bar.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:6px;';
         const delAllSp = document.createElement('button');
@@ -25085,7 +25104,7 @@ body.cts-desktop-mode #cueList .cue-card {
 
       splitDubBtns.forEach(btn => {
         const row = btn.closest('div[style*="border"]') || btn.parentElement.parentElement;
-        if (!row || row.querySelector('.cts55-del-split')) return;
+        if (!row || row.querySelector('.cts55-del-split') || /Delete|លុប/.test(row.textContent || '')) return;
         const pIdx = parsePartIndex55(row);
         if (pIdx < 0) return;
         const delBtn = document.createElement('button');
