@@ -16906,8 +16906,11 @@
     startSplitBtn.onclick = async () => {
       if (running23) return;
       const vid = document.getElementById('videoPlayer');
-      const rawFile = window.__ctsRawVideoFile || (vidBlobUrl ? await fetch(vidBlobUrl).then(r => r.blob()).catch(() => null) : null);
-      if (!rawFile || !vid?.duration) return toast('⚠️ សូមបញ្ចូល Video រឿងជាមុនសិន!');
+      const metaF = (typeof bpVideoMeta !== 'undefined' && bpVideoMeta?.file) ? bpVideoMeta.file : null;
+      const metaD = (typeof bpVideoMeta !== 'undefined' && bpVideoMeta?.duration && isFinite(bpVideoMeta.duration)) ? bpVideoMeta.duration : 0;
+      const rawFile = metaF || window.__ctsRawVideoFile || (vidBlobUrl ? await fetch(vidBlobUrl).then(r => r.blob()).catch(() => null) : null);
+      const splitDur = metaF ? (metaD || vid?.duration || 0) : (vid?.duration || metaD || 0);
+      if (!rawFile || !splitDur) return toast('⚠️ សូមបញ្ចូល Video រឿងជាមុនសិន!');
       const splitMins = Math.max(1, Math.min(40, parseInt(document.getElementById('bpSplitMinsInp')?.value || '10', 10) || 10));
 
       running23 = true; abort23 = new AbortController();
@@ -19282,7 +19285,8 @@
       renderAllPartsGrid(partsState);
 
       const keys = getProviderKeys('gemini');
-      const parallelWorkers = Math.min(Math.max(1, keys.length), 6); // Run up to 6 chunks simultaneously across keys!
+      const parallelWorkers = Math.min(Math.max(1, keys.length), 10);
+      setBoxStatus('bpStatusBox', 'info', '🎬 ផ្ទុករឿង ' + fmtTime(dur) + ' • ' + parts.length + ' ភាគ (' + parallelWorkers + '-Key Parallel)...'); // Run up to 6 chunks simultaneously across keys!
 
       for (let pi = 0; pi < parts.length; pi++) {
         if (sig.aborted) break;
@@ -20330,75 +20334,93 @@
   }
 
   async function callKey30(sys, user, signal, extraParts, prefKeyIdx, useHeavyThink = false) {
-    if (settings.provider !== 'gemini') return await callAI(sys, user, signal, extraParts);
-    const keys = getProviderKeys('gemini');
-    if (!keys.length) throw new Error('មិនទាន់មាន Gemini API Key!');
-    const _selM = (typeof settings !== 'undefined' && settings.geminiModel) ? settings.geminiModel : 'gemini-4-hydrogen';
-      const models = (extraParts
-        ? ['gemini-3.8-flash', 'gemini-3.6-flash', _selM, 'gemini-2.5-flash', 'gemini-3.5-flash-lite']
-        : [_selM, 'gemini-4-hydrogen', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite']
-      ).filter((m, i, a) => m && a.indexOf(m) === i);
-    const parts = extraParts ? [...extraParts, { text: user }] : [{ text: user }];
-    let lastErr = null;
-
-    for (let r = 0; r < 3; r++) {
-      let waitMs = 0;
-      for (const model of models) {
-          for (let kOff = 0; kOff < keys.length; kOff++) {
-            const key = keys[(prefKeyIdx + kOff) % keys.length];
-          try {
-            const genCfg = { temperature: extraParts ? 0.15 : 0.35, maxOutputTokens: 16384 };
-            if (/gemini-(3\.8|4)/i.test(model)) genCfg.thinkingConfig = { thinkingLevel: 'LOW' };
-            const send = async cfg => {
-              const body = {
-                systemInstruction: { parts: [{ text: sys }] },
-                contents: [{ role: 'user', parts }],
-                generationConfig: cfg,
-                safetySettings: [
-                  { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-                  { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-                  { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-                  { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
-                ]
-              };
-              const res = await ctsFetchTimeout('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key), {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-              }, extraParts ? 120000 : 75000, signal);
-              return { res, data: await res.json().catch(() => ({})) };
-            };
-            let resp = await send(genCfg);
-            if (!resp.res.ok && resp.res.status === 400 && genCfg.thinkingConfig) { delete genCfg.thinkingConfig; resp = await send(genCfg); }
-            if (!resp.res.ok) { const e = new Error(resp.data?.error?.message || ('HTTP ' + resp.res.status)); e.status = resp.res.status; throw e; }
-            const cand = resp.data?.candidates?.[0];
-            const txt = cand?.content?.parts?.map(p => p.text || '').join('') || '';
-            if (!txt) { const e2 = new Error(cand?.finishReason || 'Empty response'); e2.status = 502; throw e2; }
-            return txt;
-          } catch (e) {
-            lastErr = e;
-            if (e.name === 'AbortError') throw e;
-            if (e.status === 401 || e.status === 403) break;
-            if (e.status === 429) { const ms = String(e.message).match(/retry in\s+(\d+(?:\.\d+)?)s/i); waitMs = Math.max(waitMs, ms ? Math.ceil(parseFloat(ms[1]) * 1000) + 800 : 3500); continue; }
-            if (![404, 503, 500, 400, 502, 504].includes(e.status)) throw e;
+  if (settings.provider !== 'gemini') return await callAI(sys, user, signal, extraParts);
+  const keys = getProviderKeys('gemini');
+  if (!keys.length) throw new Error('មិនទាន់មាន Gemini API Key!');
+  const _selM = (typeof settings !== 'undefined' && settings.geminiModel) ? settings.geminiModel : 'gemini-4-hydrogen';
+  const models = (extraParts
+    ? ['gemini-3.8-flash', 'gemini-3.6-flash', _selM, 'gemini-2.5-flash', 'gemini-3.5-flash-lite']
+    : [_selM, 'gemini-4-hydrogen', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite']
+  ).filter((m, i, a) => m && a.indexOf(m) === i);
+  const parts = extraParts ? [...extraParts, { text: user }] : [{ text: user }];
+  let lastErr = null;
+  for (let r = 0; r < 3; r++) {
+    let waitMs = 0;
+    for (const model of models) {
+      for (let kOff = 0; kOff < keys.length; kOff++) {
+        const key = keys[(prefKeyIdx + kOff) % keys.length];
+        try {
+          const genCfg = {
+            temperature: extraParts ? 0.12 : (useHeavyThink ? 0.28 : 0.30),
+            maxOutputTokens: 16384
+          };
+          if (useHeavyThink || extraParts) genCfg.responseMimeType = 'application/json';
+          if (/gemini-(3\.8|4)/i.test(model)) {
+            genCfg.thinkingConfig = { thinkingLevel: useHeavyThink ? 'MEDIUM' : 'MINIMAL' };
           }
+          const send = async cfg => {
+            const body = {
+              systemInstruction: { parts: [{ text: sys }] },
+              contents: [{ role: 'user', parts }],
+              generationConfig: cfg,
+              safetySettings: [
+                { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+              ]
+            };
+            const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+              encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key);
+            const res = await ctsFetchTimeout(url, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+            }, extraParts ? 120000 : 75000, signal);
+            return { res, data: await res.json().catch(() => ({})) };
+          };
+          let resp = await send(genCfg);
+          if (!resp.res.ok && resp.res.status === 400 && (genCfg.thinkingConfig || genCfg.responseMimeType)) {
+            if (genCfg.thinkingConfig && genCfg.thinkingConfig.thinkingLevel !== 'LOW') {
+              genCfg.thinkingConfig = { thinkingLevel: 'LOW' };
+              resp = await send(genCfg);
+            }
+            if (!resp.res.ok && resp.res.status === 400 && genCfg.thinkingConfig) {
+              delete genCfg.thinkingConfig;
+              resp = await send(genCfg);
+            }
+            if (!resp.res.ok && resp.res.status === 400 && genCfg.responseMimeType) {
+              delete genCfg.responseMimeType;
+              resp = await send(genCfg);
+            }
+          }
+          if (!resp.res.ok) {
+            const e = new Error(resp.data?.error?.message || ('HTTP ' + resp.res.status));
+            e.status = resp.res.status; throw e;
+          }
+          const cand = resp.data?.candidates?.[0];
+          const txt = cand?.content?.parts?.map(p => p.text || '').join('') || '';
+          if (!txt) { const e2 = new Error(cand?.finishReason || 'Empty response'); e2.status = 502; throw e2; }
+          return txt;
+        } catch (e) {
+          lastErr = e;
+          if (e.name === 'AbortError') throw e;
+          if (e.status === 401 || e.status === 403) continue;
+          if (e.status === 429) {
+            const ms = String(e.message).match(/retry in\s+(\d+(?:\.\d+)?)s/i);
+            waitMs = Math.max(waitMs, ms ? Math.ceil(parseFloat(ms[1]) * 1000) + 800 : 3500);
+            continue;
+          }
+          if (![404, 503, 500, 400, 502, 504].includes(e.status)) throw e;
         }
       }
-      if (lastErr && [429, 503, 500, 502, 504].includes(lastErr.status) && r < 2) await sleepAbortable(waitMs || 1800 * (r + 1), signal);
-      else break;
     }
-    throw lastErr || new Error('API Error');
+    if (lastErr && [429, 503, 500, 502, 504].includes(lastErr.status) && r < 2) {
+      await sleepAbortable(waitMs || 1800 * (r + 1), signal);
+    } else break;
   }
+  throw lastErr || new Error('API Error');
+}
 
-  // Re-bind Start Project (#bpStartBtn / #bpResumeBtn) with 2-Step Crystal-Clear Khmer + Accurate M/F Voice!
-  // Uses helper functions already available in ADD-ON #28 cleanly via probe/slicer
-  function loadMP4Box30() {
-    if (window.MP4Box) return Promise.resolve(window.MP4Box);
-    return new Promise((res, rej) => {
-      const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/mp4box@0.5.4/dist/mp4box.all.min.js';
-      s.onload = () => window.MP4Box ? res(window.MP4Box) : rej(new Error('MP4Box fail')); s.onerror = () => rej(new Error('No network'));
-      document.head.appendChild(s);
-    });
-  }
-  async function probeMp4V30(rawFile) {
+async function probeMp4V30(rawFile) {
     await loadMP4Box30();
     const mp4 = MP4Box.createFile(); let readyInfo = null, err = null;
     mp4.onError = e => { err = new Error(String(e)); }; mp4.onReady = info => { readyInfo = info; };
@@ -20594,9 +20616,35 @@
   async function runBigProject30(isResume) {
     if (bpRun30) return;
     const vid = document.getElementById('videoPlayer');
-    const rawFile = window.__ctsRawVideoFile || (vidBlobUrl ? await fetch(vidBlobUrl).then(r => r.blob()).catch(() => null) : null);
-    const dur = (vid?.duration && isFinite(vid.duration)) ? vid.duration : 0;
-    if (!rawFile || !dur) return toast('⚠️ សូមបញ្ចូល Video រឿងជាមុនសិន!');
+  const metaFile = (typeof bpVideoMeta !== 'undefined' && bpVideoMeta?.file) ? bpVideoMeta.file : null;
+  const metaDur = (typeof bpVideoMeta !== 'undefined' && bpVideoMeta?.duration && isFinite(bpVideoMeta.duration)) ? bpVideoMeta.duration : 0;
+  const rawFile = metaFile || window.__ctsRawVideoFile || (vidBlobUrl ? await fetch(vidBlobUrl).then(r => r.blob()).catch(() => null) : null);
+  let dur = metaFile ? (metaDur || ((vid?.duration && isFinite(vid.duration)) ? vid.duration : 0)) : ((vid?.duration && isFinite(vid.duration)) ? vid.duration : metaDur);
+  if (rawFile && !dur) {
+    dur = await new Promise(res => {
+      try {
+        const tv = document.createElement('video'), u = URL.createObjectURL(rawFile);
+        tv.preload = 'metadata'; tv.muted = true;
+        tv.onloadedmetadata = () => { const d = isFinite(tv.duration) ? tv.duration : 0; URL.revokeObjectURL(u); res(d); };
+        tv.onerror = () => { URL.revokeObjectURL(u); res(0); };
+        tv.src = u;
+      } catch { res(0); }
+    });
+  }
+  let capVid = vid, capVidUrl = '';
+  const getCapVid = async () => {
+    if (!vid || !isFinite(vid.duration) || Math.abs(vid.duration - dur) > 2) {
+      if (!capVidUrl) {
+        capVidUrl = URL.createObjectURL(rawFile);
+        capVid = document.createElement('video');
+        capVid.preload = 'auto'; capVid.muted = false; capVid.playsInline = true;
+        await new Promise(res => { capVid.onloadedmetadata = () => res(); capVid.onerror = () => res(); capVid.src = capVidUrl; });
+      }
+      return capVid;
+    }
+    return vid;
+  };
+  if (!rawFile || !dur) return toast('⚠️ សូមបញ្ចូល Video រឿងជាមុនសិន!');
     if (settings.provider !== 'gemini' || !getProviderKeys('gemini').length) return toast('⚠️ ត្រូវការ Gemini API Key ក្នុង Settings ⚙️!');
 
     const splitArea = document.getElementById('bpSplitConfigArea');
@@ -20687,128 +20735,182 @@
           else if (probe?.vSamples?.length && part.sIdx !== undefined) splitBlob = await buildSlice30(rawFile, probe, part);
         }
 
-        // Extract 16kHz audio chunks (45s windows)
-        const segLen = 45, partDur = part.end - part.start, chunks = [];
-        for (let t = part.start; t < part.end; t += segLen) chunks.push({ idx: chunks.length, t, segEnd: Math.min(part.end, t + segLen) });
-
-        updateProg(pi, 8, 'ស្កេនរលកសំឡេង 16kHz...');
-        const prepared = [];
-        for (const ch of chunks) {
-          if (sig.aborted) break;
+        // Pipelined 16kHz audio chunks (60s windows) + Parallel Step 1 AI Transcription
+      const segLen = 60, partDur = part.end - part.start, chunks = [];
+      for (let t = part.start; t < part.end; t += segLen) {
+        chunks.push({ idx: chunks.length, t, segEnd: Math.min(part.end, t + segLen) });
+      }
+      updateProg(pi, 8, '⚡ ស្កេន & ស្ដាប់សំឡេង (' + parallelWorkers + '-Key)...');
+      const step1Results = new Array(chunks.length).fill([]);
+      let s1Done = 0, c1 = 0, capChain = Promise.resolve();
+      await Promise.all(Array.from({ length: Math.min(parallelWorkers, Math.max(1, chunks.length)) }, async () => {
+        while (c1 < chunks.length && !sig.aborted) {
+          const ci = c1++, ch = chunks[ci];
           const segDur = ch.segEnd - ch.t; let ext = null;
-          if (probe) { const ab = await extractAudSlice30(rawFile, probe, ch.t, ch.segEnd, audioCtx); if (ab) ext = audioBufTo16kAndSlots30(ab, segDur); }
-          else if (fullLegacyBuf) {
-            const sr = fullLegacyBuf.sampleRate, s0 = Math.floor(ch.t * sr), s1 = Math.min(fullLegacyBuf.length, Math.ceil(ch.segEnd * sr));
-            const sub = audioCtx.createBuffer(1, Math.max(1, s1 - s0), sr); sub.getChannelData(0).set(fullLegacyBuf.getChannelData(0).subarray(s0, s1));
+          if (probe) {
+            const ab = await extractAudSlice30(rawFile, probe, ch.t, ch.segEnd, audioCtx);
+            if (ab) ext = audioBufTo16kAndSlots30(ab, segDur);
+          } else if (fullLegacyBuf) {
+            const sr = fullLegacyBuf.sampleRate;
+            const s0 = Math.floor(ch.t * sr), s1 = Math.min(fullLegacyBuf.length, Math.ceil(ch.segEnd * sr));
+            const sub = audioCtx.createBuffer(1, Math.max(1, s1 - s0), sr);
+            sub.getChannelData(0).set(fullLegacyBuf.getChannelData(0).subarray(s0, s1));
             ext = audioBufTo16kAndSlots30(sub, segDur);
           }
-          if (!ext) { const cap = await captureLiveVideoAudioSegment(vid, ch.t, ch.segEnd, sig); ext = { base64: cap.data, mimeType: cap.mimeType, slots: null }; }
-          prepared.push({ ...ch, segDur, ext });
-        }
-
-        // STEP 1 (PARALLEL): Audio -> Accurate Source Language Transcript + Real Speaker Gender ("M" / "F") ONLY!
-        const step1Results = new Array(prepared.length).fill([]);
-        let s1Done = 0, c1 = 0;
-        await Promise.all(Array.from({ length: Math.min(parallelWorkers, Math.max(1, prepared.length)) }, async () => {
-          while (c1 < prepared.length && !sig.aborted) {
-            const ci = c1++, item = prepared[ci];
-            const slotDesc = item.ext.slots ? item.ext.slots.map((sl, k) => '#' + (k + 1) + ': ' + sl.start.toFixed(2) + 's-' + sl.end.toFixed(2) + 's').join('\n') : '';
-            const p1 = 'Listen carefully to this ' + item.segDur.toFixed(1) + '-second ' + srcName + ' audio clip.\n' +
-              (slotDesc ? 'Exact speech time-slots:\n' + slotDesc + '\n' : '') +
-              'Task: Transcribe ONLY the exact spoken words in their ORIGINAL language (' + srcName + ')—DO NOT translate yet!\n' +
-              'Listen to the ACTUAL vocal pitch & timbre in the audio to tag speaker gender:\n' +
-              '- "M" = Male voice speaking\n- "F" = Female voice speaking\n- "N" = Off-screen documentary narrator ONLY (if character is speaking, use M or F!)\n' +
-              'Return ONLY JSON array: [' + (slotDesc ? '{"id":1,"g":"M","src":"exact original spoken text"}' : '{"start":0.3,"end":3.1,"g":"M","src":"exact original spoken text"}') + ']';
-            let arr = [];
-            try {
-              const raw = await callKey30('Accurate audio transcriber & vocal gender classifier. Return JSON only.', p1, sig, [{ inlineData: { mimeType: item.ext.mimeType || 'audio/wav', data: item.ext.base64 } }], ci, false);
-              const cleaned = stripCodeFences(raw), m = cleaned.match(/\[[\s\S]*\]/);
-              if (m) { try { arr = JSON.parse(m[0]); } catch {} }
-              if (!arr.length) { const re = /\{[^{}]*\}/g; let mt; while ((mt = re.exec(cleaned)) !== null) { try { arr.push(JSON.parse(mt[0])); } catch {} } }
-            } catch (e) { if (e.name === 'AbortError' || e.status === 401 || e.status === 403) throw e; arr = []; addLog && addLog('⚠️ BigProject Step1: ' + (e.message || e)); }
-
-            const out = [];
-            if (item.ext.slots && arr.length) {
-              const byId = {}; arr.forEach((x, idx) => { if (x) byId[parseInt(x.id, 10) || (idx + 1)] = x; });
-              for (let k = 0; k < item.ext.slots.length; k++) {
-                const sl = item.ext.slots[k], it = byId[k + 1] || arr[k]; if (!it) continue;
-                const srcT = String(it.src || '').trim(); if (!srcT) continue;
-                const s = +Math.max(0, (item.t - part.start) + sl.start).toFixed(2), e = +Math.min(partDur, (item.t - part.start) + sl.end).toFixed(2);
-                if (e <= s + 0.3) continue;
-                const g = String(it.g || it.voice || 'M').toUpperCase();
-                const voice = (g === 'F' || g === 'SREYMOM' || g === 'FEMALE') ? 'sreymom' : (g === 'N' || g === 'NARRATOR' ? 'narrator' : 'piseth');
-                out.push({ id: Date.now() + ci * 1000 + k, start: s, end: e, dur: +(e - s).toFixed(2), src: srcT, km: '', voice, audioBlob: null });
-              }
-            } else if (arr.length) {
-              let prevE = Math.max(0, item.t - part.start);
-              for (let k = 0; k < arr.length; k++) {
-                const it = arr[k]; if (!it || !it.src) continue;
-                let rs = parseFloat(it.start), re = parseFloat(it.end); if (isNaN(rs)) rs = prevE - (item.t - part.start);
-                const s = +Math.max(0, Math.min(partDur - 0.3, (item.t - part.start) + rs)).toFixed(2);
-                if (isNaN(re) || (item.t - part.start) + re <= s + 0.3) re = (s - (item.t - part.start)) + 2.5;
-                const e = +Math.min(partDur, Math.max(s + 0.4, (item.t - part.start) + re)).toFixed(2); prevE = e;
-                const g = String(it.g || it.voice || 'M').toUpperCase();
-                const voice = (g === 'F' || g === 'SREYMOM' || g === 'FEMALE') ? 'sreymom' : (g === 'N' || g === 'NARRATOR' ? 'narrator' : 'piseth');
-                out.push({ id: Date.now() + ci * 1000 + k, start: s, end: e, dur: +(e - s).toFixed(2), src: String(it.src).trim(), km: '', voice, audioBlob: null });
-              }
+          if (!ext) {
+            ext = await (capChain = capChain.then(async () => {
+              if (sig.aborted) return null;
+              const cv = await getCapVid();
+              const cap = await captureLiveVideoAudioSegment(cv, ch.t, ch.segEnd, sig);
+              return { base64: cap.data, mimeType: cap.mimeType, slots: null };
+            }));
+          }
+          if (!ext || sig.aborted) break;
+          const item = { ...ch, segDur, ext };
+          const slotDesc = item.ext.slots
+            ? item.ext.slots.map((sl, k) => '#' + (k + 1) + ': ' + sl.start.toFixed(2) + 's-' + sl.end.toFixed(2) + 's').join('\n')
+            : '';
+          const p1 = 'Listen carefully to this ' + item.segDur.toFixed(1) + '-second ' + srcName + ' audio clip.\n' +
+            (slotDesc ? 'Exact speech time-slots:\n' + slotDesc + '\n' : '') +
+            'Task: Transcribe ONLY the exact spoken words in their ORIGINAL language (' + srcName + ')—DO NOT translate yet!\n' +
+            'Listen to ACTUAL vocal pitch & timbre to tag speaker gender:\n' +
+            '- "M" = Male\n- "F" = Female\n- "N" = Off-screen documentary narrator ONLY\n' +
+            'Return ONLY JSON array: [' +
+            (slotDesc ? '{"id":1,"g":"M","src":"exact spoken text"}' : '{"start":0.3,"end":3.1,"g":"M","src":"exact spoken text"}') + ']';
+          let arr = [];
+          try {
+            const raw = await callKey30(
+              'Accurate audio transcriber & vocal gender classifier. Return JSON only.',
+              p1, sig, [{ inlineData: { mimeType: item.ext.mimeType || 'audio/wav', data: item.ext.base64 } }], ci, false
+            );
+            const cleaned = stripCodeFences(raw), m = cleaned.match(/\[[\s\S]*\]/);
+            if (m) { try { arr = JSON.parse(m[0]); } catch {} }
+            if (!arr.length) {
+              const re = /\{[^{}]*\}/g; let mt;
+              while ((mt = re.exec(cleaned)) !== null) { try { arr.push(JSON.parse(mt[0])); } catch {} }
             }
-            step1Results[ci] = out; s1Done++;
-            updateProg(pi, 10 + Math.round((s1Done / Math.max(1, prepared.length)) * 32), '🎙️ ស្ដាប់សំឡេងដើម (' + s1Done + '/' + prepared.length + ')');
-            setBoxStatus('bpStatusBox', 'info', '🎙️ ជំហានទី ១: ស្ដាប់សំឡេង & ចាប់ប្រុស/ស្រី ភាគ ' + (pi + 1) + '/' + parts.length + ' (' + s1Done + '/' + prepared.length + ')');
+          } catch (e) {
+            if (e.name === 'AbortError' || e.status === 401 || e.status === 403) throw e;
+            arr = []; addLog && addLog('⚠️ BigProject Step1: ' + (e.message || e));
+          }
+          const out = [];
+          if (item.ext.slots && arr.length) {
+            const byId = {}; arr.forEach((x, idx) => { if (x) byId[parseInt(x.id, 10) || (idx + 1)] = x; });
+            for (let k = 0; k < item.ext.slots.length; k++) {
+              const sl = item.ext.slots[k], it = byId[k + 1] || arr[k]; if (!it) continue;
+              const srcT = String(it.src || '').trim(); if (!srcT) continue;
+              const s = +Math.max(0, (item.t - part.start) + sl.start).toFixed(2);
+              const e = +Math.min(partDur, (item.t - part.start) + sl.end).toFixed(2);
+              if (e <= s + 0.3) continue;
+              const g = String(it.g || it.voice || 'M').toUpperCase();
+              const voice = (g === 'F' || g === 'SREYMOM' || g === 'FEMALE') ? 'sreymom' : (g === 'N' || g === 'NARRATOR' ? 'narrator' : 'piseth');
+              out.push({ id: Date.now() + ci * 1000 + k, start: s, end: e, dur: +(e - s).toFixed(2), src: srcT, km: '', voice, audioBlob: null });
+            }
+          } else if (arr.length) {
+            let prevE = Math.max(0, item.t - part.start);
+            for (let k = 0; k < arr.length; k++) {
+              const it = arr[k]; if (!it || !it.src) continue;
+              let rs = parseFloat(it.start), re = parseFloat(it.end);
+              if (isNaN(rs)) rs = prevE - (item.t - part.start);
+              const s = +Math.max(0, Math.min(partDur - 0.3, (item.t - part.start) + rs)).toFixed(2);
+              if (isNaN(re) || (item.t - part.start) + re <= s + 0.3) re = (s - (item.t - part.start)) + 2.5;
+              const e = +Math.min(partDur, Math.max(s + 0.4, (item.t - part.start) + re)).toFixed(2); prevE = e;
+              const g = String(it.g || it.voice || 'M').toUpperCase();
+              const voice = (g === 'F' || g === 'SREYMOM' || g === 'FEMALE') ? 'sreymom' : (g === 'N' || g === 'NARRATOR' ? 'narrator' : 'piseth');
+              out.push({ id: Date.now() + ci * 1000 + k, start: s, end: e, dur: +(e - s).toFixed(2), src: String(it.src).trim(), km: '', voice, audioBlob: null });
+            }
+          }
+          step1Results[ci] = out; s1Done++;
+          updateProg(pi, 10 + Math.round((s1Done / Math.max(1, chunks.length)) * 32), '🎙️ ស្ដាប់សំឡេងដើម (' + s1Done + '/' + chunks.length + ')');
+          setBoxStatus('bpStatusBox', 'info', '🎙️ ជំហានទី ១: ភាគ ' + (pi + 1) + '/' + parts.length + ' (' + s1Done + '/' + chunks.length + ')');
+        }
+      }));
+
+      const partCues = step1Results.flat().filter(Boolean).sort((a, b) => a.start - b.start);
+
+      // STEP 2 (PARALLEL HEAVY-THINK): Natural Spoken Khmer Dubbing + Pronouns + Cast Verification + Rescue
+      if (!sig.aborted && partCues.length) {
+        const batches = [];
+        for (let b = 0; b < partCues.length; b += 20) batches.push(partCues.slice(b, b + 20));
+        let bDone = 0, bCursor = 0;
+        const translateBatch30 = async (chunk, biSeed) => {
+          const listStr = chunk.map((c, idx) =>
+            '[' + (idx + 1) + '] (' + c.dur + 's, ' + (c.voice === 'sreymom' ? 'F' : (c.voice === 'narrator' ? 'N' : 'M')) + ') ' + c.src
+          ).join('\n');
+          const p2 = 'You are an elite Cambodian movie dubbing scriptwriter & native ' + tgtName + ' linguist.\n' +
+            'Translate ALL ' + chunk.length + ' lines into 100% NATURAL, CONVERSATIONAL ' + tgtName + ' for real human voice dubbing.\n' +
+            'STRICT QUALITY RULES:\n' +
+            '1. TRANSLATE MEANING & EMOTION, NOT WORD-FOR-WORD: Convert idioms/slang into fluent everyday spoken Khmer (ភាសានិយាយធម្មជាតិ រលូន ច្បាស់ន័យ មិនរឹងដូច Google Translate)។\n' +
+            '2. ZERO GIBBERISH: Never invent fake phonetic words or leave untranslated foreign words (except real names).\n' +
+            '3. ACCURATE KHMER PRONOUNS & TONE: Match character relationships (បង/អូន, ឯង/ខ្ញុំ, លោក/អ្នកនាង, ទូលបង្គំ/ព្រះអង្គ) & STYLE: ' + (stylePrompts[speakStyle] || stylePrompts.natural) + '\n' +
+            '4. DUBBING TIMING: Keep each line concise so it fits naturally within its slot seconds (e.g. 2.4s).\n' +
+            '5. VERIFY VOICE ("v"): "piseth"=male, "sreymom"=female, "narrator"=off-screen narrator ONLY. Cast Memory: ' + (castMemory || 'Detect') + '\n' +
+            'Glossary: ' + (document.getElementById('optGlossary')?.value?.trim() || 'None') + '\n\n' +
+            'Lines:\n' + listStr + '\n\n' +
+            'Return ONLY valid JSON: {"cast":"char=M/F","items":[{"id":1,"t":"natural ' + tgtName + '","v":"piseth|sreymom|narrator"}]} with EXACTLY ' + chunk.length + ' items.';
+          const raw2 = await callKey30(
+            'Elite native ' + tgtName + ' movie dubbing translator. Natural spoken Khmer, accurate meaning & pronouns, zero gibberish. Return strict JSON only.',
+            p2, sig, null, biSeed, true
+          );
+          const cleaned2 = stripCodeFences(raw2);
+          let parsed = null;
+          const om = cleaned2.match(/\{[\s\S]*\}/);
+          if (om) { try { parsed = JSON.parse(om[0]); } catch {} }
+          if (!parsed) {
+            const am = cleaned2.match(/\[[\s\S]*\]/);
+            if (am) { try { const arr2 = JSON.parse(am[0]); if (Array.isArray(arr2)) parsed = { items: arr2 }; } catch {} }
+          }
+          return parsed;
+        };
+
+        await Promise.all(Array.from({ length: Math.min(parallelWorkers, batches.length) }, async () => {
+          while (bCursor < batches.length && !sig.aborted) {
+            const bi = bCursor++, batch = batches[bi];
+            let parsed = null;
+            try { parsed = await translateBatch30(batch, bi); } catch (e) { if (e.name === 'AbortError') throw e; }
+            if (parsed?.cast) castMemory = String(parsed.cast).slice(0, 450);
+
+            const applyItems = (subBatch, itemsArr) => {
+              const byId = {};
+              itemsArr.forEach((x, idx) => { if (x && typeof x === 'object') byId[parseInt(x.id, 10) || (idx + 1)] = x; });
+              const missed = [];
+              for (let k = 0; k < subBatch.length; k++) {
+                const c = subBatch[k], it = byId[k + 1] || itemsArr[k];
+                const tr = String((it && (it.t || it.km || it.text)) || '').trim();
+                const badKh = tgtCode === 'km' && (!/[\u1780-\u17ff]/.test(tr) || isKhmerGibberish(tr));
+                if (tr && !badKh && (tgtCode === srcCode || tr.toLowerCase() !== String(c.src || '').trim().toLowerCase() || tr.length <= 3)) {
+                  c.km = tr;
+                  const v = String(it.v || '').toLowerCase();
+                  if (v === 'piseth' || v === 'sreymom' || v === 'narrator') c.voice = v;
+                } else missed.push(c);
+              }
+              return missed;
+            };
+
+            let missing = applyItems(batch, Array.isArray(parsed?.items) ? parsed.items : []);
+            if (missing.length && !sig.aborted) {
+              try {
+                const pRescue = await translateBatch30(missing, bi + 7);
+                missing = applyItems(missing, Array.isArray(pRescue?.items) ? pRescue.items : []);
+              } catch (e) { if (e.name === 'AbortError') throw e; }
+            }
+            if (missing.length && typeof window.__ctsV54AutoHealTranslate === 'function' && !sig.aborted) {
+              try {
+                await window.__ctsV54AutoHealTranslate(missing, srcCode, tgtCode, tgtName, sig);
+                missing = missing.filter(c => !String(c.km || '').trim());
+              } catch (e) { if (e.name === 'AbortError') throw e; }
+            }
+            for (const c of missing) {
+              try { c.km = await freeTranslate(c.src, srcCode, tgtCode); } catch { c.km = c.src; }
+            }
+            bDone++;
+            updateProg(pi, 42 + Math.round((bDone / batches.length) * 20), '🌐 បកប្រែខ្មែរធម្មជាតិ 100% (' + bDone + '/' + batches.length + ')');
+            setBoxStatus('bpStatusBox', 'info', '🌐 ជំហានទី ២: បកប្រែខ្មែរច្បាស់ៗ (' + bDone + '/' + batches.length + ')');
           }
         }));
+      }
 
-        const partCues = step1Results.flat().filter(Boolean).sort((a, b) => a.start - b.start);
-
-        // STEP 2 (PARALLEL TEXT-TO-KHMER): Translate Verified Source Text -> 100% Natural Grammatical Khmer + Mouth Timing + Cast Verification!
-        if (!sig.aborted && partCues.length) {
-          const batches = [];
-          for (let b = 0; b < partCues.length; b += 30) batches.push(partCues.slice(b, b + 30));
-          let bDone = 0, bCursor = 0;
-
-          await Promise.all(Array.from({ length: Math.min(parallelWorkers, batches.length) }, async () => {
-            while (bCursor < batches.length && !sig.aborted) {
-              const bi = bCursor++, batch = batches[bi];
-              const listStr = batch.map((c, idx) => '[' + (idx + 1) + '] (' + c.dur + 's, ' + (c.voice === 'sreymom' ? 'F' : (c.voice === 'narrator' ? 'N' : 'M')) + ') ' + c.src).join('\n');
-              const p2 = 'You are a native Cambodian movie dubbing scriptwriter.\n' +
-                'Translate ALL ' + batch.length + ' spoken lines into 100% NATURAL, CLEAR, GRAMMATICAL, EVERYDAY ' + tgtName + '.\n' +
-                'STRICT RULES:\n' +
-                '1. NEVER invent fake phonetic Khmer words or transliterate foreign syllables into nonsense! Translate MEANING into fluent Cambodian Khmer that any Khmer viewer understands 100%.\n' +
-                '2. Keep each ' + tgtName + ' line concise so it can be spoken naturally inside its exact slot duration (shown in seconds like 2.4s).\n' +
-                '3. STYLE: ' + (stylePrompts[speakStyle] || stylePrompts.natural) + '\n' +
-                '4. Verify speaker gender ("v": "piseth"=male, "sreymom"=female, "narrator"=off-screen narrator only) using both the audio tag (M/F) and dialogue context. Cast Memory: ' + (castMemory || 'Detect') + '\n' +
-                'Glossary:\n' + (document.getElementById('optGlossary')?.value?.trim() || 'None') + '\n\n' +
-                'Lines:\n' + listStr + '\n\n' +
-                'Return ONLY valid JSON: {"cast":"char=M/F","items":[{"t":"natural ' + tgtName + ' dialogue","v":"piseth|sreymom|narrator"}]} with EXACTLY ' + batch.length + ' items.';
-
-              let parsed = null;
-              try {
-                const raw2 = await callKey30('Native ' + tgtName + ' movie dubbing translator. Perfect grammar, zero gibberish. JSON only.', p2, sig, null, bi, true);
-                const om = stripCodeFences(raw2).match(/\{[\s\S]*\}/);
-                if (om) { try { parsed = JSON.parse(om[0]); } catch {} }
-              } catch (e) { if (e.name === 'AbortError') throw e; }
-
-              if (parsed?.cast) castMemory = String(parsed.cast).slice(0, 450);
-              const items = Array.isArray(parsed?.items) ? parsed.items : [];
-              for (let k = 0; k < batch.length; k++) {
-                const c = batch[k], it = items[k];
-                if (it && it.t && !isKhmerGibberish(it.t)) {
-                  c.km = String(it.t).trim();
-                  const v = String(it.v || '').toLowerCase();
-                  if (!c.voice && (v === 'piseth' || v === 'sreymom' || v === 'narrator')) c.voice = v;
-                } else {
-                  // Fallback line-by-line clean translation if batch failed or gibberish detected
-                  try { c.km = await freeTranslate(c.src, srcCode, tgtCode); } catch { c.km = c.src; }
-                }
-              }
-              bDone++;
-              updateProg(pi, 42 + Math.round((bDone / batches.length) * 20), '🌐 បកប្រែខ្មែរធម្មជាតិ 100% (' + bDone + '/' + batches.length + ')');
-              setBoxStatus('bpStatusBox', 'info', '🌐 ជំហានទី ២: បកប្រែភាសាខ្មែរច្បាស់ៗ (' + bDone + '/' + batches.length + ')');
-            }
-          }));
-        }
-
-        // Save live intermediate translated cues
+      // Save live intermediate translated cues
         if (!sig.aborted) {
           await idbPut30(PROJ_DB, PROJ_STORE, {
             id: 'part_' + part.partIndex, partIndex: part.partIndex, start: part.start, end: part.end,
@@ -20852,6 +20954,7 @@
     } finally {
       bpRun30 = false; try { await audioCtx.close(); } catch {}
       try { if (bpKa30) bpKa30.pause(); } catch {}
+      if (capVidUrl) { try { if (capVid && capVid !== vid) capVid.src = ''; URL.revokeObjectURL(capVidUrl); } catch {} }
       releaseWakeLock();
       sBtn.disabled = false; sBtn.textContent = '🚀 ចាប់ផ្ដើមបកប្រែ / Start Project';
       stBtn.style.display = 'none';
@@ -24829,6 +24932,183 @@ body.cts-desktop-mode #cueList .cue-card {
     };
     sync();
   };
+})();
+</script>
+<script id="cts-addon-55-delparts">
+// === ADD-ON #55: DELETE SINGLE PART / DELETE ALL PARTS (CLEANS UI + INDEXEDDB VIDEO + MEMORY) ===
+(function() {
+  const PROJ_DB = 'cts_big_project_db', PROJ_STORE = 'parts';
+  const SPLIT_DB = 'cts_big_split_db', SPLIT_STORE = 'split_parts';
+
+  function openDb55(dbName) {
+    return new Promise((res, rej) => {
+      const req = indexedDB.open(dbName);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  }
+
+  async function deletePartFromDb55(dbName, storeName, partIndex) {
+    const db = await openDb55(dbName);
+    try {
+      if (!db.objectStoreNames.contains(storeName)) return false;
+      return await new Promise((res, rej) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        let removed = false;
+        const curReq = store.openCursor();
+        curReq.onsuccess = e => {
+          const cur = e.target.result;
+          if (!cur) return;
+          const v = cur.value || {};
+          const k = String(cur.key || '');
+          if (v.partIndex === partIndex || k === 'part_' + partIndex || k === 'split_' + partIndex) {
+            cur.delete();
+            removed = true;
+          }
+          cur.continue();
+        };
+        tx.oncomplete = () => res(removed);
+        tx.onerror = () => rej(tx.error);
+      });
+    } finally { db.close(); }
+  }
+
+  async function clearStore55(dbName, storeName) {
+    const db = await openDb55(dbName);
+    try {
+      if (!db.objectStoreNames.contains(storeName)) return;
+      await new Promise((res, rej) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        tx.objectStore(storeName).clear();
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+      });
+    } finally { db.close(); }
+  }
+
+  function revokeCardBlobs55(el) {
+    if (!el) return;
+    el.querySelectorAll('video, audio, a, source').forEach(n => {
+      const u = n.src || n.href || '';
+      if (u.startsWith('blob:')) { try { URL.revokeObjectURL(u); } catch {} }
+      if (n.tagName === 'VIDEO' || n.tagName === 'AUDIO') { try { n.pause(); n.src = ''; } catch {} }
+    });
+  }
+
+  function parsePartIndex55(el) {
+    const t = (el.textContent || '').replace(/\s+/g, ' ');
+    const m = t.match(/ភាគ\s*(?:ទី\s*|#\s*)(\d+)/);
+    return m ? Math.max(0, parseInt(m[1], 10) - 1) : -1;
+  }
+
+  function isPipelineBusy55() {
+    const sBtn = document.getElementById('bpStartBtn');
+    const spBtn = document.getElementById('bpStartSplitBtn');
+    if (sBtn && sBtn.disabled) { toast('⏳ សូមបញ្ឈប់ Big Project សិនមុននឹងលុប!'); return true; }
+    if (spBtn && spBtn.disabled) { toast('⏳ សូមកំពុង Split រឿង — សូមឈប់សិន!'); return true; }
+    return false;
+  }
+
+  function enhancePartLists55() {
+    const refBtn = document.getElementById('bpRefreshListBtn');
+    if (refBtn && refBtn.parentElement && !document.getElementById('cts55DelAllProjBtn')) {
+      const delAllBtn = document.createElement('button');
+      delAllBtn.type = 'button';
+      delAllBtn.id = 'cts55DelAllProjBtn';
+      delAllBtn.className = 'btn btn-sm';
+      delAllBtn.style.cssText = 'background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.55);color:#fca5a5;font-weight:800;margin-left:4px;';
+      delAllBtn.textContent = '🗑️ លុបគ្រប់ភាគ';
+      delAllBtn.onclick = async () => {
+        if (isPipelineBusy55()) return;
+        if (!confirm('លុបគ្រប់ភាគ និង Video ដែលDone ទាំងអស់ចេញមែនទេ?')) return;
+        const card = refBtn.closest('.panel-card, .card, div[class*="card"]') || refBtn.parentElement.parentElement;
+        if (card) revokeCardBlobs55(card);
+        await clearStore55(PROJ_DB, PROJ_STORE).catch(() => {});
+        refBtn.click();
+        toast('🗑️ បានលុបគ្រប់ភាគ និង Video ចេញស្អាត 100%!');
+      };
+      refBtn.insertAdjacentElement('beforebegin', delAllBtn);
+    }
+
+    const projCard = refBtn ? (refBtn.closest('.panel-card, .card, div[class*="card"]') || refBtn.parentElement.parentElement) : null;
+    if (projCard) {
+      projCard.querySelectorAll('button').forEach(b => {
+        if (!/មើល|នាំចូល|ទាញយក|Play|Preview/i.test(b.textContent || '')) return;
+        const rowCard = b.closest('div[style*="border"], .bp-part-card, .part-card') || b.parentElement.parentElement;
+        if (!rowCard || rowCard === projCard || rowCard.querySelector('.cts55-del-part')) return;
+        const pIdx = parsePartIndex55(rowCard);
+        if (pIdx < 0) return;
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-sm cts55-del-part';
+        delBtn.style.cssText = 'background:rgba(239,68,68,0.16);border:1px solid rgba(239,68,68,0.55);color:#fca5a5;font-weight:800;';
+        delBtn.textContent = '🗑️ លុបភាគ';
+        delBtn.onclick = async (e) => {
+          e.stopPropagation();
+          if (isPipelineBusy55()) return;
+          revokeCardBlobs55(rowCard);
+          await deletePartFromDb55(PROJ_DB, PROJ_STORE, pIdx).catch(() => {});
+          rowCard.remove();
+          refBtn?.click();
+          toast('🗑️ បានលុប ភាគ #' + (pIdx + 1) + ' និង Video ចេញហើយ!');
+        };
+        b.parentElement.appendChild(delBtn);
+      });
+    }
+
+    const splitDubBtns = document.querySelectorAll('.sp-dub-btn');
+    if (splitDubBtns.length) {
+      const firstRow = splitDubBtns[0].closest('div[style*="border"], .sp-row, div');
+      const splitList = firstRow ? firstRow.parentElement : null;
+      if (splitList && splitList.parentElement && !document.getElementById('cts55DelAllSplitBtn')) {
+        const bar = document.createElement('div');
+        bar.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:6px;';
+        const delAllSp = document.createElement('button');
+        delAllSp.type = 'button';
+        delAllSp.id = 'cts55DelAllSplitBtn';
+        delAllSp.className = 'btn btn-sm';
+        delAllSp.style.cssText = 'background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.55);color:#fca5a5;font-weight:800;';
+        delAllSp.textContent = '🗑️ លុបគ្រប់ភាគ Split';
+        delAllSp.onclick = async () => {
+          if (isPipelineBusy55()) return;
+          if (!confirm('លុបគ្រប់ភាគ Split និង Video ទាំងអស់ចេញមែនទេ?')) return;
+          revokeCardBlobs55(splitList);
+          await clearStore55(SPLIT_DB, SPLIT_STORE).catch(() => {});
+          splitList.innerHTML = '';
+          bar.remove();
+          toast('🗑️ បានលុបគ្រប់ភាគ Split និង Video ចេញហើយ!');
+        };
+        bar.appendChild(delAllSp);
+        splitList.parentElement.insertBefore(bar, splitList);
+      }
+
+      splitDubBtns.forEach(btn => {
+        const row = btn.closest('div[style*="border"]') || btn.parentElement.parentElement;
+        if (!row || row.querySelector('.cts55-del-split')) return;
+        const pIdx = parsePartIndex55(row);
+        if (pIdx < 0) return;
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-sm cts55-del-split';
+        delBtn.style.cssText = 'background:rgba(239,68,68,0.16);border:1px solid rgba(239,68,68,0.55);color:#fca5a5;font-weight:800;';
+        delBtn.textContent = '🗑️ លុប';
+        delBtn.onclick = async (e) => {
+          e.stopPropagation();
+          if (isPipelineBusy55()) return;
+          revokeCardBlobs55(row);
+          await deletePartFromDb55(SPLIT_DB, SPLIT_STORE, pIdx).catch(() => {});
+          row.remove();
+          toast('🗑️ បានលុបភាគ Split #' + (pIdx + 1) + ' និង Video ចេញហើយ!');
+        };
+        btn.parentElement.appendChild(delBtn);
+      });
+    }
+  }
+
+  new MutationObserver(() => enhancePartLists55()).observe(document.body, { childList: true, subtree: true });
+  setTimeout(enhancePartLists55, 800);
+  setTimeout(enhancePartLists55, 2200);
 })();
 </script>
 </body>
