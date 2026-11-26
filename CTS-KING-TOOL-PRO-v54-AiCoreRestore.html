@@ -1065,7 +1065,7 @@
 
     async function generateGeminiTtsBlob(text, voiceRole, signal) {
       const keys = getProviderKeys('gemini'); if (!keys.length) throw new Error('មុខងារ Generate AI Audio ត្រូវការ Gemini API Key!');
-      const voiceName = voiceRole === 'sreymom' ? 'Kore' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
+      const voiceName = voiceRole === 'sreymom' ? 'Leda' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
       let lastErr = null;
       for (let r = 0; r < 3; r++) {
         for (const key of keys) {
@@ -2383,7 +2383,7 @@
   // === 6. TTS ENGINES (TERMUX EDGE-TTS / AZURE / GEMINI) + WSOLA LIP-SYNC ===
   window.generateGeminiTtsBlob = async function(text, voiceRole, signal, statusCb) {
     const keys = getProviderKeys('gemini'); if (!keys.length) throw new Error('មុខងារ Generate AI Audio ត្រូវការ Gemini API Key!');
-    const voiceName = voiceRole === 'sreymom' ? 'Kore' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
+    const voiceName = voiceRole === 'sreymom' ? 'Leda' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
     const ttsModels = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-2.5-flash-preview-tts'];
     let lastErr = null;
     for (let r = 0; r < 5; r++) {
@@ -3161,7 +3161,7 @@
   // 4. FAST PARALLEL GEN AUDIO (TERMUX 4x & GEMINI 9-KEY 4x) + 0ms LIP-SYNC
   window.generateGeminiTtsBlob = async function(text, voiceRole, signal) {
     const keys = getProviderKeys('gemini'); if (!keys.length) throw new Error('ត្រូវការ Gemini API Key!');
-    const voiceName = voiceRole === 'sreymom' ? 'Kore' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
+    const voiceName = voiceRole === 'sreymom' ? 'Leda' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
     const startK = (rrKey++) % keys.length, rotKeys = keys.slice(startK).concat(keys.slice(0, startK)).slice(0, Math.min(4, keys.length));
     const models = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-2.5-flash-preview-tts'];
     let lastErr = null;
@@ -3529,7 +3529,7 @@
     const isAuto = keyModeCfg.mode !== 'manual';
     const curKey = settings.geminiKey;
     const keysToTry = isAuto ? [curKey, ...allKeys.filter(k => k !== curKey)].filter(Boolean) : [curKey || allKeys[0]];
-    const voiceName = voiceRole === 'sreymom' ? 'Kore' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
+    const voiceName = voiceRole === 'sreymom' ? 'Leda' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
     const models = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-2.5-flash-preview-tts'];
     let lastErr = null;
 
@@ -3635,7 +3635,7 @@
     if (!allKeys.length) throw new Error('ត្រូវការ Gemini API Key!');
     const modeCfg = safeGet('cts_king_key_mode', { mode: 'auto' }) || { mode: 'auto' };
     const isAuto = modeCfg.mode !== 'manual';
-    const voiceName = voiceRole === 'sreymom' ? 'Kore' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
+    const voiceName = voiceRole === 'sreymom' ? 'Leda' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
     const models = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-2.5-flash-preview-tts'];
     const myOffset = (workerSeed++) % allKeys.length;
     let lastErr = null;
@@ -3950,7 +3950,7 @@
     if (!allKeys.length) throw new Error('ត្រូវការ Gemini API Key!');
     const modeCfg = safeGet('cts_king_key_mode', { mode: 'auto' }) || { mode: 'auto' };
     const isAuto = modeCfg.mode !== 'manual';
-    const voiceName = voiceRole === 'sreymom' ? 'Kore' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
+    const voiceName = voiceRole === 'sreymom' ? 'Leda' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
     const models = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-2.5-flash-preview-tts'];
     const offset = (seedIdx++) % allKeys.length;
     let lastErr = null;
@@ -7718,7 +7718,7 @@
   }
 
   window.generateGeminiTtsBlob = async function(text, voiceRole, signal, workerId = 0, onLive = null) {
-    const voiceName = voiceRole === 'sreymom' ? 'Kore' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
+    const voiceName = voiceRole === 'sreymom' ? 'Leda' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
     const safeText = sanitizeSpeakableText(text);
     const askAudio = async (txt) => {
       const data = await execDedicatedGemini(
@@ -8568,7 +8568,7 @@
   };
 
   window.generateGeminiTtsBlob = async function(text, voiceRole, signal, workerId = 0, label = 'TTS') {
-    const voiceName = voiceRole === 'sreymom' ? 'Kore' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
+    const voiceName = voiceRole === 'sreymom' ? 'Leda' : (voiceRole === 'narrator' ? 'Zephyr' : 'Charon');
     const safeText = String(text || '').replace(/[\r\n]+/g, ' ').replace(/[«»「」『』【】\[\]()]/g, ' ').replace(/\.{2,}/g, ' ').replace(/\s+/g, ' ').trim();
     const ask = async txt => (await execV13Gemini(TTS_ACTIVE, workerId, [{ text: txt }], null, { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } }, _isTts: true }, 24000, signal, label))?.candidates?.[0]?.content?.parts?.find(p => p.inlineData?.data);
     let part = await ask(safeText); if (!part) part = await ask('«' + safeText + '។»'); if (!part) throw new Error('No audio returned');
@@ -20237,7 +20237,16 @@ let mainVrGraph = null;
     const dClone = dubBtn.cloneNode(true), oClone = origBtn.cloneNode(true);
     dubBtn.replaceWith(dClone); origBtn.replaceWith(oClone);
 
+    dClone.setAttribute('data-no-i18n', '1');
+    oClone.setAttribute('data-no-i18n', '1');
+    dClone.textContent = '🎙️ សម្លេងបកប្រែ + Background';
+    oClone.textContent = '🎬 ស្តាប់សម្លេងដើម';
     const syncModBtns = (speakingNow = false) => {
+      const ban = document.getElementById('ctsSpModModeBanner') || dClone.parentElement?.previousElementSibling;
+      if (ban) {
+        ban.setAttribute('data-no-i18n', '1');
+        ban.textContent = mod30DubOn ? '🎙️ មុខងារ៖ សម្លេងបកប្រែ + Background' : '🎬 មុខងារ៖ ស្តាប់សម្លេងដើម (និយាយដើម + ភ្លេង)';
+      }
       dClone.className = 'btn btn-sm ' + (mod30DubOn ? 'btn-primary' : '');
       oClone.className = 'btn btn-sm ' + (!mod30DubOn ? 'btn-primary' : '');
       const cfg = getVr();
@@ -20277,7 +20286,9 @@ let mainVrGraph = null;
         if (v.paused || !mod30Cues.length) return;
         const t = v.currentTime + 0.03;
         const act = mod30Cues.find(c => t >= c.start && v.currentTime <= c.end);
-        syncModBtns(Boolean(act));
+        const speakingPad = Boolean(act) || mod30Cues.some(c => (v.currentTime + 0.35) >= c.start && (v.currentTime - 0.35) <= c.end);
+        syncModBtns(speakingPad);
+        if (!mod30Graph) v.volume = mod30DubOn ? (speakingPad ? 0.04 : 0.45) : 1.0;
         const sub = document.getElementById('ctsSpModSub'), pill = document.getElementById('ctsSpModSubPill');
         if (act) {
           if (sub) sub.style.display = 'block';
@@ -25190,7 +25201,7 @@ if (typeof window.addLog !== 'function') {
 })();
 </script>
 <script id="cts-addon-56-vocalcut-pro">
-// === ADD-ON #56: STUDIO BACKGROUND-ONLY VOCAL CUT FOR MODAL PREVIEW + AUTO SYNC MAIN VR ===
+// === ADD-ON #56: STUDIO BACKGROUND-ONLY VOCAL CUT FOR MODAL PREVIEW ===
 (function() {
   window.__ctsTrueBgGraph56 = function(ctx, srcNode) {
     const splitter = ctx.createChannelSplitter(2);
@@ -25203,19 +25214,19 @@ if (typeof window.addLog !== 'function') {
 
     const sideGain = ctx.createGain(); sideGain.gain.value = 1.0;
     const vocalNotch = ctx.createBiquadFilter();
-    vocalNotch.type = 'peaking'; vocalNotch.frequency.value = 1150; vocalNotch.Q.value = 0.60; vocalNotch.gain.value = 0;
+    vocalNotch.type = 'peaking'; vocalNotch.frequency.value = 1100; vocalNotch.Q.value = 0.55; vocalNotch.gain.value = 0;
     const presNotch = ctx.createBiquadFilter();
-    presNotch.type = 'peaking'; presNotch.frequency.value = 2600; presNotch.Q.value = 0.75; presNotch.gain.value = 0;
+    presNotch.type = 'peaking'; presNotch.frequency.value = 2600; presNotch.Q.value = 0.70; presNotch.gain.value = 0;
     sideSum.connect(vocalNotch); vocalNotch.connect(presNotch); presNotch.connect(sideGain);
 
     const subBass = ctx.createBiquadFilter();
-    subBass.type = 'lowpass'; subBass.frequency.value = 155; subBass.Q.value = 0.707;
-    const bassGain = ctx.createGain(); bassGain.gain.value = 0.55;
+    subBass.type = 'lowpass'; subBass.frequency.value = 125; subBass.Q.value = 0.707;
+    const bassGain = ctx.createGain(); bassGain.gain.value = 0.45;
     srcNode.connect(subBass); subBass.connect(bassGain);
 
     const highAir = ctx.createBiquadFilter();
-    highAir.type = 'highpass'; highAir.frequency.value = 4200; highAir.Q.value = 0.707;
-    const airGain = ctx.createGain(); airGain.gain.value = 0.40;
+    highAir.type = 'highpass'; highAir.frequency.value = 5000; highAir.Q.value = 0.707;
+    const airGain = ctx.createGain(); airGain.gain.value = 0.25;
     srcNode.connect(highAir); highAir.connect(airGain);
 
     const vrBus = ctx.createGain();
@@ -25238,16 +25249,15 @@ if (typeof window.addLog !== 'function') {
       dryOut.gain.setTargetAtTime(0, t, 0.015);
       vrOut.gain.setTargetAtTime(baseVol * bg, t, 0.02);
 
-      // Kill original speech aggressively (especially when Khmer dubbing speaks), keep Music & SFX alive!
-      const vCut = speakingNow ? (-22 * c) : (-7 * c);
-      const pCut = speakingNow ? (-16 * c) : (-3 * c);
-      const sLevel = speakingNow ? Math.max(0.25, 1 - 0.65 * c) : 1.0;
+      const vCut = speakingNow ? (-28 * c) : (-10 * c);
+      const pCut = speakingNow ? (-24 * c) : (-5 * c);
+      const sLevel = speakingNow ? Math.max(0.04, 1 - 0.96 * c) : 0.95;
 
-      vocalNotch.gain.setTargetAtTime(vCut, t, 0.025);
-      presNotch.gain.setTargetAtTime(pCut, t, 0.025);
-      sideGain.gain.setTargetAtTime(mode === 'notch' ? 0.15 : sLevel, t, 0.03);
-      bassGain.gain.setTargetAtTime(0.55, t, 0.03);
-      airGain.gain.setTargetAtTime(0.40, t, 0.03);
+      vocalNotch.gain.setTargetAtTime(vCut, t, 0.02);
+      presNotch.gain.setTargetAtTime(pCut, t, 0.02);
+      sideGain.gain.setTargetAtTime(mode === 'notch' ? (speakingNow ? 0.04 : 0.45) : sLevel, t, 0.025);
+      bassGain.gain.setTargetAtTime(speakingNow ? 0.30 : 0.50, t, 0.03);
+      airGain.gain.setTargetAtTime(speakingNow ? 0.14 : 0.30, t, 0.03);
     };
     return { update, vrOut, dryOut };
   };
