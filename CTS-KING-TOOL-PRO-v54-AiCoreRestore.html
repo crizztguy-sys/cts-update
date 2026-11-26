@@ -20648,6 +20648,7 @@ async function probeMp4V30(rawFile) {
   }
 
   async function runBigProject30(isResume) {
+  const addLog = (typeof window.addLog === 'function') ? window.addLog : (m => { try { console.log('[CTS]', m); } catch {} });
     if (bpRun30) return;
     const vid = document.getElementById('videoPlayer');
   const metaFile = (typeof bpVideoMeta !== 'undefined' && bpVideoMeta?.file) ? bpVideoMeta.file : null;
@@ -20874,7 +20875,7 @@ async function probeMp4V30(rawFile) {
             }
           } catch (e) {
             if (e.name === 'AbortError' || e.status === 401 || e.status === 403) throw e;
-            arr = []; addLog && addLog('⚠️ BigProject Step1: ' + (e.message || e));
+            arr = []; (typeof addLog === 'function') && addLog('⚠️ BigProject Step1: ' + (e.message || e));
           }
           const out = [];
           if (item.ext.slots && arr.length) {
@@ -25018,7 +25019,10 @@ body.cts-desktop-mode #cueList .cue-card {
 })();
 </script>
 <script id="cts-addon-55-delparts">
-// === ADD-ON #55: DELETE SINGLE PART / DELETE ALL PARTS (CLEANS UI + INDEXEDDB VIDEO + MEMORY) ===
+// === ADD-ON #55: SAFE GLOBAL addLog + DELETE SINGLE PART / DELETE ALL PARTS ===
+if (typeof window.addLog !== 'function') {
+  window.addLog = function(m) { try { console.log('[CTS]', m); } catch {} };
+}
 (function() {
   const PROJ_DB = 'cts_big_project_db', PROJ_STORE = 'parts';
   const SPLIT_DB = 'cts_big_split_db', SPLIT_STORE = 'split_parts';
@@ -25101,12 +25105,13 @@ body.cts-desktop-mode #cueList .cue-card {
       delAllBtn.id = 'cts55DelAllProjBtn';
       delAllBtn.className = 'btn btn-sm';
       delAllBtn.style.cssText = 'background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.55);color:#fca5a5;font-weight:800;margin-left:4px;';
-      delAllBtn.setAttribute('data-no-i18n', '1'); delAllBtn.textContent = '🗑️ លុបគ្រប់ភាគ';
+      delAllBtn.setAttribute('data-no-i18n', '1');
+      delAllBtn.textContent = '🗑️ លុបគ្រប់ភាគ';
       delAllBtn.onclick = async () => {
         if (isPipelineBusy55()) return;
         if (!confirm('លុបគ្រប់ភាគ និង Video ដែលDone ទាំងអស់ចេញមែនទេ?')) return;
-        const card = refBtn.closest('.panel-card, .card, div[class*="card"]') || refBtn.parentElement.parentElement;
-        if (card) revokeCardBlobs55(card);
+        const panel = refBtn.closest('.panel-card') || refBtn.parentElement.parentElement;
+        if (panel) revokeCardBlobs55(panel);
         await clearStore55(PROJ_DB, PROJ_STORE).catch(() => {});
         refBtn.click();
         toast('🗑️ បានលុបគ្រប់ភាគ និង Video ចេញស្អាត 100%!');
@@ -25114,19 +25119,28 @@ body.cts-desktop-mode #cueList .cue-card {
       refBtn.insertAdjacentElement('beforebegin', delAllBtn);
     }
 
-    const projCard = refBtn ? (refBtn.closest('.panel-card, .card, div[class*="card"]') || refBtn.parentElement.parentElement) : null;
-    if (projCard) {
-      projCard.querySelectorAll('button').forEach(b => {
-        if (!/មើល|នាំចូល|ទាញយក|Play|Preview/i.test(b.textContent || '')) return;
-        const rowCard = b.closest('div[style*="border"], .bp-part-card, .part-card') || b.parentElement.parentElement;
-        if (!rowCard || rowCard === projCard || rowCard.querySelector('.cts55-del-part')) return;
+    // Attach "🗑️ លុប" directly to every Completed Part card (find "Edit ក្នុង Dubber" / "មើល" buttons inside Done list)
+    const projPanel = refBtn ? (refBtn.closest('.panel-card') || refBtn.parentElement.parentElement) : document;
+    if (projPanel) {
+      projPanel.querySelectorAll('button').forEach(b => {
+        const bt = (b.textContent || '').trim();
+        if (!/Edit\s*ក្នុង\s*Dubber|អត្ថបទ/i.test(bt)) return;
+        const btnRow = b.parentElement;
+        if (!btnRow || btnRow.querySelector('.cts55-del-part')) return;
+        let rowCard = btnRow.parentElement;
+        while (rowCard && rowCard !== projPanel && parsePartIndex55(rowCard) < 0) {
+          rowCard = rowCard.parentElement;
+        }
+        if (!rowCard || rowCard === projPanel) return;
         const pIdx = parsePartIndex55(rowCard);
         if (pIdx < 0) return;
+
         const delBtn = document.createElement('button');
         delBtn.type = 'button';
         delBtn.className = 'btn btn-sm cts55-del-part';
-        delBtn.style.cssText = 'background:rgba(239,68,68,0.16);border:1px solid rgba(239,68,68,0.55);color:#fca5a5;font-weight:800;';
-        delBtn.setAttribute('data-no-i18n', '1'); delBtn.textContent = '🗑️ លុបភាគ';
+        delBtn.style.cssText = 'background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.55);color:#fca5a5;font-weight:800;';
+        delBtn.setAttribute('data-no-i18n', '1');
+        delBtn.textContent = '🗑️ លុប';
         delBtn.onclick = async (e) => {
           e.stopPropagation();
           if (isPipelineBusy55()) return;
@@ -25134,64 +25148,16 @@ body.cts-desktop-mode #cueList .cue-card {
           await deletePartFromDb55(PROJ_DB, PROJ_STORE, pIdx).catch(() => {});
           rowCard.remove();
           refBtn?.click();
-          toast('🗑️ បានលុប ភាគ #' + (pIdx + 1) + ' និង Video ចេញហើយ!');
+          toast('🗑️ បានលុប ភាគទី ' + (pIdx + 1) + ' និង Video ចេញហើយ!');
         };
-        b.parentElement.appendChild(delBtn);
-      });
-    }
-
-    const splitDubBtns = document.querySelectorAll('.sp-dub-btn');
-    if (splitDubBtns.length) {
-      const firstRow = splitDubBtns[0].closest('div[style*="border"], .sp-row, div');
-      const splitList = firstRow ? firstRow.parentElement : null;
-      if (false && splitList && splitList.parentElement && !document.getElementById('cts55DelAllSplitBtn')) {
-        const bar = document.createElement('div');
-        bar.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:6px;';
-        const delAllSp = document.createElement('button');
-        delAllSp.type = 'button';
-        delAllSp.id = 'cts55DelAllSplitBtn';
-        delAllSp.className = 'btn btn-sm';
-        delAllSp.style.cssText = 'background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.55);color:#fca5a5;font-weight:800;';
-        delAllSp.textContent = '🗑️ លុបគ្រប់ភាគ Split';
-        delAllSp.onclick = async () => {
-          if (isPipelineBusy55()) return;
-          if (!confirm('លុបគ្រប់ភាគ Split និង Video ទាំងអស់ចេញមែនទេ?')) return;
-          revokeCardBlobs55(splitList);
-          await clearStore55(SPLIT_DB, SPLIT_STORE).catch(() => {});
-          splitList.innerHTML = '';
-          bar.remove();
-          toast('🗑️ បានលុបគ្រប់ភាគ Split និង Video ចេញហើយ!');
-        };
-        bar.appendChild(delAllSp);
-        splitList.parentElement.insertBefore(bar, splitList);
-      }
-
-      splitDubBtns.forEach(btn => {
-        const row = btn.closest('div[style*="border"]') || btn.parentElement.parentElement;
-        if (!row || row.querySelector('.cts55-del-split') || /Delete|លុប/.test(row.textContent || '')) return;
-        const pIdx = parsePartIndex55(row);
-        if (pIdx < 0) return;
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'btn btn-sm cts55-del-split';
-        delBtn.style.cssText = 'background:rgba(239,68,68,0.16);border:1px solid rgba(239,68,68,0.55);color:#fca5a5;font-weight:800;';
-        delBtn.textContent = '🗑️ លុប';
-        delBtn.onclick = async (e) => {
-          e.stopPropagation();
-          if (isPipelineBusy55()) return;
-          revokeCardBlobs55(row);
-          await deletePartFromDb55(SPLIT_DB, SPLIT_STORE, pIdx).catch(() => {});
-          row.remove();
-          toast('🗑️ បានលុបភាគ Split #' + (pIdx + 1) + ' និង Video ចេញហើយ!');
-        };
-        btn.parentElement.appendChild(delBtn);
+        btnRow.appendChild(delBtn);
       });
     }
   }
 
   new MutationObserver(() => enhancePartLists55()).observe(document.body, { childList: true, subtree: true });
-  setTimeout(enhancePartLists55, 800);
-  setTimeout(enhancePartLists55, 2200);
+  setTimeout(enhancePartLists55, 600);
+  setTimeout(enhancePartLists55, 1800);
 })();
 </script>
 </body>
