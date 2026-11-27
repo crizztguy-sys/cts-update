@@ -25608,10 +25608,11 @@ if (typeof window.addLog !== 'function') {
     if (prov === 'gemini') {
       const hasMedia = Array.isArray(extraParts) && extraParts.length > 0;
       const sel = settings.geminiModel || 'gemini-4-hydrogen';
-      const models = (hasMedia
-        ? ['gemini-3.8-flash', 'gemini-3.6-flash', sel, 'gemini-2.5-flash', 'gemini-3.5-flash-lite']
-        : [sel, 'gemini-4-hydrogen', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite']
-      ).filter((m, i, a) => m && a.indexOf(m) === i);
+      const locked = Boolean(settings.lockModel && document.getElementById('lockGeminiModelChk')?.checked);
+      const models = locked
+        ? [sel]
+        : [sel, 'gemini-4-hydrogen', 'gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite']
+            .filter((m, i, a) => m && a.indexOf(m) === i);
       const parts = extraParts ? [...extraParts, { text: user }] : [{ text: user }];
       let lastErr = null;
 
@@ -25631,21 +25632,48 @@ if (typeof window.addLog !== 'function') {
           for (const key of queueKeys) {
             if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
             inFlight57.set(key, (inFlight57.get(key) || 0) + 1);
+            const kNum = allKeys.indexOf(key) + 1;
+            const stEl = document.getElementById('bpStatusBox');
+            if (stEl && !stEl.textContent.includes('Error')) {
+              const stepEl = document.getElementById('bpStepTxt');
+              if (stepEl && stepEl.textContent.includes('Hybrid')) {
+                setBoxStatus('bpStatusBox', 'info', '⚡ ' + allKeys.length + ' Keys ព្រមគ្នា → ' + m + ' (Key #' + kNum + '...)');
+              }
+            }
             try {
-              return await window.callGeminiParts(key, m, sys, parts, signal);
+              const tCtrl = new AbortController(); let tOut = false;
+              const onAb = () => tCtrl.abort();
+              if (signal) { if (signal.aborted) throw new DOMException('Aborted', 'AbortError'); signal.addEventListener('abort', onAb, { once: true }); }
+              const tm = setTimeout(() => { tOut = true; tCtrl.abort(); }, hasMedia ? 38000 : 24000);
+              try {
+                return await window.callGeminiParts(key, m, sys, parts, tCtrl.signal);
+              } catch (innerE) {
+                if (tOut && (!signal || !signal.aborted)) { const te = new Error('Timeout 38s'); te.status = 504; throw te; }
+                throw innerE;
+              } finally {
+                clearTimeout(tm);
+                if (signal) signal.removeEventListener('abort', onAb);
+              }
             } catch (e) {
               lastErr = e;
-              if (e.name === 'AbortError') throw e;
+              if (e.name === 'AbortError' && signal?.aborted) throw e;
               const msg = String(e.message || '');
-              if (e.status === 404 || /not found|retired/i.test(msg)) break;
+              if (e.status === 404 || /not found|retired/i.test(msg)) {
+                setBoxStatus('bpStatusBox', 'info', '⚠️ Model ' + m + ' មិនគាំទ្រ (' + (e.status || 404) + ') → ប្តូរ Model បន្ទាប់...');
+                break;
+              }
               if ([429, 401, 403].includes(e.status) || /quota|rate|limit|exhausted|API_KEY_INVALID/i.test(msg)) {
                 const reason = markKeyError57(key, msg, e.status, scope);
                 if (reason === 'rpm') minCooldownMs = Math.min(minCooldownMs, 25000);
-                notifyPoolChange57(key, reason === 'rpm' ? '429 Cooldown' : 'Limit');
-                if (!isAuto) throw new Error('Key #' + (allKeys.indexOf(key) + 1) + ' ដល់កំណត់! សូមប្តូរ Key ឬបើក Auto។');
+                notifyPoolChange57(key, (e.status || '') + ' ' + (reason === 'rpm' ? 'Cooldown' : 'Limit'));
+                if (!isAuto) throw new Error('Key #' + kNum + ' ដល់កំណត់ (' + msg.slice(0, 60) + ')! សូមប្តូរ Key ឬបើក Auto។');
                 continue;
               }
-              if (![500, 502, 503, 504, 400].includes(e.status)) throw e;
+              if (e.status === 504 || e.status === 503 || e.status === 500 || e.status === 502) {
+                setBoxStatus('bpStatusBox', 'info', '⚠️ Key #' + kNum + ' (' + e.status + ' ' + msg.slice(0, 30) + ') → បន្ត Key បន្ទាប់...');
+                continue;
+              }
+              throw e;
             } finally {
               inFlight57.set(key, Math.max(0, (inFlight57.get(key) || 1) - 1));
             }
@@ -26777,7 +26805,8 @@ if (typeof window.addLog !== 'function') {
         const segLen = 24, partDur = part.end - part.start, chunks = [];
         for (let t = part.start; t < part.end; t += segLen) chunks.push({ idx: chunks.length, t, segEnd: Math.min(part.end, t + segLen) });
 
-        updateProg(pi, 8, '🎙️ ស្ដាប់សំឡេង 16kHz + Hybrid Anchor...');
+        updateProg(pi, 8, '🎙️ ស្ដាប់សំឡេង 16kHz (' + Math.min(parallelWorkers, chunks.length) + ' Keys)...');
+        setBoxStatus('bpStatusBox', 'info', '⚡ ភាគ ' + (pi + 1) + '/' + parts.length + ': ចាប់ផ្ដើមបញ្ជូន ' + chunks.length + ' ដុំលើ ' + Math.min(parallelWorkers, chunks.length) + ' Keys (' + (settings.geminiModel || 'gemini-4-hydrogen') + ')...');
         const step1Results = new Array(chunks.length).fill([]);
         let s1Done = 0, c1 = 0, capChain = Promise.resolve();
 
@@ -26820,7 +26849,7 @@ if (typeof window.addLog !== 'function') {
               const cl = stripCodeFences(raw), m = cl.match(/\[[\s\S]*\]/);
               if (m) { try { arr = JSON.parse(m[0]); } catch {} }
               if (!arr.length) { const re = /\{[^{}]*\}/g; let mt; while ((mt = re.exec(cl)) !== null) { try { arr.push(JSON.parse(mt[0])); } catch {} } }
-            } catch (e) { if (e.name === 'AbortError' || e.status === 401 || e.status === 403) throw e; }
+            } catch (e) { if (e.name === 'AbortError' || e.status === 401 || e.status === 403 || /ដល់កំណត់|Quota/i.test(e.message || '')) throw e; setBoxStatus('bpStatusBox', 'info', '⚠️ Chunk #' + (ci + 1) + ': ' + String(e.message || e).slice(0, 60)); }
 
             const out = []; let prevE = 0, prevV = 'piseth';
             for (let k = 0; k < arr.length; k++) {
