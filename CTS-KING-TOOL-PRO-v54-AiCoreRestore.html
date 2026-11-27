@@ -8442,7 +8442,7 @@
           segs.push({ s: +cur.toFixed(2), e: bt }); cur = bt;
         }
         if (!window._ctsKeepOldCues) { cues = []; isDemoCues = false; idbClear(); schedR(true); }
-        const models = v13Models(), conc = compact ? Math.min(4, keys.length, segs.length) : 1; let done = 0, cIdx = 0;
+        const models = v13Models(), conc = compact ? Math.min(12, Math.max(1, keys.length), segs.length) : 1; let done = 0, cIdx = 0;
         pPct.textContent = '8%'; pFill.style.width = '8%';
         pTxt.textContent = '⚡ 0/' + segs.length + ' ភាគ (' + conc + ' Keys ព្រមគ្នា)';
         addLog('Audio: ' + mode + ' | ' + segs.length + ' ភាគ x ~40s | ' + conc + ' Workers | ' + models[0]);
@@ -8528,7 +8528,7 @@
       if (!subsetList) cues = cues.filter(c => (c.km || '').trim() || (c.src || '').trim());
       const workList = subsetList || cues, bSz = useRealAI() ? 20 : 10, bs = [];
       for (let i = 0; i < workList.length; i += bSz) bs.push({ startIdx: i, items: workList.slice(i, i + bSz) });
-      const conc = useRealAI() ? Math.min(4, keys.length, bs.length) : 2; let dB = 0, cur = 0;
+      const conc = useRealAI() ? Math.min(12, Math.max(1, keys.length), bs.length) : 2; let dB = 0, cur = 0;
       await Promise.all(Array.from({ length: conc }, async (_, wId) => {
         if (wId > 0) await sleepAb(150 * wId, extSig);
         while (cur < bs.length && !extSig?.aborted) {
@@ -8594,7 +8594,7 @@
       const pend = cues.filter(c => (c.km || c.src || '').trim() && !c.audioUrl);
       if (!pend.length) { setBoxStatus('cuesStatus', 'ok', '✅ Cues ទាំងអស់មានសំឡេងរួចហើយ!'); document.getElementById('cuesExportBanner').classList.add('show'); return; }
       const url = (cfg.edgeUrl || '').trim(), isOai = /\/audio\/speech/i.test(url);
-      const conc = eng === 'edge_proxy' ? 4 : Math.min(3, Math.max(1, keys.length));
+      const conc = eng === 'edge_proxy' ? 4 : Math.min(12, Math.max(1, keys.length), pend.length);
       let nIdx = 0, done = 0, fail = 0, netFail = 0, lastErr = '';
       addLog('🔊 Gen Audio (' + eng + ', ' + conc + 'x): ' + pend.length + ' Cues');
 
@@ -25463,15 +25463,16 @@ if (typeof window.addLog !== 'function') {
 </script>
 
 <script id="cts-addon-57-stage2-voice-lipsync">
-// === STAGE 2: UNIFIED ALL-KEY AUTO SWITCHER + GEMINI 3.8 TTS STEADY + WSOLA + 100% LIP-SYNC ===
+// === STAGE 2: TRUE PARALLEL ALL-KEY LOAD-BALANCED ENGINE + GEMINI 3.8 TTS + WSOLA + 100% LIP-SYNC ===
 (function() {
   const PROJ_DB = 'cts_big_project_db', PROJ_STORE = 'parts';
   const SPLIT_DB = 'cts_big_split_db', SPLIT_STORE = 'split_parts';
 
   // -------------------------------------------------------------------------
-  // 0. UNIFIED SMART API KEY POOL MANAGER (AUTO / MANUAL + LIVE POOL BADGES)
+  // 0. TRUE PARALLEL ALL-KEY ENGINE (ZERO COLLISION + LEAST-LOADED ROUTING)
   // -------------------------------------------------------------------------
-  const keyHealth57 = new Map(); // slotKey -> { until, reason }
+  const keyHealth57 = new Map();
+  const inFlight57 = new Map();
   let rrSeed57 = 0, lastPoolUiMs = 0;
 
   function isKeyModeAuto57() {
@@ -25508,39 +25509,57 @@ if (typeof window.addLog !== 'function') {
     return 'rpm';
   }
 
-  function syncActiveKeyUI57(prov, targetKey, reasonMsg = '') {
-    if (!targetKey) return;
-    const keys = getProviderKeys(prov);
-    const idx = keys.indexOf(targetKey) + 1;
-    const changed = (prov === 'gemini' ? settings.geminiKey : settings.openaiKey) !== targetKey;
-    if (changed) {
-      if (prov === 'gemini') {
-        settings.geminiKey = targetKey;
-        const el = document.getElementById('geminiKey'); if (el) el.value = targetKey;
-      } else {
-        settings.openaiKey = targetKey;
-        const el = document.getElementById('openaiKey'); if (el) el.value = targetKey;
-      }
+  // Pick ordered healthy keys for a specific parallel worker WITHOUT mutating shared curKey!
+  function getWorkerKeyQueue57(allKeys, workerId, scope) {
+    if (!isKeyModeAuto57()) {
+      const manualKey = settings.geminiKey || allKeys[0];
+      return manualKey ? [manualKey] : [];
+    }
+    const n = allKeys.length;
+    if (!n) return [];
+    const pinIdx = (workerId !== null && workerId !== undefined) ? (Math.abs(workerId) % n) : ((rrSeed57++) % n);
+    const rotated = allKeys.slice(pinIdx).concat(allKeys.slice(0, pinIdx));
+
+    // Keep pinned key FIRST if healthy; put remaining healthy keys sorted by lowest active in-flight load!
+    const healthy = [], rest = [];
+    for (let i = 0; i < rotated.length; i++) {
+      const k = rotated[i];
+      if (getSlotState57(k, scope).state === 'ok') healthy.push({ k, isPin: i === 0, load: inFlight57.get(k) || 0 });
+      else rest.push(k);
+    }
+    healthy.sort((a, b) => (a.isPin ? -1 : 0) - (b.isPin ? -1 : 0) || (a.load - b.load));
+    return healthy.map(x => x.k);
+  }
+
+  function notifyPoolChange57(failedKey, reasonMsg) {
+    const all = getProviderKeys('gemini');
+    const healthyNext = all.find(k => k !== failedKey && getSlotState57(k, 'gen').state === 'ok' && getSlotState57(k, 'tts').state === 'ok')
+      || all.find(k => k !== failedKey);
+    if (healthyNext && settings.geminiKey === failedKey) {
+      settings.geminiKey = healthyNext;
+      const el = document.getElementById('geminiKey'); if (el) el.value = healthyNext;
       if (Array.isArray(apiKeyPool)) {
-        apiKeyPool.forEach(k => { if (k.provider === prov) k.active = (k.key === targetKey); });
+        apiKeyPool.forEach(k => { if (k.provider === 'gemini') k.active = (k.key === healthyNext); });
         safeSet('cts_king_key_pool', apiKeyPool);
       }
       saveSettings(true);
     }
     if (reasonMsg) {
+      const fIdx = all.indexOf(failedKey) + 1;
+      const hIdx = healthyNext ? (all.indexOf(healthyNext) + 1) : 0;
+      const note = '🔄 Key #' + (fIdx || 1) + ' (' + reasonMsg + ')' + (hIdx ? (' → បន្ត Key #' + hIdx + ' & ផ្សេងទៀតព្រមគ្នា!') : '');
       ['bpStatusBox', 'cuesStatus', 'recapStatus'].forEach(id => {
         const el = document.getElementById(id);
-        if (el && el.classList.contains('show')) setBoxStatus(id, 'info', '🔄 ' + reasonMsg + ' → ប្តូរទៅ Key #' + (idx || 1) + ' Auto!');
+        if (el && el.classList.contains('show')) setBoxStatus(id, 'info', note);
       });
     }
     const now = Date.now();
-    if (changed || (now - lastPoolUiMs) > 1500) {
+    if ((now - lastPoolUiMs) > 1200) {
       lastPoolUiMs = now;
       try { if (typeof window.renderKeyPool === 'function') window.renderKeyPool(); } catch {}
     }
   }
 
-  // Enhance Settings Key Pool badges & Reset Limit button cleanly
   const _prevRenderPool57 = window.renderKeyPool;
   window.renderKeyPool = function() {
     if (_prevRenderPool57) _prevRenderPool57();
@@ -25551,8 +25570,13 @@ if (typeof window.addLog !== 'function') {
         const el = items[idx]; if (!el) return;
         const meta = el.querySelector('.key-pool-meta'); if (!meta) return;
         const oldB = meta.querySelector('.cts57-kbadge'); if (oldB) oldB.remove();
-        const stG = getSlotState57(item.key, 'gen'), stT = getSlotState57(item.key, 'tts');
-        const st = stG.state !== 'ok' ? stG : stT;
+        let st = { state: 'ok', waitSec: 0 };
+        for (const [kSlot] of keyHealth57) {
+          if (kSlot.startsWith(item.key + '|')) {
+            const s = getSlotState57(item.key, kSlot.split('|').slice(1).join('|'));
+            if (s.state !== 'ok') { st = s; break; }
+          }
+        }
         if (st.state !== 'ok') {
           const b = document.createElement('span');
           b.className = 'cts57-kbadge';
@@ -25566,13 +25590,13 @@ if (typeof window.addLog !== 'function') {
 
   const _prevResetLim57 = window.resetAllKeyLimits;
   window.resetAllKeyLimits = function() {
-    keyHealth57.clear();
+    keyHealth57.clear(); inFlight57.clear();
     if (_prevResetLim57) _prevResetLim57();
     else { try { window.renderKeyPool(); } catch {} toast('♻️ Reset Limits រួចរាល់!'); }
   };
 
-  // Unified AI Caller (used by Big Project, Dubber & AI, Story Recap) -> rotates ALL healthy keys!
-  window.callAI = async function(sys, user, signal, extraParts = null) {
+  // Worker-aware parallel AI caller (ALL keys divide work simultaneously without colliding!)
+  window.__ctsCallAIWorker57 = async function(sys, user, signal, extraParts = null, workerId = null) {
     const prov = settings.provider;
     if (prov !== 'gemini' && prov !== 'openai') throw new Error('NO_PROVIDER');
     if (prov === 'openai' && extraParts) throw new Error('Audio Transcript ត្រូវការ Gemini API Key!');
@@ -25580,10 +25604,6 @@ if (typeof window.addLog !== 'function') {
     const allKeys = getProviderKeys(prov);
     if (!allKeys.length) throw new Error('មិនទាន់មាន API Key!');
     const isAuto = isKeyModeAuto57();
-    const curKey = prov === 'gemini' ? settings.geminiKey : settings.openaiKey;
-    const baseKeys = isAuto
-      ? [curKey, ...allKeys.filter(k => k !== curKey)].filter(Boolean)
-      : [curKey || allKeys[0]];
 
     if (prov === 'gemini') {
       const hasMedia = Array.isArray(extraParts) && extraParts.length > 0;
@@ -25598,35 +25618,36 @@ if (typeof window.addLog !== 'function') {
       for (let round = 0; round < (isAuto ? 3 : 1); round++) {
         let minCooldownMs = Infinity;
         for (const m of models) {
-          const startOff = (rrSeed57++) % baseKeys.length;
-          const orderedKeys = isAuto ? baseKeys.slice(startOff).concat(baseKeys.slice(0, startOff)) : baseKeys;
-
-          for (const key of orderedKeys) {
-            if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-            const ks = getSlotState57(key, 'gen|' + m);
-            if (isAuto && ks.state !== 'ok') {
-              if (ks.state === 'cooldown') minCooldownMs = Math.min(minCooldownMs, ks.waitSec * 1000);
-              continue;
+          const scope = 'gen|' + m;
+          const queueKeys = getWorkerKeyQueue57(allKeys, workerId, scope);
+          if (!queueKeys.length) {
+            for (const k of allKeys) {
+              const s = getSlotState57(k, scope);
+              if (s.state === 'cooldown') minCooldownMs = Math.min(minCooldownMs, s.waitSec * 1000);
             }
-            if (isAuto && key !== settings.geminiKey) syncActiveKeyUI57('gemini', key, 'Key មុនជាប់ Limit');
+            continue;
+          }
 
+          for (const key of queueKeys) {
+            if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+            inFlight57.set(key, (inFlight57.get(key) || 0) + 1);
             try {
               return await window.callGeminiParts(key, m, sys, parts, signal);
             } catch (e) {
               lastErr = e;
               if (e.name === 'AbortError') throw e;
               const msg = String(e.message || '');
-              if (e.status === 404 || /not found|retired/i.test(msg)) break; // skip dead model -> try next model
+              if (e.status === 404 || /not found|retired/i.test(msg)) break;
               if ([429, 401, 403].includes(e.status) || /quota|rate|limit|exhausted|API_KEY_INVALID/i.test(msg)) {
-                const reason = markKeyError57(key, msg, e.status, 'gen|' + m);
+                const reason = markKeyError57(key, msg, e.status, scope);
                 if (reason === 'rpm') minCooldownMs = Math.min(minCooldownMs, 25000);
-                try { window.renderKeyPool(); } catch {}
-                if (!isAuto) {
-                  throw new Error('Key #' + (allKeys.indexOf(key) + 1) + ' ដល់កំណត់! សូមប្តូរ Key ក្នុង Settings ឬបើក Auto។');
-                }
-                continue; // immediately try NEXT healthy key!
+                notifyPoolChange57(key, reason === 'rpm' ? '429 Cooldown' : 'Limit');
+                if (!isAuto) throw new Error('Key #' + (allKeys.indexOf(key) + 1) + ' ដល់កំណត់! សូមប្តូរ Key ឬបើក Auto។');
+                continue;
               }
               if (![500, 502, 503, 504, 400].includes(e.status)) throw e;
+            } finally {
+              inFlight57.set(key, Math.max(0, (inFlight57.get(key) || 1) - 1));
             }
           }
         }
@@ -25638,11 +25659,12 @@ if (typeof window.addLog !== 'function') {
       throw lastErr || new Error('Gemini API Keys ទាំង ' + allKeys.length + ' ដល់កំណត់ហើយ!');
     }
 
-    // OpenAI / Groq / DeepSeek multi-key Auto & Manual
+    // OpenAI multi-key
+    const curO = settings.openaiKey;
+    const oKeys = isAuto ? [curO, ...allKeys.filter(k => k !== curO)].filter(Boolean) : [curO || allKeys[0]];
     let lastErr = null;
-    for (const key of baseKeys) {
+    for (const key of oKeys) {
       if (isAuto && getSlotState57(key, 'gen').state !== 'ok') continue;
-      if (isAuto && key !== settings.openaiKey) syncActiveKeyUI57('openai', key, 'Key មុនជាប់ Limit');
       try {
         const res = await ctsFetchTimeout(settings.openaiUrl, {
           method: 'POST',
@@ -25658,7 +25680,7 @@ if (typeof window.addLog !== 'function') {
         if ([429, 401, 403].includes(e.status) || /quota|rate|limit/i.test(e.message)) {
           markKeyError57(key, e.message, e.status, 'gen');
           try { window.renderKeyPool(); } catch {}
-          if (!isAuto) throw new Error('Key បច្ចុប្បន្នដល់កំណត់! សូមប្តូរ Key ឬបើក Auto។');
+          if (!isAuto) throw new Error('Key បច្ចុប្បន្នដល់កំណត់!');
           continue;
         }
         throw e;
@@ -25667,15 +25689,17 @@ if (typeof window.addLog !== 'function') {
     throw lastErr || new Error('API Keys ទាំងអស់ដល់កំណត់ហើយ!');
   };
 
+  window.callAI = function(sys, user, signal, extraParts = null) {
+    return window.__ctsCallAIWorker57(sys, user, signal, extraParts, null);
+  };
+
   // -------------------------------------------------------------------------
-  // A. STEADY GEMINI 3.8 TTS (USING UNIFIED SMART KEY MANAGER + ALL KEYS!)
+  // A. STEADY GEMINI 3.8 TTS (PARALLEL PINNED ACROSS ALL KEYS!)
   // -------------------------------------------------------------------------
-  window.generateGeminiTtsBlob = async function(text, voiceRole, signal, workerId = 0, label = 'TTS') {
+  window.generateGeminiTtsBlob = async function(text, voiceRole, signal, workerId = null, label = 'TTS') {
     const allKeys = getProviderKeys('gemini');
     if (!allKeys.length) throw new Error('ត្រូវការ Gemini API Key!');
     const isAuto = isKeyModeAuto57();
-    const curKey = settings.geminiKey;
-    const baseKeys = isAuto ? [curKey, ...allKeys.filter(k => k !== curKey)].filter(Boolean) : [curKey || allKeys[0]];
 
     const isFemale = (voiceRole === 'sreymom');
     const voiceName = isFemale ? 'Leda' : 'Charon';
@@ -25696,10 +25720,7 @@ if (typeof window.addLog !== 'function') {
 
     const postTts = async (key, m, withMeta, withTemp) => {
       const partObj = withMeta ? { text: safeText, speechMetadata: { style: styleDir } } : { text: safeText };
-      const genCfg = {
-        responseModalities: ['AUDIO'],
-        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } }
-      };
+      const genCfg = { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } } };
       if (withTemp) genCfg.temperature = 0.15;
 
       const ctrl = new AbortController(); let to = false;
@@ -25735,18 +25756,19 @@ if (typeof window.addLog !== 'function') {
     for (let round = 0; round < (isAuto ? 3 : 1); round++) {
       let minWaitMs = Infinity;
       for (const m of models) {
-        const startOff = (rrSeed57++ + workerId) % baseKeys.length;
-        const orderedKeys = isAuto ? baseKeys.slice(startOff).concat(baseKeys.slice(0, startOff)) : baseKeys;
-
-        for (const key of orderedKeys) {
-          if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-          const ks = getSlotState57(key, 'tts|' + m);
-          if (isAuto && ks.state !== 'ok') {
-            if (ks.state === 'cooldown') minWaitMs = Math.min(minWaitMs, ks.waitSec * 1000);
-            continue;
+        const scope = 'tts|' + m;
+        const queueKeys = getWorkerKeyQueue57(allKeys, workerId, scope);
+        if (!queueKeys.length) {
+          for (const k of allKeys) {
+            const s = getSlotState57(k, scope);
+            if (s.state === 'cooldown') minWaitMs = Math.min(minWaitMs, s.waitSec * 1000);
           }
-          if (isAuto && key !== settings.geminiKey) syncActiveKeyUI57('gemini', key, 'TTS Key មុនអស់ Quota');
+          continue;
+        }
 
+        for (const key of queueKeys) {
+          if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+          inFlight57.set(key, (inFlight57.get(key) || 0) + 1);
           try {
             let r = await postTts(key, m, true, true);
             if (!r.ok && r.status === 400) r = await postTts(key, m, false, true);
@@ -25769,12 +25791,14 @@ if (typeof window.addLog !== 'function') {
             const msg = String(e.message || '');
             if (e.status === 404) break;
             if ([429, 401, 403].includes(e.status) || /quota|rate|limit|exhausted|API_KEY_INVALID/i.test(msg)) {
-              const reason = markKeyError57(key, msg, e.status, 'tts|' + m);
+              const reason = markKeyError57(key, msg, e.status, scope);
               if (reason === 'rpm') minWaitMs = Math.min(minWaitMs, 25000);
-              try { window.renderKeyPool(); } catch {}
+              notifyPoolChange57(key, reason === 'rpm' ? 'TTS 429' : 'TTS Limit');
               if (!isAuto) throw new Error('TTS Key #' + (allKeys.indexOf(key) + 1) + ' ដល់កំណត់! សូមប្តូរ Key ឬបើក Auto។');
-              continue; // immediately switch to NEXT healthy key!
+              continue;
             }
+          } finally {
+            inFlight57.set(key, Math.max(0, (inFlight57.get(key) || 1) - 1));
           }
         }
       }
@@ -26497,7 +26521,7 @@ if (typeof window.addLog !== 'function') {
 
     const audioBlobs = new Array(partCues.length).fill(null);
     let done = 0, cursor = 0;
-    const conc = eng === 'edge_proxy' ? 4 : Math.min(4, Math.max(1, getProviderKeys('gemini').length));
+    const conc = eng === 'edge_proxy' ? 4 : (isKeyModeAuto57() ? Math.min(12, Math.max(1, getProviderKeys('gemini').length), partCues.length) : 2);
 
     const synthIdx = async (idx, wId) => {
       const c = partCues[idx], txt = (c.km || c.src || '').trim();
@@ -26507,7 +26531,7 @@ if (typeof window.addLog !== 'function') {
       const target = Math.max(0.38, Math.min(c.end - c.start, maxSlot));
       for (let att = 0; att < 3; att++) {
         try {
-          const rawBlob = await synthOne(txt, c.voice, wId + att);
+          const rawBlob = await synthOne(txt, c.voice, wId);
           const ab = await ctx.decodeAudioData(await rawBlob.arrayBuffer());
           const repaired = trimFitStrict57(ab, target, maxSlot, pcm16ToWavBytes);
           if (repaired) {
@@ -26724,7 +26748,7 @@ if (typeof window.addLog !== 'function') {
       };
 
       const keys = getProviderKeys('gemini');
-      const parallelWorkers = Math.min(Math.max(1, keys.length), 6);
+      const parallelWorkers = isKeyModeAuto57() ? Math.min(Math.max(1, keys.length), 12) : 2;
       const femaleHz = window.__ctsV54GetFemaleHz ? window.__ctsV54GetFemaleHz() : 188;
 
       for (let pi = 0; pi < parts.length; pi++) {
@@ -26757,7 +26781,7 @@ if (typeof window.addLog !== 'function') {
         const step1Results = new Array(chunks.length).fill([]);
         let s1Done = 0, c1 = 0, capChain = Promise.resolve();
 
-        await Promise.all(Array.from({ length: Math.min(parallelWorkers, Math.max(1, chunks.length)) }, async () => {
+        await Promise.all(Array.from({ length: Math.min(parallelWorkers, Math.max(1, chunks.length)) }, async (_, wId) => {
           while (c1 < chunks.length && !sig.aborted) {
             const ci = c1++, ch = chunks[ci], segDur = ch.segEnd - ch.t;
             const locS = partProbeLocal ? Math.max(0, ch.t - part.start) : ch.t;
@@ -26792,7 +26816,7 @@ if (typeof window.addLog !== 'function') {
 
             let arr = [];
             try {
-              const raw = await window.callAI('Precision movie dialogue transcriber & vocal gender classifier. Exact decimal seconds. JSON array only.', p1, sig, [{ inlineData: { mimeType, data: base64 } }]);
+              const raw = await window.__ctsCallAIWorker57('Precision movie dialogue transcriber & vocal gender classifier. Exact decimal seconds. JSON array only.', p1, sig, [{ inlineData: { mimeType, data: base64 } }], wId);
               const cl = stripCodeFences(raw), m = cl.match(/\[[\s\S]*\]/);
               if (m) { try { arr = JSON.parse(m[0]); } catch {} }
               if (!arr.length) { const re = /\{[^{}]*\}/g; let mt; while ((mt = re.exec(cl)) !== null) { try { arr.push(JSON.parse(mt[0])); } catch {} } }
@@ -26854,7 +26878,7 @@ if (typeof window.addLog !== 'function') {
           const batches = [];
           for (let b = 0; b < partCues.length; b += 20) batches.push(partCues.slice(b, b + 20));
           let bDone = 0, bCursor = 0;
-          await Promise.all(Array.from({ length: Math.min(parallelWorkers, batches.length) }, async () => {
+          await Promise.all(Array.from({ length: Math.min(parallelWorkers, batches.length) }, async (_, wId) => {
             while (bCursor < batches.length && !sig.aborted) {
               const bi = bCursor++, batch = batches[bi];
               const listStr = batch.map((c, idx) => '[' + (idx + 1) + '] (max ' + c.dur + 's / ~' + Math.max(4, Math.round(c.dur * 5.2)) + ' syllables, ' + (c.voice === 'sreymom' ? 'F' : 'M') + ') ' + c.src).join('\n');
@@ -26866,7 +26890,7 @@ if (typeof window.addLog !== 'function') {
                 'Glossary: ' + (document.getElementById('optGlossary')?.value?.trim() || 'None') + '\n\n' +
                 'Lines:\n' + listStr + '\n\nReturn ONLY JSON: {"cast":"...","items":[{"id":1,"t":"natural ' + tgtName + '","v":"piseth|sreymom"}]}';
               try {
-                const raw2 = await window.callAI('Elite native ' + tgtName + ' dubbing translator. Natural concise spoken phrasing fitting exact lip duration. Strict JSON only.', p2, sig);
+                const raw2 = await window.__ctsCallAIWorker57('Elite native ' + tgtName + ' dubbing translator. Natural concise spoken phrasing fitting exact lip duration. Strict JSON only.', p2, sig, null, wId);
                 const cl2 = stripCodeFences(raw2), om = cl2.match(/\{[\s\S]*\}/), am = cl2.match(/\[[\s\S]*\]/);
                 const parsed = om ? JSON.parse(om[0]) : (am ? { items: JSON.parse(am[0]) } : null);
                 if (parsed?.cast) castMemory = String(parsed.cast).slice(0, 450);
