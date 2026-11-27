@@ -25463,22 +25463,219 @@ if (typeof window.addLog !== 'function') {
 </script>
 
 <script id="cts-addon-57-stage2-voice-lipsync">
-// === STAGE 2: GEMINI 3.8 TTS STEADY + WSOLA + 100% MOUTH LIP-SYNC + ZERO OVERLAP (KEEP STAGE 1 SMOOTH!) ===
+// === STAGE 2: UNIFIED ALL-KEY AUTO SWITCHER + GEMINI 3.8 TTS STEADY + WSOLA + 100% LIP-SYNC ===
 (function() {
   const PROJ_DB = 'cts_big_project_db', PROJ_STORE = 'parts';
   const SPLIT_DB = 'cts_big_split_db', SPLIT_STORE = 'split_parts';
-  const deadTts57 = new Set(), coolTts57 = new Map();
-  let ttsSeed57 = 0;
 
   // -------------------------------------------------------------------------
-  // A. STEADY GEMINI 3.8 TTS (speechMetadata.style + temp 0.15 + 2 Voices Only)
+  // 0. UNIFIED SMART API KEY POOL MANAGER (AUTO / MANUAL + LIVE POOL BADGES)
+  // -------------------------------------------------------------------------
+  const keyHealth57 = new Map(); // slotKey -> { until, reason }
+  let rrSeed57 = 0, lastPoolUiMs = 0;
+
+  function isKeyModeAuto57() {
+    const m = safeGet('cts_king_key_mode', { mode: 'auto' });
+    return !m || m.mode !== 'manual';
+  }
+
+  function getSlotState57(key, scope = 'global') {
+    const st = keyHealth57.get(key + '|' + scope) || keyHealth57.get(key + '|all');
+    if (!st) return { state: 'ok', waitSec: 0 };
+    if (st.until === Infinity) return { state: 'limit', reason: st.reason, waitSec: 999999 };
+    const left = st.until - Date.now();
+    if (left <= 0) {
+      keyHealth57.delete(key + '|' + scope);
+      keyHealth57.delete(key + '|all');
+      return { state: 'ok', waitSec: 0 };
+    }
+    return { state: 'cooldown', reason: st.reason, waitSec: Math.ceil(left / 1000) };
+  }
+
+  function markKeyError57(key, errMsg, statusCode, scope = 'global') {
+    const msg = String(errMsg || '');
+    if (statusCode === 401 || statusCode === 403 || /API_KEY_INVALID|permission/i.test(msg)) {
+      keyHealth57.set(key + '|all', { until: Infinity, reason: 'auth' });
+      return 'auth';
+    }
+    if (/per_?day|per day|requests_per_model_per_day|limit:\s*0|check your plan|billing/i.test(msg)) {
+      keyHealth57.set(key + '|' + scope, { until: Date.now() + 6 * 3600 * 1000, reason: 'daily' });
+      return 'daily';
+    }
+    const mm = msg.match(/retry in\s+(\d+(?:\.\d+)?)s/i);
+    const sec = mm ? Math.min(75, Math.max(12, Math.ceil(parseFloat(mm[1])) + 2)) : 32;
+    keyHealth57.set(key + '|' + scope, { until: Date.now() + sec * 1000, reason: 'rpm' });
+    return 'rpm';
+  }
+
+  function syncActiveKeyUI57(prov, targetKey, reasonMsg = '') {
+    if (!targetKey) return;
+    const keys = getProviderKeys(prov);
+    const idx = keys.indexOf(targetKey) + 1;
+    const changed = (prov === 'gemini' ? settings.geminiKey : settings.openaiKey) !== targetKey;
+    if (changed) {
+      if (prov === 'gemini') {
+        settings.geminiKey = targetKey;
+        const el = document.getElementById('geminiKey'); if (el) el.value = targetKey;
+      } else {
+        settings.openaiKey = targetKey;
+        const el = document.getElementById('openaiKey'); if (el) el.value = targetKey;
+      }
+      if (Array.isArray(apiKeyPool)) {
+        apiKeyPool.forEach(k => { if (k.provider === prov) k.active = (k.key === targetKey); });
+        safeSet('cts_king_key_pool', apiKeyPool);
+      }
+      saveSettings(true);
+    }
+    if (reasonMsg) {
+      ['bpStatusBox', 'cuesStatus', 'recapStatus'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.classList.contains('show')) setBoxStatus(id, 'info', '🔄 ' + reasonMsg + ' → ប្តូរទៅ Key #' + (idx || 1) + ' Auto!');
+      });
+    }
+    const now = Date.now();
+    if (changed || (now - lastPoolUiMs) > 1500) {
+      lastPoolUiMs = now;
+      try { if (typeof window.renderKeyPool === 'function') window.renderKeyPool(); } catch {}
+    }
+  }
+
+  // Enhance Settings Key Pool badges & Reset Limit button cleanly
+  const _prevRenderPool57 = window.renderKeyPool;
+  window.renderKeyPool = function() {
+    if (_prevRenderPool57) _prevRenderPool57();
+    const list = document.getElementById('keyPoolList');
+    if (list && Array.isArray(apiKeyPool)) {
+      const items = list.querySelectorAll('.key-pool-item');
+      apiKeyPool.forEach((item, idx) => {
+        const el = items[idx]; if (!el) return;
+        const meta = el.querySelector('.key-pool-meta'); if (!meta) return;
+        const oldB = meta.querySelector('.cts57-kbadge'); if (oldB) oldB.remove();
+        const stG = getSlotState57(item.key, 'gen'), stT = getSlotState57(item.key, 'tts');
+        const st = stG.state !== 'ok' ? stG : stT;
+        if (st.state !== 'ok') {
+          const b = document.createElement('span');
+          b.className = 'cts57-kbadge';
+          b.style.cssText = 'font-size:9.5px;padding:1px 5px;border-radius:4px;background:#3b1019;color:#fca5a5;white-space:nowrap;';
+          b.textContent = st.state === 'cooldown' ? ('⏳ ' + st.waitSec + 's') : '🔴 Limit';
+          meta.appendChild(b);
+        }
+      });
+    }
+  };
+
+  const _prevResetLim57 = window.resetAllKeyLimits;
+  window.resetAllKeyLimits = function() {
+    keyHealth57.clear();
+    if (_prevResetLim57) _prevResetLim57();
+    else { try { window.renderKeyPool(); } catch {} toast('♻️ Reset Limits រួចរាល់!'); }
+  };
+
+  // Unified AI Caller (used by Big Project, Dubber & AI, Story Recap) -> rotates ALL healthy keys!
+  window.callAI = async function(sys, user, signal, extraParts = null) {
+    const prov = settings.provider;
+    if (prov !== 'gemini' && prov !== 'openai') throw new Error('NO_PROVIDER');
+    if (prov === 'openai' && extraParts) throw new Error('Audio Transcript ត្រូវការ Gemini API Key!');
+
+    const allKeys = getProviderKeys(prov);
+    if (!allKeys.length) throw new Error('មិនទាន់មាន API Key!');
+    const isAuto = isKeyModeAuto57();
+    const curKey = prov === 'gemini' ? settings.geminiKey : settings.openaiKey;
+    const baseKeys = isAuto
+      ? [curKey, ...allKeys.filter(k => k !== curKey)].filter(Boolean)
+      : [curKey || allKeys[0]];
+
+    if (prov === 'gemini') {
+      const hasMedia = Array.isArray(extraParts) && extraParts.length > 0;
+      const sel = settings.geminiModel || 'gemini-4-hydrogen';
+      const models = (hasMedia
+        ? ['gemini-3.8-flash', 'gemini-3.6-flash', sel, 'gemini-2.5-flash', 'gemini-3.5-flash-lite']
+        : [sel, 'gemini-4-hydrogen', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite']
+      ).filter((m, i, a) => m && a.indexOf(m) === i);
+      const parts = extraParts ? [...extraParts, { text: user }] : [{ text: user }];
+      let lastErr = null;
+
+      for (let round = 0; round < (isAuto ? 3 : 1); round++) {
+        let minCooldownMs = Infinity;
+        for (const m of models) {
+          const startOff = (rrSeed57++) % baseKeys.length;
+          const orderedKeys = isAuto ? baseKeys.slice(startOff).concat(baseKeys.slice(0, startOff)) : baseKeys;
+
+          for (const key of orderedKeys) {
+            if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+            const ks = getSlotState57(key, 'gen|' + m);
+            if (isAuto && ks.state !== 'ok') {
+              if (ks.state === 'cooldown') minCooldownMs = Math.min(minCooldownMs, ks.waitSec * 1000);
+              continue;
+            }
+            if (isAuto && key !== settings.geminiKey) syncActiveKeyUI57('gemini', key, 'Key មុនជាប់ Limit');
+
+            try {
+              return await window.callGeminiParts(key, m, sys, parts, signal);
+            } catch (e) {
+              lastErr = e;
+              if (e.name === 'AbortError') throw e;
+              const msg = String(e.message || '');
+              if (e.status === 404 || /not found|retired/i.test(msg)) break; // skip dead model -> try next model
+              if ([429, 401, 403].includes(e.status) || /quota|rate|limit|exhausted|API_KEY_INVALID/i.test(msg)) {
+                const reason = markKeyError57(key, msg, e.status, 'gen|' + m);
+                if (reason === 'rpm') minCooldownMs = Math.min(minCooldownMs, 25000);
+                try { window.renderKeyPool(); } catch {}
+                if (!isAuto) {
+                  throw new Error('Key #' + (allKeys.indexOf(key) + 1) + ' ដល់កំណត់! សូមប្តូរ Key ក្នុង Settings ឬបើក Auto។');
+                }
+                continue; // immediately try NEXT healthy key!
+              }
+              if (![500, 502, 503, 504, 400].includes(e.status)) throw e;
+            }
+          }
+        }
+        if (isAuto && round < 2 && isFinite(minCooldownMs)) {
+          const ws = Math.min(25, Math.max(3, Math.ceil(minCooldownMs / 1000)));
+          await sleepAbortable(ws * 1000, signal);
+        } else break;
+      }
+      throw lastErr || new Error('Gemini API Keys ទាំង ' + allKeys.length + ' ដល់កំណត់ហើយ!');
+    }
+
+    // OpenAI / Groq / DeepSeek multi-key Auto & Manual
+    let lastErr = null;
+    for (const key of baseKeys) {
+      if (isAuto && getSlotState57(key, 'gen').state !== 'ok') continue;
+      if (isAuto && key !== settings.openaiKey) syncActiveKeyUI57('openai', key, 'Key មុនជាប់ Limit');
+      try {
+        const res = await ctsFetchTimeout(settings.openaiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+          body: JSON.stringify({ model: settings.openaiModel || 'gpt-4o-mini', temperature: 0.3, messages: [{ role: 'system', content: sys }, { role: 'user', content: user }] })
+        }, 75000, signal);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { const er = new Error(data?.error?.message || ('HTTP ' + res.status)); er.status = res.status; throw er; }
+        return data?.choices?.[0]?.message?.content || '';
+      } catch (e) {
+        lastErr = e;
+        if (e.name === 'AbortError') throw e;
+        if ([429, 401, 403].includes(e.status) || /quota|rate|limit/i.test(e.message)) {
+          markKeyError57(key, e.message, e.status, 'gen');
+          try { window.renderKeyPool(); } catch {}
+          if (!isAuto) throw new Error('Key បច្ចុប្បន្នដល់កំណត់! សូមប្តូរ Key ឬបើក Auto។');
+          continue;
+        }
+        throw e;
+      }
+    }
+    throw lastErr || new Error('API Keys ទាំងអស់ដល់កំណត់ហើយ!');
+  };
+
+  // -------------------------------------------------------------------------
+  // A. STEADY GEMINI 3.8 TTS (USING UNIFIED SMART KEY MANAGER + ALL KEYS!)
   // -------------------------------------------------------------------------
   window.generateGeminiTtsBlob = async function(text, voiceRole, signal, workerId = 0, label = 'TTS') {
     const allKeys = getProviderKeys('gemini');
     if (!allKeys.length) throw new Error('ត្រូវការ Gemini API Key!');
-    const isAuto = (safeGet('cts_king_key_mode', { mode: 'auto' })?.mode !== 'manual');
-    const offset = (ttsSeed57++ + workerId) % allKeys.length;
-    const keys = isAuto ? allKeys.slice(offset).concat(allKeys.slice(0, offset)) : [settings.geminiKey || allKeys[0]];
+    const isAuto = isKeyModeAuto57();
+    const curKey = settings.geminiKey;
+    const baseKeys = isAuto ? [curKey, ...allKeys.filter(k => k !== curKey)].filter(Boolean) : [curKey || allKeys[0]];
 
     const isFemale = (voiceRole === 'sreymom');
     const voiceName = isFemale ? 'Leda' : 'Charon';
@@ -25505,20 +25702,15 @@ if (typeof window.addLog !== 'function') {
       };
       if (withTemp) genCfg.temperature = 0.15;
 
-      const ctrl = new AbortController();
-      let to = false;
+      const ctrl = new AbortController(); let to = false;
       const onAb = () => ctrl.abort();
-      if (signal) {
-        if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-        signal.addEventListener('abort', onAb, { once: true });
-      }
+      if (signal) { if (signal.aborted) throw new DOMException('Aborted', 'AbortError'); signal.addEventListener('abort', onAb, { once: true }); }
       const tm = setTimeout(() => { to = true; ctrl.abort(); }, 28000);
       try {
         const res = await fetch(
           'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(m) + ':generateContent?key=' + encodeURIComponent(key),
           {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ role: 'user', parts: [partObj] }],
               generationConfig: genCfg,
@@ -25537,21 +25729,23 @@ if (typeof window.addLog !== 'function') {
       } catch (e) {
         if (to && (!signal || !signal.aborted)) { const te = new Error('Timeout'); te.status = 504; throw te; }
         throw e;
-      } finally {
-        clearTimeout(tm);
-        if (signal) signal.removeEventListener('abort', onAb);
-      }
+      } finally { clearTimeout(tm); if (signal) signal.removeEventListener('abort', onAb); }
     };
 
     for (let round = 0; round < (isAuto ? 3 : 1); round++) {
       let minWaitMs = Infinity;
       for (const m of models) {
-        for (const key of keys) {
+        const startOff = (rrSeed57++ + workerId) % baseKeys.length;
+        const orderedKeys = isAuto ? baseKeys.slice(startOff).concat(baseKeys.slice(0, startOff)) : baseKeys;
+
+        for (const key of orderedKeys) {
           if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-          const slotId = key + '|' + m;
-          if (deadTts57.has(slotId)) continue;
-          const u = coolTts57.get(slotId);
-          if (u && Date.now() < u) { minWaitMs = Math.min(minWaitMs, u - Date.now()); continue; }
+          const ks = getSlotState57(key, 'tts|' + m);
+          if (isAuto && ks.state !== 'ok') {
+            if (ks.state === 'cooldown') minWaitMs = Math.min(minWaitMs, ks.waitSec * 1000);
+            continue;
+          }
+          if (isAuto && key !== settings.geminiKey) syncActiveKeyUI57('gemini', key, 'TTS Key មុនអស់ Quota');
 
           try {
             let r = await postTts(key, m, true, true);
@@ -25574,26 +25768,22 @@ if (typeof window.addLog !== 'function') {
             if (e.name === 'AbortError') throw e;
             const msg = String(e.message || '');
             if (e.status === 404) break;
-            if ([401, 403].includes(e.status) || /API_KEY_INVALID/i.test(msg)) { deadTts57.add(slotId); continue; }
-            if (e.status === 429 || /quota|rate|limit|exhausted/i.test(msg)) {
-              if (/per_?day|per day|requests_per_model_per_day|limit:\s*0/i.test(msg)) deadTts57.add(slotId);
-              else {
-                const mm = msg.match(/retry in\s+(\d+(?:\.\d+)?)s/i);
-                const ms = (mm ? Math.min(40, Math.max(6, Math.ceil(parseFloat(mm[1])) + 2)) : 14) * 1000;
-                coolTts57.set(slotId, Date.now() + ms);
-                minWaitMs = Math.min(minWaitMs, ms);
-              }
+            if ([429, 401, 403].includes(e.status) || /quota|rate|limit|exhausted|API_KEY_INVALID/i.test(msg)) {
+              const reason = markKeyError57(key, msg, e.status, 'tts|' + m);
+              if (reason === 'rpm') minWaitMs = Math.min(minWaitMs, 25000);
+              try { window.renderKeyPool(); } catch {}
+              if (!isAuto) throw new Error('TTS Key #' + (allKeys.indexOf(key) + 1) + ' ដល់កំណត់! សូមប្តូរ Key ឬបើក Auto។');
+              continue; // immediately switch to NEXT healthy key!
             }
-            if (!isAuto && [429, 401, 403].includes(e.status)) throw e;
           }
         }
       }
       if (isAuto && round < 2 && isFinite(minWaitMs)) {
-        const ws = Math.min(18, Math.max(3, Math.ceil(minWaitMs / 1000)));
+        const ws = Math.min(25, Math.max(3, Math.ceil(minWaitMs / 1000)));
         await sleepAbortable(ws * 1000, signal);
       } else break;
     }
-    throw lastErr || new Error('Gemini TTS Quota Error');
+    throw lastErr || new Error('Gemini TTS Keys ទាំង ' + allKeys.length + ' ដល់កំណត់ហើយ!');
   };
 
   // -------------------------------------------------------------------------
