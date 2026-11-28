@@ -25604,7 +25604,7 @@ if (typeof window.addLog !== 'function') {
       return await window.generateGeminiTtsBlob(tx,rl,sig,w);
     };
     const blobs=new Array(pCues.length).fill(null);let dn=0,cur=0;
-    const conc=eng==='cloud_edge'?4:calcDynamicWorkers57(getProviderKeys('gemini').length,pCues.length,isAutoM());
+    const conc=eng==='cloud_edge'?4:calcW(getProviderKeys('gemini').length,pCues.length,isAutoM());
     const run1=async(ix,w)=>{const c=pCues[ix],tx=(c.km||c.src||'').trim();if(!tx)return false;const ns=ix<pCues.length-1?pCues[ix+1].start:9e5,ms=Math.max(0.38,ns-c.start-0.03),tg=Math.max(0.38,Math.min(c.end-c.start,ms));for(let a=0;a<3;a++){try{const rb=await s1(tx,c.voice,w+a),ab=await ctx.decodeAudioData(await rb.arrayBuffer()),rp=trimFitStrict(ab,tg,ms,pcm16ToWavBytes);if(rp){const ra=await ctx.decodeAudioData(await rp.slice(0).arrayBuffer());c.end=+Math.min(ns-0.03,Math.max(c.start+0.35,c.start+ra.duration)).toFixed(2);blobs[ix]=rp;return true;}}catch(e){if(e.name==='AbortError')throw e;await sleepAbortable(600,sig);}}return false;};
     await Promise.all(Array.from({length:Math.min(conc,Math.max(1,pCues.length))},async(_,w)=>{while(cur<pCues.length&&!sig.aborted){const ix=cur++;await run1(ix,w);dn++;if(onP)onP(dn,pCues.length);}}));
     for(let ix=0;ix<pCues.length&&!sig.aborted;ix++)if(!blobs[ix]&&(pCues[ix].km||pCues[ix].src||'').trim()){await sleepAbortable(450,sig);await run1(ix,0);}
@@ -25670,7 +25670,7 @@ if (typeof window.addLog !== 'function') {
         let pPr=pr,pLB=legB,loc=false;if(canRe&&sb){pPr=await probe57(sb).catch(()=>null);if(pPr)loc=true;}if(!pPr&&sb){pPr=await probe57(sb).catch(()=>null);if(pPr)loc=true;}if(!pPr&&!pLB&&sb&&sb.size<=145*1024*1024)try{const u=URL.createObjectURL(sb);pLB=await _pDec(u,ctx);URL.revokeObjectURL(u);loc=true;}catch{}
 
         const segLen=75,pDur=pt.end-pt.start,chs=[];for(let t=pt.start;t<pt.end;t+=segLen)chs.push({idx:chs.length,t,segEnd:Math.min(pt.end,t+segLen)});
-        const wk=calcDynamicWorkers57(keys.length,chs.length,isAutoM()),resv=Math.max(0,keys.length-wk);
+        const wk=calcW(keys.length,chs.length,isAutoM()),resv=Math.max(0,keys.length-wk);
         updP(pi,8,'⚡ 1-Pass AI ('+wk+' រត់ | '+resv+' បម្រុង)...');
         setBoxStatus('bpStatusBox','info','⚡ ភាគ '+(pi+1)+'/'+pts.length+': ប្រើ '+wk+' Key រត់ + ទុក '+resv+' Key បម្រុង ('+chs.length+' ដុំ × 75s)');
 
