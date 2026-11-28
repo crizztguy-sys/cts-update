@@ -25422,7 +25422,7 @@ if (typeof window.addLog !== 'function') {
     let url=String(tc.edgeUrl||'').trim();
     if(!url||/127\.0\.0\.1:5050|localhost:5050/i.test(url))url=br?'https://cts-cloud-voice.internal/tts':(CLOUD_URL+'/tts');
     else if(/cts-cloud-voice\.internal/i.test(url)&&!br)url=CLOUD_URL+'/tts';
-    if(!woke){woke=true;fetch(br?'https://cts-cloud-voice.internal/health':(CLOUD_URL+'/'),{headers:{'X-CTS-App':CLOUD_SEC}}).catch(()=>{});}
+    if(!woke){woke=true;const wu=br?'https://cts-cloud-voice.internal/health':(CLOUD_URL+'/');for(let wk=0;wk<6;wk++){try{const wr=await ctsFetchTimeout(wu,{method:'GET',headers:{'X-CTS-App':CLOUD_SEC}},8000,sig);if(wr.ok)break;}catch{}await sleepAbortable(2000,sig);}}
     const hdrs={'Content-Type':'application/json'};if(/cts-voice\.onrender\.com/i.test(url))hdrs['X-CTS-App']=CLOUD_SEC;
     const body=/\/audio\/speech/i.test(url)?{model:'tts-1',input:txt,voice:vid,response_format:'mp3'}:{text:txt,voice:vid};
     const r=await ctsFetchTimeout(url,{method:'POST',headers:hdrs,body:JSON.stringify(body)},45000,sig);
@@ -25472,6 +25472,8 @@ if (typeof window.addLog !== 'function') {
     const tr=pcm.slice(Math.max(0,fw*win-Math.round(sr*0.03)),Math.min(pcm.length,(lw+1)*win+Math.round(sr*0.045)));
     let fit=wsolaFit(tr,sr,Math.max(0.28,sd));
     if(isFinite(ms)&&ms>0.25){const cs=Math.floor(ms*sr);if(fit.length>cs)fit=fit.slice(0,cs);}
+    let fPk=0;for(let i=0;i<fit.length;i++){const a=Math.abs(fit[i]);if(a>fPk)fPk=a;}
+    if(fPk>0.01&&fPk<0.88){const gN=Math.min(3.5,0.92/fPk);for(let i=0;i<fit.length;i++)fit[i]=Math.max(-0.98,Math.min(0.98,fit[i]*gN));}
     const fi=Math.min(Math.round(sr*0.008),Math.floor(fit.length/4)),fo=Math.min(Math.round(sr*0.02),Math.floor(fit.length/3));
     for(let i=0;i<fi;i++)fit[i]*=i/fi;for(let i=0;i<fo;i++)fit[fit.length-1-i]*=i/fo;
     return new Blob([fn(fit,sr)],{type:'audio/wav'});
@@ -25599,7 +25601,7 @@ if (typeof window.addLog !== 'function') {
     if(tc.engine==='azure'&&!tc.azureKey)tc.engine='auto';
     const eng=(tc.engine==='azure'&&tc.azureKey)?'azure':(tc.engine==='gemini'?'gemini':'cloud_edge');
     const s1=async(tx,rl,w)=>{
-      if(eng==='cloud_edge'){try{return await synthCloud(tx,rl,tgt,sig);}catch(e){if(e.name==='AbortError')throw e;if(getProviderKeys('gemini').length)return await window.generateGeminiTtsBlob(tx,rl,sig,w);throw e;}}
+      if(eng==='cloud_edge'){let ce=null;for(let rt=0;rt<4;rt++){try{return await synthCloud(tx,rl,tgt,sig);}catch(e){ce=e;if(e.name==='AbortError')throw e;await sleepAbortable(1500*(rt+1),sig);}}throw ce||new Error('Cloud Voice Unavailable');}
       if(eng==='azure'){const sdk=window.SpeechSDK||await new Promise((r,j)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@latest/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js';s.onload=()=>r(window.SpeechSDK);s.onerror=j;document.head.appendChild(s);});const sc=sdk.SpeechConfig.fromSubscription(tc.azureKey,tc.azureRegion||'southeastasia');sc.speechSynthesisOutputFormat=sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;const vid=rl==='sreymom'?'km-KH-SreymomNeural':'km-KH-PisethNeural',ssml='<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="km-KH"><voice name="'+vid+'">'+String(tx||'').replace(/[<>&'"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'}[c]))+'</voice></speak>',syn=new sdk.SpeechSynthesizer(sc,null);return await new Promise((rs,rj)=>syn.speakSsmlAsync(ssml,r=>{try{syn.close();}catch{}if(r.reason===sdk.ResultReason.SynthesizingAudioCompleted&&r.audioData)rs(new Blob([r.audioData],{type:'audio/wav'}));else rj(new Error(r.errorDetails||'Azure err'));},e=>{try{syn.close();}catch{}rj(e);}));}
       return await window.generateGeminiTtsBlob(tx,rl,sig,w);
     };
@@ -25669,10 +25671,10 @@ if (typeof window.addLog !== 'function') {
         let sb=pv?.videoBlob||null;if(!sb){if(canRe&&preSp[pi]?.videoBlob)sb=preSp[pi].videoBlob;else if(pts.length===1&&rf.type==='video/mp4')sb=rf;else if(pr?.vSamples?.length&&pt.sIdx!==undefined)sb=await buildSl57(rf,pr,pt);}
         let pPr=pr,pLB=legB,loc=false;if(canRe&&sb){pPr=await probe57(sb).catch(()=>null);if(pPr)loc=true;}if(!pPr&&sb){pPr=await probe57(sb).catch(()=>null);if(pPr)loc=true;}if(!pPr&&!pLB&&sb&&sb.size<=145*1024*1024)try{const u=URL.createObjectURL(sb);pLB=await _pDec(u,ctx);URL.revokeObjectURL(u);loc=true;}catch{}
 
-        const segLen=75,pDur=pt.end-pt.start,chs=[];for(let t=pt.start;t<pt.end;t+=segLen)chs.push({idx:chs.length,t,segEnd:Math.min(pt.end,t+segLen)});
+        const segLen=42,pDur=pt.end-pt.start,chs=[];for(let t=pt.start;t<pt.end;t+=segLen)chs.push({idx:chs.length,t,segEnd:Math.min(pt.end,t+segLen)});
         const wk=calcW(keys.length,chs.length,isAutoM()),resv=Math.max(0,keys.length-wk);
         updP(pi,8,'⚡ 1-Pass AI ('+wk+' រត់ | '+resv+' បម្រុង)...');
-        setBoxStatus('bpStatusBox','info','⚡ ភាគ '+(pi+1)+'/'+pts.length+': ប្រើ '+wk+' Key រត់ + ទុក '+resv+' Key បម្រុង ('+chs.length+' ដុំ × 75s)');
+        setBoxStatus('bpStatusBox','info','⚡ ភាគ '+(pi+1)+'/'+pts.length+': ប្រើ '+wk+' Key រត់ + ទុក '+resv+' Key បម្រុង ('+chs.length+' ដុំ × 42s)');
 
         const res1=new Array(chs.length).fill([]);let sD=0,c1=0,cCh=Promise.resolve();
         await Promise.all(Array.from({length:wk},async(_,wId)=>{
@@ -25685,7 +25687,7 @@ if (typeof window.addLog !== 'function') {
             if(!b64||sig.aborted){sD++;continue;}
 
             const isl=(pp?.islands?.length)?('Detected vocal time windows (seconds) as guide (skip music-only):\n'+pp.islands.map(sl=>'['+sl.start.toFixed(2)+'-'+sl.end.toFixed(2)+']').join(', ')+'\n'):'';
-            const p1='Listen to ALL '+sDur.toFixed(1)+'s of '+srcN+' movie audio (0.0s to '+sDur.toFixed(1)+'s).\n'+isl+'1) Transcribe EVERY spoken line verbatim in '+srcN+' ("src") with exact decimal start/end seconds.\n2) Translate into 100% NATURAL conversational '+tgtN+' ("tr") matching exact speaking duration (~5 syllables/sec).\nStyle: '+(stMap[stK]||stMap.natural)+'\n3) Tag vocal pitch ("g"): "M"=Male, "F"=Female/child.\nCast: '+(castMem||'Detect')+' | Glossary: '+(document.getElementById('optGlossary')?.value?.trim()||'None')+'\nReturn ONLY JSON array: [{"start":0.42,"end":2.68,"g":"M","src":"...","tr":"..."}]';
+            const p1='Listen to ALL '+sDur.toFixed(1)+'s of '+srcN+' movie audio (0.0s to '+sDur.toFixed(1)+'s).\n'+isl+'1) Transcribe EVERY short reply and spoken sentence verbatim as its OWN separate cue in '+srcN+' ("src")—do NOT merge separate sentences or skip quick replies.\n2) Translate into 100% NATURAL conversational '+tgtN+' ("tr") matching exact speaking duration (~5 syllables/sec).\nStyle: '+(stMap[stK]||stMap.natural)+'\n3) Tag vocal pitch ("g"): "M"=Male, "F"=Female/child.\nCast: '+(castMem||'Detect')+' | Glossary: '+(document.getElementById('optGlossary')?.value?.trim()||'None')+'\nReturn ONLY JSON array: [{"start":0.42,"end":2.68,"g":"M","src":"...","tr":"..."}]';
             let arr=[];
             try{const raw=await window.__ctsCallAIWorker57('Elite movie transcriber, lip-sync timer & native '+tgtN+' dubbing writer. JSON array only.',p1,sig,[{inlineData:{mimeType:mt,data:b64}}],wId);const cl=stripCodeFences(raw),m=cl.match(/\[[\s\S]*\]/);if(m)try{arr=JSON.parse(m[0]);}catch{}if(!arr.length){const re=/\{[^{}]*\}/g;let x;while((x=re.exec(cl))!==null)try{arr.push(JSON.parse(x[0]));}catch{}}}
             catch(e){if(e.name==='AbortError'||e.status===401||e.status===403||/ដល់កំណត់|Quota/i.test(e.message||''))throw e;setBoxStatus('bpStatusBox','info','⚠️ ដុំ #'+(ci+1)+': '+String(e.message||e).slice(0,55));}
