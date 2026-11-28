@@ -25387,7 +25387,7 @@ if (typeof window.addLog !== 'function') {
             if(sig?.aborted)throw new DOMException('Aborted','AbortError');
             const kn=all.indexOf(k)+1; if(au&&wId===0&&k!==settings.geminiKey)syncKUI('gemini',k,'');
             const tc=new AbortController();let to=false;const onA=()=>tc.abort();if(sig)sig.addEventListener('abort',onA,{once:true});
-            const tm=setTimeout(()=>{to=true;tc.abort();},hm?48000:26000);
+            const tm=setTimeout(()=>{to=true;tc.abort();},hm?65000:30000);
             try{return await window.callGeminiParts(k,m,sys,parts,tc.signal);}
             catch(e){
               lastErr=e; if(to&&(!sig||!sig.aborted)){const te=new Error('Timeout');te.status=504;lastErr=te;}
@@ -25400,11 +25400,11 @@ if (typeof window.addLog !== 'function') {
                 if(nx)syncKUI('gemini',nx,'🔄 Key #'+kn+' ('+(rs==='rpm'?'Cooldown':'Limit')+') → Key បម្រុង #'+(all.indexOf(nx)+1));
                 if(!au)throw new Error('Key #'+kn+' ដល់កំណត់!'); continue;
               }
-              if([500,502,503,504].includes(lastErr.status)){minW=Math.min(minW,4000);if(lastErr.status===503)break;continue;} throw lastErr;
+              if([500,502,503,504].includes(lastErr.status)||(!lastErr.status&&/fetch|network|load failed/i.test(msg))){minW=Math.min(minW,4000);if(lastErr.status===503&&ms.length>1)break;continue;} throw lastErr;
             }finally{clearTimeout(tm);if(sig)sig.removeEventListener('abort',onA);}
           }
         }
-        if(au&&r<2&&isFinite(minW)){for(let s=Math.min(35,Math.max(3,Math.ceil(minW/1000)));s>0;s--){if(sig?.aborted)throw new DOMException('Aborted','AbortError');['bpStatusBox','cuesStatus'].forEach(id=>{const el=document.getElementById(id);if(el&&el.classList.contains('show'))setBoxStatus(id,'info','⏳ Auto-Refresh បន្តក្នុង '+s+'s...');});await sleepAbortable(1000,sig);}}else break;
+        if(au&&r<2&&isFinite(minW)){for(let s=Math.min(35,Math.max(3,Math.ceil(minW/1000)));s>0;s--){if(sig?.aborted)throw new DOMException('Aborted','AbortError');if(wId===0||Date.now()-(window.__ctsArUi57||0)>1500){window.__ctsArUi57=Date.now();['bpStatusBox','cuesStatus'].forEach(id=>{const el=document.getElementById(id);if(el&&el.classList.contains('show'))setBoxStatus(id,'info','⏳ Auto-Refresh បន្តក្នុង '+s+'s...');});}await sleepAbortable(1000,sig);}}else break;
       }
       throw lastErr||new Error('API Keys ទាំង '+all.length+' ដល់កំណត់!');
     }
@@ -25601,7 +25601,7 @@ if (typeof window.addLog !== 'function') {
     if(tc.engine==='azure'&&!tc.azureKey)tc.engine='auto';
     const eng=(tc.engine==='azure'&&tc.azureKey)?'azure':(tc.engine==='gemini'?'gemini':'cloud_edge');
     const s1=async(tx,rl,w)=>{
-      if(eng==='cloud_edge'){let ce=null;for(let rt=0;rt<4;rt++){try{return await synthCloud(tx,rl,tgt,sig);}catch(e){ce=e;if(e.name==='AbortError')throw e;await sleepAbortable(1500*(rt+1),sig);}}throw ce||new Error('Cloud Voice Unavailable');}
+      if(eng==='cloud_edge'){let ce=null;for(let rt=0;rt<4;rt++){try{return await synthCloud(tx,rl,tgt,sig);}catch(e){ce=e;if(e.name==='AbortError')throw e;await sleepAbortable(1500*(rt+1),sig);}}if(getProviderKeys('gemini').length){try{return await window.generateGeminiTtsBlob(tx,rl,sig,w);}catch(ge){if(ge.name==='AbortError')throw ge;}}throw ce||new Error('Cloud Voice Unavailable');}
       if(eng==='azure'){const sdk=window.SpeechSDK||await new Promise((r,j)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@latest/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js';s.onload=()=>r(window.SpeechSDK);s.onerror=j;document.head.appendChild(s);});const sc=sdk.SpeechConfig.fromSubscription(tc.azureKey,tc.azureRegion||'southeastasia');sc.speechSynthesisOutputFormat=sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;const vid=rl==='sreymom'?'km-KH-SreymomNeural':'km-KH-PisethNeural',ssml='<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="km-KH"><voice name="'+vid+'">'+String(tx||'').replace(/[<>&'"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'}[c]))+'</voice></speak>',syn=new sdk.SpeechSynthesizer(sc,null);return await new Promise((rs,rj)=>syn.speakSsmlAsync(ssml,r=>{try{syn.close();}catch{}if(r.reason===sdk.ResultReason.SynthesizingAudioCompleted&&r.audioData)rs(new Blob([r.audioData],{type:'audio/wav'}));else rj(new Error(r.errorDetails||'Azure err'));},e=>{try{syn.close();}catch{}rj(e);}));}
       return await window.generateGeminiTtsBlob(tx,rl,sig,w);
     };
@@ -25671,26 +25671,24 @@ if (typeof window.addLog !== 'function') {
         let sb=pv?.videoBlob||null;if(!sb){if(canRe&&preSp[pi]?.videoBlob)sb=preSp[pi].videoBlob;else if(pts.length===1&&rf.type==='video/mp4')sb=rf;else if(pr?.vSamples?.length&&pt.sIdx!==undefined)sb=await buildSl57(rf,pr,pt);}
         let pPr=pr,pLB=legB,loc=false;if(canRe&&sb){pPr=await probe57(sb).catch(()=>null);if(pPr)loc=true;}if(!pPr&&sb){pPr=await probe57(sb).catch(()=>null);if(pPr)loc=true;}if(!pPr&&!pLB&&sb&&sb.size<=145*1024*1024)try{const u=URL.createObjectURL(sb);pLB=await _pDec(u,ctx);URL.revokeObjectURL(u);loc=true;}catch{}
 
-        const segLen=42,pDur=pt.end-pt.start,chs=[];for(let t=pt.start;t<pt.end;t+=segLen)chs.push({idx:chs.length,t,segEnd:Math.min(pt.end,t+segLen)});
+        const segLen=60,ov=1.25,pDur=pt.end-pt.start,chs=[];for(let t=pt.start;t<pt.end;t+=segLen){const cE=Math.min(pt.end,t+segLen);chs.push({idx:chs.length,coreT:t,coreEnd:cE,t:chs.length===0?t:Math.max(pt.start,t-ov),segEnd:cE>=pt.end?pt.end:Math.min(pt.end,cE+ov)});}
         const wk=calcW(keys.length,chs.length,isAutoM()),resv=Math.max(0,keys.length-wk);
         updP(pi,8,'⚡ 1-Pass AI ('+wk+' រត់ | '+resv+' បម្រុង)...');
-        setBoxStatus('bpStatusBox','info','⚡ ភាគ '+(pi+1)+'/'+pts.length+': ប្រើ '+wk+' Key រត់ + ទុក '+resv+' Key បម្រុង ('+chs.length+' ដុំ × 42s)');
+        setBoxStatus('bpStatusBox','info','⚡ ភាគ '+(pi+1)+'/'+pts.length+': ប្រើ '+wk+' Key រត់ + ទុក '+resv+' Key បម្រុង ('+chs.length+' ដុំ × 60s)');
 
-        const res1=new Array(chs.length).fill([]);let sD=0,c1=0,cCh=Promise.resolve();
-        await Promise.all(Array.from({length:wk},async(_,wId)=>{
-          while(c1<chs.length&&!sig.aborted){
-            const ci=c1++,ch=chs[ci],sDur=ch.segEnd-ch.t,lS=loc?Math.max(0,ch.t-pt.start):ch.t,lE=loc?Math.max(lS+0.1,ch.segEnd-pt.start):ch.segEnd;let pp=null;
+        const res1=new Array(chs.length).fill([]),failedCh=[];let sD=0,c1=0,cCh=Promise.resolve();
+        const runCh=async(ci,wId,isRec=false)=>{
+            const ch=chs[ci],sDur=ch.segEnd-ch.t,lS=loc?Math.max(0,ch.t-pt.start):ch.t,lE=loc?Math.max(lS+0.1,ch.segEnd-pt.start):ch.segEnd;let pp=null;
             if(pPr){const ab=await extAud57(loc?sb:rf,pPr,lS,lE,ctx);if(ab)pp=prep16k(ab);}
             else if(pLB){const sr=pLB.sampleRate,s0=Math.floor(lS*sr),s1=Math.min(pLB.length,Math.ceil(lE*sr)),sub=ctx.createBuffer(1,Math.max(1,s1-s0),sr);sub.getChannelData(0).set(pLB.getChannelData(0).subarray(s0,s1));pp=prep16k(sub);}
             let mt='audio/wav',b64=pp?pp.base64:null;
             if(!pp&&!pPr&&!pLB){const cap=await(cCh=cCh.then(async()=>sig.aborted?null:await captureLiveVideoAudioSegment(vid,ch.t,ch.segEnd,sig)));if(cap){b64=cap.data;mt=cap.mimeType;}}
-            if(!b64||sig.aborted){sD++;continue;}
+            if(!b64||sig.aborted){sD++;return true;}
 
-            const isl=(pp?.islands?.length)?('Detected vocal time windows (seconds) as guide (skip music-only):\n'+pp.islands.map(sl=>'['+sl.start.toFixed(2)+'-'+sl.end.toFixed(2)+']').join(', ')+'\n'):'';
-            const p1='Listen to ALL '+sDur.toFixed(1)+'s of '+srcN+' movie audio (0.0s to '+sDur.toFixed(1)+'s).\n'+isl+'1) Transcribe EVERY short reply and spoken sentence verbatim as its OWN separate cue in '+srcN+' ("src")—do NOT merge separate sentences or skip quick replies.\n2) Translate into 100% NATURAL conversational '+tgtN+' ("tr") matching exact speaking duration (~5 syllables/sec).\nStyle: '+(stMap[stK]||stMap.natural)+'\n3) Tag vocal pitch ("g"): "M"=Male, "F"=Female/child.\nCast: '+(castMem||'Detect')+' | Glossary: '+(document.getElementById('optGlossary')?.value?.trim()||'None')+'\nReturn ONLY JSON array: [{"start":0.42,"end":2.68,"g":"M","src":"...","tr":"..."}]';
+            const p1='Listen carefully to ALL '+sDur.toFixed(1)+'s of '+srcN+' movie audio (0.0s to '+sDur.toFixed(1)+'s), including soft whispers and quick exchanges.\n1) Transcribe EVERY short reply and spoken sentence verbatim as its OWN separate cue in '+srcN+' ("src") with accurate start/end seconds—do NOT skip quiet dialogue, do NOT merge separate sentences or speakers.\n2) Translate into 100% NATURAL conversational '+tgtN+' ("tr") matching exact speaking duration (~5 syllables/sec).\nStyle: '+(stMap[stK]||stMap.natural)+'\n3) Tag vocal pitch ("g"): "M"=Male, "F"=Female/child.\nCast: '+(castMem||'Detect')+' | Glossary: '+(document.getElementById('optGlossary')?.value?.trim()||'None')+'\nReturn ONLY JSON array: [{"start":0.42,"end":2.68,"g":"M","src":"...","tr":"..."}]';
             let arr=[];
             try{const raw=await window.__ctsCallAIWorker57('Elite movie transcriber, lip-sync timer & native '+tgtN+' dubbing writer. JSON array only.',p1,sig,[{inlineData:{mimeType:mt,data:b64}}],wId);const cl=stripCodeFences(raw),m=cl.match(/\[[\s\S]*\]/);if(m)try{arr=JSON.parse(m[0]);}catch{}if(!arr.length){const re=/\{[^{}]*\}/g;let x;while((x=re.exec(cl))!==null)try{arr.push(JSON.parse(x[0]));}catch{}}}
-            catch(e){if(e.name==='AbortError'||e.status===401||e.status===403||/ដល់កំណត់|Quota/i.test(e.message||''))throw e;setBoxStatus('bpStatusBox','info','⚠️ ដុំ #'+(ci+1)+': '+String(e.message||e).slice(0,55));}
+            catch(e){if(e.name==='AbortError'||e.status===401||e.status===403||/ដល់កំណត់|Quota/i.test(e.message||''))throw e;if(!isRec){failedCh.push(ci);setBoxStatus('bpStatusBox','info','⚠️ ដុំ #'+(ci+1)+' ជាប់បណ្ដោះអាសន្ន — នឹងស្ដារឡើងវិញ!');return false;}throw e;}
 
             const out=[];let pE=0,pV='piseth';
             for(let k=0;k<arr.length;k++){
@@ -25705,12 +25703,25 @@ if (typeof window.addLog !== 'function') {
               out.push({id:Date.now()+ci*1000+k,start:aS,end:aE,_ls:rs,_le:re,dur:+(aE-aS).toFixed(2),src:sT,km:tT,voice:vc,audioBlob:null});
             }
             if(pp?.env&&out.length){const tl=out.map(x=>({start:x._ls,end:x._le}));snapOnset(tl,pp.env,0);for(let k=0;k<out.length;k++){out[k].start=+Math.max(0,(ch.t-pt.start)+tl[k].start).toFixed(2);out[k].end=+Math.min(pDur,Math.max(out[k].start+0.38,(ch.t-pt.start)+tl[k].end)).toFixed(2);out[k].dur=+(out[k].end-out[k].start).toFixed(2);}}
-            res1[ci]=out;sD++;updP(pi,10+Math.round((sD/Math.max(1,chs.length))*45),'⚡ ស្ដាប់+បកប្រែ ('+sD+'/'+chs.length+' ដុំ)');
+            const cS0=ch.coreT-pt.start,cE0=ch.coreEnd-pt.start;
+            res1[ci]=out.filter(x=>{const md=(x.start+x.end)*0.5;return (ci===0||md>=cS0)&&(ch.coreEnd>=pt.end||md<cE0);});
+            sD++;updP(pi,10+Math.round((Math.min(chs.length,sD)/Math.max(1,chs.length))*45),'⚡ ស្ដាប់+បកប្រែ ('+Math.min(chs.length,sD)+'/'+chs.length+' ដុំ)');
+            return true;
+        };
+        await Promise.all(Array.from({length:wk},async(_,wId)=>{while(c1<chs.length&&!sig.aborted){await runCh(c1++,wId,false);}}));
+        if(!sig.aborted&&failedCh.length){
+          setBoxStatus('bpStatusBox','info','🔄 កំពុងស្ដារ '+failedCh.length+' ដុំដែលជាប់ ('+failedCh.map(x=>'#'+(x+1)).join(', ')+')...');
+          await sleepAbortable(3000,sig);
+          for(const fci of failedCh){
+            if(sig.aborted)break;
+            let ok=false,le=null;
+            for(let rt=0;rt<2&&!ok&&!sig.aborted;rt++){try{ok=await runCh(fci,0,true);}catch(e){le=e;if(e.name==='AbortError'||e.status===401||e.status===403||/ដល់កំណត់|Quota/i.test(e.message||''))throw e;await sleepAbortable(4000,sig);}}
+            if(!ok&&!sig.aborted)throw le||new Error('ដុំ #'+(fci+1)+' បរាជ័យបន្ទាប់ពីស្ដារ');
           }
-        }));
+        }
 
         const rM=res1.flat().filter(Boolean).sort((a,b)=>a.start-b.start),pCues=[];
-        for(const c of rM){const pv2=pCues[pCues.length-1];if(pv2&&c.start<pv2.end+0.03)c.start=+(pv2.end+0.03).toFixed(2);if(c.end<=c.start+0.35)c.end=+(c.start+1.1).toFixed(2);c.dur=+(c.end-c.start).toFixed(2);pCues.push(c);}
+        for(const c of rM){const pv2=pCues[pCues.length-1];if(pv2&&c.start<pv2.end-0.35&&(c.src===pv2.src||Math.abs(c.start-pv2.start)<1.0))continue;if(pv2&&c.start<pv2.end+0.03)c.start=+(pv2.end+0.03).toFixed(2);if(c.end<=c.start+0.35)c.end=+(c.start+1.1).toFixed(2);c.dur=+(c.end-c.start).toFixed(2);pCues.push(c);}
         if(!sig.aborted&&pCues.length&&window.__ctsV54AutoHealTranslate){updP(pi,58,'🔍 ផ្ទៀងផ្ទាត់ឃ្លាខ្វះ...');await window.__ctsV54AutoHealTranslate(pCues,srcC,tgtC,tgtN,sig);}
         if(!sig.aborted){await idbPut(PROJ_DB,PROJ_STORE,{id:'part_'+pt.partIndex,partIndex:pt.partIndex,start:pt.start,end:pt.end,duration:+(pt.end-pt.start).toFixed(2),status:'translating',videoBlob:sb,cues:pCues,castMemory:castMem});document.getElementById('bpRefreshListBtn')?.click();}
 
@@ -25719,8 +25730,8 @@ if (typeof window.addLog !== 'function') {
         if(!sig.aborted){await idbPut(PROJ_DB,PROJ_STORE,{id:'part_'+pt.partIndex,partIndex:pt.partIndex,start:pt.start,end:pt.end,duration:+(pt.end-pt.start).toFixed(2),status:'done',videoBlob:sb,cues:pCues.map((c,ix)=>({id:c.id,start:c.start,end:c.end,src:c.src,km:c.km,voice:c.voice,audioBlob:aBlobs[ix]||null})),castMemory:castMem});updP(pi,100,'✅ រួចរាល់ 100%!');document.getElementById('bpRefreshListBtn')?.click();}
       }
       if(!sig.aborted){document.getElementById('bpOverallPct').textContent='100%';document.getElementById('bpOverallFill').style.width='100%';document.getElementById('bpStepPct').textContent='100%';document.getElementById('bpStepFill').style.width='100%';document.getElementById('bpOverallTxt').textContent='✅ ជោគជ័យគ្រប់ភាគ ('+pts.length+'/'+pts.length+')';document.title='✅ Big Project រួចរាល់!';setBoxStatus('bpStatusBox','ok','🎉 រួចរាល់ 100%! Cloud ពិសិទ្ធ/ស្រីមុំ + ត្រូវមាត់ + រលូន!');toast('🎉 Big Project រួចរាល់ 100%!');}
-    }catch(e){setBoxStatus('bpStatusBox',e.name==='AbortError'?'info':'err',e.name==='AbortError'?'⏹️ បានបញ្ឈប់':('❌ '+(e?.message||e)));rB.style.display='inline-flex';}
-    finally{bpRun=false;try{await ctx.close();}catch{}try{if(bpKa)bpKa.pause();}catch{}releaseWakeLock();sB.disabled=false;sB.textContent='🚀 ចាប់ផ្ដើមបកប្រែ / Start Project';stB.style.display='none';}
+    }catch(e){try{bpAb?.abort();}catch{}setBoxStatus('bpStatusBox',e.name==='AbortError'?'info':'err',e.name==='AbortError'?'⏹️ បានបញ្ឈប់':('❌ '+(e?.message||e)));rB.style.display='inline-flex';}
+    finally{try{bpAb?.abort();}catch{}bpRun=false;try{await ctx.close();}catch{}try{if(bpKa)bpKa.pause();}catch{}releaseWakeLock();sB.disabled=false;sB.textContent='🚀 ចាប់ផ្ដើមបកប្រែ / Start Project';stB.style.display='none';}
   }
 
   function mount57(){
