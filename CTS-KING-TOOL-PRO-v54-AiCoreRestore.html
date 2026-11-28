@@ -25353,7 +25353,7 @@ if (typeof window.addLog !== 'function') {
   const isAutoM=()=>{const m=safeGet('cts_king_key_mode',{mode:'auto'});return !m||m.mode!=='manual';};
   const calcW=(n,t,au)=>(!au||n<=2)?1:(n<=4?Math.min(t,2):Math.min(t,Math.max(2,Math.min(4,Math.floor(n*0.45)))));
   const getKS=(k,sc)=>{const s=kh.get(k+'|'+sc)||kh.get(k+'|all');if(!s)return{state:'ok',w:0};if(s.u===Infinity)return{state:'limit',w:9e5};const l=s.u-Date.now();if(l<=0){kh.delete(k+'|'+sc);kh.delete(k+'|all');return{state:'ok',w:0};}return{state:'cool',w:Math.ceil(l/1000)};};
-  const markKE=(k,msg,code,sc)=>{const m=String(msg||'');if(code===401||code===403||/API_KEY_INVALID|permission/i.test(m)){kh.set(k+'|all',{u:Infinity});return'auth';}if(/per_?day|per day|requests_per_model_per_day|limit:\s*0|billing/i.test(m)){kh.set(k+'|'+sc,{u:Date.now()+216e5});return'daily';}const mm=m.match(/retry in\s+(\d+(?:\.\d+)?)s/i);const sec=mm?Math.min(75,Math.max(15,Math.ceil(parseFloat(mm[1]))+2)):35;kh.set(k+'|'+sc,{u:Date.now()+sec*1000});return'rpm';};
+  const markKE=(k,msg,code,sc)=>{const m=String(msg||'');if(code===401||code===403||/API_KEY_INVALID|permission/i.test(m)){kh.set(k+'|all',{u:Infinity});return'auth';}if(/per_?day|per day|requests_per_model_per_day|limit:\s*0|billing|retry in\s+\d+h/i.test(m)){kh.set(k+'|'+sc,{u:Date.now()+216e5});return'daily';}const mm=m.match(/retry in\s+(\d+(?:\.\d+)?)s/i);const sec=mm?Math.min(75,Math.max(15,Math.ceil(parseFloat(mm[1]))+2)):35;kh.set(k+'|'+sc,{u:Date.now()+sec*1000});return'rpm';};
   const syncKUI=(prov,tk,note)=>{if(!tk)return;if((prov==='gemini'?settings.geminiKey:settings.openaiKey)!==tk){if(prov==='gemini'){settings.geminiKey=tk;const e=document.getElementById('geminiKey');if(e)e.value=tk;}else{settings.openaiKey=tk;const e=document.getElementById('openaiKey');if(e)e.value=tk;}if(Array.isArray(apiKeyPool)){apiKeyPool.forEach(x=>{if(x.provider===prov)x.active=(x.key===tk);});safeSet('cts_king_key_pool',apiKeyPool);}saveSettings(true);}if(note)['bpStatusBox','cuesStatus','recapStatus'].forEach(id=>{const el=document.getElementById(id);if(el&&el.classList.contains('show'))setBoxStatus(id,'info',note);});if(Date.now()-lastUi>1200){lastUi=Date.now();try{window.renderKeyPool();}catch{}}};
   setInterval(()=>{if(kh.size>0&&document.getElementById('tab-settings')?.classList.contains('active'))try{window.renderKeyPool();}catch{}},3000);
 
@@ -25376,11 +25376,13 @@ if (typeof window.addLog !== 'function') {
     const au=isAutoM();
     if(prov==='gemini'){
       const hm=Array.isArray(extra)&&extra.length>0,sel=settings.geminiModel||'gemini-4-hydrogen',lk=Boolean(settings.lockModel&&document.getElementById('lockGeminiModelChk')?.checked);
-      const ms=lk?[sel]:[sel,'gemini-4-hydrogen','gemini-3.8-flash','gemini-2.5-flash','gemini-3.5-flash-lite'].filter((m,i,a)=>m&&a.indexOf(m)===i);
+      const ms=[sel,'gemini-4-hydrogen','gemini-3.8-flash','gemini-3.6-flash','gemini-3.5-flash-lite','gemini-3.1-flash-lite','gemini-2.5-flash','gemini-4-argon'].filter((m,i,a)=>m&&a.indexOf(m)===i);
       const parts=extra?[...extra,{text:user}]:[{text:user}]; let lastErr=null;
-      for(let r=0;r<(au?3:1);r++){
+      for(let r=0;r<(au?4:1);r++){
         let minW=Infinity;
         for(const m of ms){
+          if(lk&&m!==sel&&(!au||!all.every(k=>getKS(k,'gen|'+sel).state==='limit')))break;
+          if(lk&&au&&m!==sel&&wId===0)['bpStatusBox','cuesStatus'].forEach(id=>{const el=document.getElementById(id);if(el&&el.classList.contains('show'))setBoxStatus(id,'info','🔄 '+sel+' អស់ Quota ថ្ងៃនេះ → ប្ដូរទៅ '+m);});
           const sc='gen|'+m,qk=pickKeys(all,wId,sc);
           if(!qk.length){for(const k of all){const s=getKS(k,sc);if(s.state==='cool')minW=Math.min(minW,s.w*1000);}continue;}
           for(const k of qk){
@@ -25393,7 +25395,7 @@ if (typeof window.addLog !== 'function') {
               lastErr=e; if(to&&(!sig||!sig.aborted)){const te=new Error('Timeout');te.status=504;lastErr=te;}
               if(sig?.aborted)throw new DOMException('Aborted','AbortError');
               const msg=String(lastErr.message||'');
-              if(lastErr.status===404||/not found|retired/i.test(msg))break;
+              if(lastErr.status===404||/not found|retired/i.test(msg)){for(const x of all)kh.set(x+'|'+sc,{u:Infinity});break;}
               if([429,401,403].includes(lastErr.status)||/quota|rate|limit|exhausted|API_KEY_INVALID/i.test(msg)){
                 const rs=markKE(k,msg,lastErr.status,sc);if(rs==='rpm')minW=Math.min(minW,32000);
                 actIdx=(all.indexOf(k)+1)%all.length;const nx=all.find(x=>getKS(x,sc).state==='ok');
@@ -25404,7 +25406,7 @@ if (typeof window.addLog !== 'function') {
             }finally{clearTimeout(tm);if(sig)sig.removeEventListener('abort',onA);}
           }
         }
-        if(au&&r<2&&isFinite(minW)){for(let s=Math.min(35,Math.max(3,Math.ceil(minW/1000)));s>0;s--){if(sig?.aborted)throw new DOMException('Aborted','AbortError');if(wId===0||Date.now()-(window.__ctsArUi57||0)>1500){window.__ctsArUi57=Date.now();['bpStatusBox','cuesStatus'].forEach(id=>{const el=document.getElementById(id);if(el&&el.classList.contains('show'))setBoxStatus(id,'info','⏳ Auto-Refresh បន្តក្នុង '+s+'s...');});}await sleepAbortable(1000,sig);}}else break;
+        if(au&&r<3&&isFinite(minW)){for(let s=Math.min(35,Math.max(3,Math.ceil(minW/1000)));s>0;s--){if(sig?.aborted)throw new DOMException('Aborted','AbortError');if(wId===0||Date.now()-(window.__ctsArUi57||0)>1500){window.__ctsArUi57=Date.now();['bpStatusBox','cuesStatus'].forEach(id=>{const el=document.getElementById(id);if(el&&el.classList.contains('show'))setBoxStatus(id,'info','⏳ Auto-Refresh បន្តក្នុង '+s+'s...');});}await sleepAbortable(1000,sig);}}else break;
       }
       throw lastErr||new Error('API Keys ទាំង '+all.length+' ដល់កំណត់!');
     }
