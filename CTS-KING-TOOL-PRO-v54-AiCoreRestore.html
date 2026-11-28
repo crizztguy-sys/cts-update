@@ -25400,7 +25400,7 @@ if (typeof window.addLog !== 'function') {
                 if(nx)syncKUI('gemini',nx,'🔄 Key #'+kn+' ('+(rs==='rpm'?'Cooldown':'Limit')+') → Key បម្រុង #'+(all.indexOf(nx)+1));
                 if(!au)throw new Error('Key #'+kn+' ដល់កំណត់!'); continue;
               }
-              if([500,502,503,504].includes(lastErr.status))continue; throw lastErr;
+              if([500,502,503,504].includes(lastErr.status)){minW=Math.min(minW,4000);if(lastErr.status===503)break;continue;} throw lastErr;
             }finally{clearTimeout(tm);if(sig)sig.removeEventListener('abort',onA);}
           }
         }
